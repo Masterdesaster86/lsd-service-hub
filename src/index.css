@@ -10,6 +10,9 @@
   --color-amber: #E2A63B;
   --color-amber-dark: #C98F28;
   --color-steel: #4E7A96;
+  /* Firmenfarben, direkt aus dem Logo entnommen */
+  --color-blau: #0070B8;
+  --color-blau-dunkel: #003868;
   --color-red: #C1453A;
   --color-green: #4C8863;
   --color-line: #C7CBC3;
@@ -46,6 +49,18 @@ body {
   background: #fff;
   border: 1px solid var(--color-line);
 }
+
+/* Wenn die App vom Home-Bildschirm im Vollbild startet, liegt der Inhalt unter
+   Statusleiste, Notch und Home-Indikator. Diese Klassen halten den nötigen
+   Abstand frei; am Desktop sind die Werte 0. */
+.app-kopf {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  padding-left: calc(env(safe-area-inset-left, 0px) + 18px);
+  padding-right: calc(env(safe-area-inset-right, 0px) + 18px);
+}
+.app-seitenleiste { padding-left: env(safe-area-inset-left, 0px); }
+.app-inhalt { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); }
 
 .btn {
   font-family: var(--font-sans);

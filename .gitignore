@@ -3,3 +3,6 @@ dist
 .env.local
 .vercel
 *.local
+
+# Interne Dateien der Entwicklungsumgebung
+.claude/

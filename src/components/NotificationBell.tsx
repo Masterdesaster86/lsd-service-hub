@@ -50,7 +50,7 @@ export function NotificationBell() {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="relative btn btn-outline btn-sm !border-white/30 !text-white hover:!bg-white/10"
+        className="relative btn btn-outline btn-sm"
         aria-label="Benachrichtigungen"
       >
         🔔
