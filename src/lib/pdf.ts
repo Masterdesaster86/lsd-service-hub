@@ -53,29 +53,53 @@ function setupPage(doc: jsPDF, hintergrund: string) {
   doc.internal.events.subscribe('addPage', () => addHintergrund(doc, hintergrund))
 }
 
-function drawHeader(doc: jsPDF, logo: string, title: string, idLine: [string, string]) {
+/** Heller, ruhiger Kopfbereich: schmaler Akzentstreifen oben, Titel mit
+ * Amber-Unterstrich, Logo rechts auf hellem Grund (dort hat es den vollen
+ * Kontrast — auf dunklem Balken gingen die dunklen Logoteile unter).
+ * Gibt die Y-Position zurück, an der der Inhalt beginnen kann. */
+function drawHeader(doc: jsPDF, logo: string, title: string, wert: string, label: string, zusatz?: string): number {
   doc.setFillColor(GRAPHITE)
-  doc.rect(0, 0, PAGE_W, 28, 'F')
+  doc.rect(0, 0, PAGE_W, 2.6, 'F')
+  doc.setFillColor(AMBER)
+  doc.rect(0, 0, 58, 2.6, 'F')
 
-  doc.setTextColor('#ffffff')
+  doc.setTextColor(GRAPHITE)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(17)
-  doc.text(title, MARGIN, 13)
+  doc.setCharSpace(0.7)
+  doc.text(title, MARGIN, 15)
+  doc.setCharSpace(0)
 
-  doc.setTextColor(AMBER)
-  doc.setFontSize(13)
-  doc.text(idLine[0], MARGIN, 22)
-  const idWidth = doc.getTextWidth(idLine[0])
-  doc.setTextColor('#C7CBC3')
+  doc.setFillColor(AMBER)
+  doc.rect(MARGIN, 17.6, 22, 1.2, 'F')
+
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8.5)
-  doc.text(idLine[1], MARGIN + idWidth + 4, 22)
+  doc.setFontSize(7)
+  doc.setTextColor(INK_SOFT)
+  doc.text(label.toUpperCase(), MARGIN, 24)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(12.5)
+  doc.setTextColor(GRAPHITE)
+  doc.text(wert, MARGIN, 29.5)
 
-  const logoH = 15, logoW = logoH * LOGO_RATIO
-  doc.addImage(logo, 'PNG', PAGE_W - MARGIN - logoW, 6.5, logoW, logoH)
+  const logoH = 13, logoW = logoH * LOGO_RATIO
+  doc.addImage(logo, 'PNG', PAGE_W - MARGIN - logoW, 8.5, logoW, logoH)
+
+  if (zusatz) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8.5)
+    doc.setTextColor(INK_SOFT)
+    doc.text(zusatz, PAGE_W - MARGIN, 27.5, { align: 'right' })
+  }
+
+  doc.setDrawColor(LINE)
+  doc.setLineWidth(0.3)
+  doc.line(MARGIN, 33.5, PAGE_W - MARGIN, 33.5)
+  doc.setLineWidth(0.2)
 
   doc.setTextColor(INK)
   doc.setFont('helvetica', 'normal')
+  return 40
 }
 
 function drawFooterAndPageNumbers(doc: jsPDF) {
@@ -164,9 +188,8 @@ export async function buildBerichtPdf(input: BerichtPdfInput): Promise<jsPDF> {
   const totals = calcBerichtTotals(tage)
 
   setupPage(doc, hintergrund)
-  drawHeader(doc, logo, 'SERVICEBERICHT', [`#${order.id}`, 'Auftragsnummer'])
+  let y = drawHeader(doc, logo, 'SERVICEBERICHT', `#${order.id}`, 'Auftragsnummer')
 
-  let y = 35
   y = fieldRow(doc, y, [
     ['Auftraggeber', order.auftraggeber?.name || '–'],
     ['Einsatzkunde', order.einsatzkunde?.name || '–'],
@@ -368,9 +391,7 @@ export async function buildNachweisPdf(args: {
   const [logo, hintergrund] = await Promise.all([bildAlsDataUrl(LOGO_URL), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   setupPage(doc, hintergrund)
-  drawHeader(doc, logo, 'STUNDENNACHWEIS', [monatLabel, technikerName])
-
-  let y = 38
+  let y = drawHeader(doc, logo, 'STUNDENNACHWEIS', monatLabel, 'Zeitraum', technikerName)
   y = sectionTitle(doc, 'Erfasste Tage', y)
 
   autoTable(doc, {
