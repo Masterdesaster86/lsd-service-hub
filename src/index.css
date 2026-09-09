@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+@theme {
+  --color-graphite: #1B1F24;
+  --color-graphite-2: #262B32;
+  --color-paper: #ECEEE9;
+  --color-paper-2: #DCDFD8;
+  --color-ink: #20242A;
+  --color-ink-soft: #565F68;
+  --color-amber: #E2A63B;
+  --color-amber-dark: #C98F28;
+  --color-steel: #4E7A96;
+  --color-red: #C1453A;
+  --color-green: #4C8863;
+  --color-line: #C7CBC3;
+  --font-sans: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border-radius: 6px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid var(--color-line);
+}
+
+.btn {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 16px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.2;
+  transition: filter 0.1s ease, background 0.1s ease;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-amber {
+  background: var(--color-amber);
+  color: #221704;
+}
+.btn-amber:hover:not(:disabled) {
+  background: var(--color-amber-dark);
+}
+.btn-outline {
+  background: transparent;
+  border-color: var(--color-line);
+  color: var(--color-ink);
+}
+.btn-outline:hover:not(:disabled) {
+  background: var(--color-paper-2);
+}
+.btn-danger {
+  background: transparent;
+  border-color: var(--color-red);
+  color: var(--color-red);
+}
+.btn-danger:hover:not(:disabled) {
+  background: var(--color-red);
+  color: #fff;
+}
+.btn-dark {
+  background: var(--color-graphite);
+  color: #fff;
+}
+.btn-dark:hover:not(:disabled) {
+  background: var(--color-graphite-2);
+}
+.btn-sm {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+input, select, textarea {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  padding: 9px 10px;
+  border: 1px solid var(--color-line);
+  background: #fff;
+  color: var(--color-ink);
+  width: 100%;
+}
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--color-amber);
+  outline-offset: -1px;
+}
+label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink-soft);
+  display: block;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  border-radius: 2px;
+}
+.tag-neu { background: #E3E7EA; color: #46505A; }
+.tag-arbeit { background: #FBEBCC; color: #8A5E0F; }
+.tag-geplant { background: #DCEADF; color: #2E5C3E; }
+.tag-unterwegs { background: #DDE7EC; color: #2E4C5D; }
+.tag-offen { background: #E3E7EA; color: #46505A; }
+.tag-abgeschlossen { background: #DCEADF; color: #2E5C3E; }
+
+.val {
+  font-size: 14px;
+  color: var(--color-ink);
+}

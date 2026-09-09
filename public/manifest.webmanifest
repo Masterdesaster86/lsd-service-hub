@@ -1,0 +1,16 @@
+{
+  "name": "LSD Service Hub",
+  "short_name": "Service Hub",
+  "description": "Serviceaufträge, Serviceberichte und Plantafel für LSD Maschinenservice",
+  "start_url": "/auftraege",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ECEEE9",
+  "theme_color": "#1B1F24",
+  "icons": [
+    { "src": "https://cyvjcskxqluqmerjxqty.supabase.co/storage/v1/object/public/machine-photos/branding/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "https://cyvjcskxqluqmerjxqty.supabase.co/storage/v1/object/public/machine-photos/branding/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "https://cyvjcskxqluqmerjxqty.supabase.co/storage/v1/object/public/machine-photos/branding/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
