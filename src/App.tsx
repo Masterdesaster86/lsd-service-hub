@@ -43,15 +43,15 @@ export default function App() {
         <Route path="/maschinen/:id" element={<MachineDetail />} />
         <Route
           path="/plantafel"
-          element={<RequireRole roles={['Administrator', 'Disposition']}><Plantafel /></RequireRole>}
+          element={<RequireRole roles={['Administrator', 'Disposition', 'CEO']}><Plantafel /></RequireRole>}
         />
         <Route
           path="/verwaltung"
-          element={<RequireRole roles={['Techniker']}><Verwaltung /></RequireRole>}
+          element={<RequireRole roles={['Techniker', 'CEO']}><Verwaltung /></RequireRole>}
         />
         <Route
           path="/mitarbeiter"
-          element={<RequireRole roles={['Administrator']}><Mitarbeiter /></RequireRole>}
+          element={<RequireRole roles={['Administrator', 'CEO']}><Mitarbeiter /></RequireRole>}
         />
         <Route path="*" element={<Navigate to="/auftraege" replace />} />
       </Route>

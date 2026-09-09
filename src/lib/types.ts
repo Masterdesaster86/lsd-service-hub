@@ -16,7 +16,7 @@ export type ServiceberichtErsatzteil = Tables<'servicebericht_ersatzteile'>
 export type Abwesenheit = Tables<'abwesenheiten'>
 export type Urlaubsantrag = Tables<'urlaubsantraege'>
 
-export type Role = 'Administrator' | 'Disposition' | 'Techniker'
+export type Role = 'Administrator' | 'Disposition' | 'Techniker' | 'CEO'
 
 export type OrderStatus = 'neu' | 'in Arbeit' | 'erledigt' | 'abgerechnet'
 export type BerichtStatus = 'offen' | 'abgeschlossen'

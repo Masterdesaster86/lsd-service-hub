@@ -5,7 +5,7 @@ import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { LOGO_URL } from './branding'
 import type { Employee, Machine, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from './types'
-import { calcBerichtSpesen, calcBerichtTotals, calcDay } from './zeit'
+import { calcBerichtTotals, calcDay } from './zeit'
 import { customerAddress, formatDateDE, hhmm } from './format'
 
 const GRAPHITE = '#1B1F24'
@@ -164,7 +164,6 @@ export async function buildBerichtPdf(input: BerichtPdfInput): Promise<jsPDF> {
   const logo = await getLogoDataUrl()
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const totals = calcBerichtTotals(tage)
-  const spesen = calcBerichtSpesen(tage)
 
   setupPage(doc, logo)
   drawHeader(doc, logo, 'SERVICEBERICHT', [`#${order.id}`, 'Auftragsnummer (easybill)'])
@@ -234,7 +233,7 @@ export async function buildBerichtPdf(input: BerichtPdfInput): Promise<jsPDF> {
         const hin = `${hhmm(t.hinreise_von) || '–'}${t.km_hin ? `\n(${t.km_hin} km)` : ''}`
         const rueck = `${hhmm(t.rueckreise_bis) || '– offen –'}${t.km_rueck ? `\n(${t.km_rueck} km)` : ''}`
         const pause = t.pause_von ? `${hhmm(t.pause_von)}–${hhmm(t.pause_bis)}` : '–'
-        const pauseWithUeb = t.uebernachtung ? `${pause}\n🏨${t.hotelkosten ? ` ${t.hotelkosten.toFixed(2)} €` : ''}` : pause
+        const pauseWithUeb = t.uebernachtung ? `${pause}\n🏨 Übernachtung` : pause
         return [formatDateDE(t.datum), hin, `${hhmm(t.arbeitsbeginn) || '–'}–${hhmm(t.arbeitsende) || '–'}`, rueck, pauseWithUeb, reiseTxt, arbeitTxt]
       }),
     })
@@ -258,13 +257,6 @@ export async function buildBerichtPdf(input: BerichtPdfInput): Promise<jsPDF> {
     doc.text(`Gesamt: ${summaryParts}`, MARGIN + 3, y + 5.3)
     doc.setFont('helvetica', 'normal')
     y += 11
-
-    if (spesen.verpflegungGesamt || spesen.hotelGesamt) {
-      doc.setTextColor(INK)
-      doc.setFontSize(8.5)
-      doc.text(`Verpflegungsmehraufwand: ${spesen.verpflegungGesamt.toFixed(2)} €   ·   Hotelkosten: ${spesen.hotelGesamt.toFixed(2)} €   ·   Spesen gesamt: ${spesen.gesamt.toFixed(2)} €`, MARGIN, y)
-      y += 6
-    }
   }
 
   y = ensureSpace(doc, y, 20)

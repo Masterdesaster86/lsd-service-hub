@@ -5,7 +5,7 @@ import type { Employee, Role } from '../../lib/types'
 import { Modal, ModalActions, ModalTitle } from '../../components/ui/Modal'
 import { useToast } from '../../components/ui/Toast'
 
-const ROLES: Role[] = ['Techniker', 'Disposition', 'Administrator']
+const ROLES: Role[] = ['Techniker', 'Disposition', 'CEO', 'Administrator']
 
 export function MitarbeiterFormModal({ employee: editEmployee, onClose, onSaved }: { employee?: Employee; onClose: () => void; onSaved: () => void }) {
   const { employee: me } = useAuth()

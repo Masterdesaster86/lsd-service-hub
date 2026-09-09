@@ -29,6 +29,7 @@ export function BerichtDetail() {
   const [ersatzteile, setErsatzteile] = useState<ServiceberichtErsatzteil[]>([])
   const [machine, setMachine] = useState<Machine | null>(null)
   const [techniker, setTechniker] = useState<Employee | null>(null)
+  const [hasNachtrag, setHasNachtrag] = useState(false)
 
   const [mode, setMode] = useState<'view' | 'sign'>('view')
   const [showTagForm, setShowTagForm] = useState(false)
@@ -46,18 +47,20 @@ export function BerichtDetail() {
     const { data: b } = await supabase.from('serviceberichte').select('*').eq('id', id).maybeSingle()
     if (!b) { setBericht(null); return }
     setBericht(b)
-    const [o, { data: t }, { data: e }, { data: m }, { data: tech }] = await Promise.all([
+    const [o, { data: t }, { data: e }, { data: m }, { data: tech }, { data: nachtraege }] = await Promise.all([
       fetchOrder(b.auftrag_id),
       supabase.from('servicebericht_tage').select('*').eq('servicebericht_id', b.id).order('datum'),
       supabase.from('servicebericht_ersatzteile').select('*').eq('servicebericht_id', b.id),
       supabase.from('machines').select('*').eq('id', b.maschine_id).maybeSingle(),
       supabase.from('employees').select('*').eq('id', b.techniker_id).maybeSingle(),
+      supabase.from('serviceberichte').select('id').eq('nachtrag_zu', b.id),
     ])
     setOrder(o)
     setTage(t || [])
     setErsatzteile(e || [])
     setMachine(m)
     setTechniker(tech)
+    setHasNachtrag((nachtraege || []).length > 0)
   }
 
   useEffect(() => { load() }, [id])
@@ -70,7 +73,8 @@ export function BerichtDetail() {
   const spesen = calcBerichtSpesen(tage)
   const letzterTag = tage[tage.length - 1]
   const fruehereRueckreiseFehlt = tage.length > 1 && tage.slice(0, -1).some((t) => !t.rueckreise_bis)
-  const letzteRueckreiseFehlt = tage.length > 0 && bericht.status === 'abgeschlossen' && !letzterTag.rueckreise_bis
+  const letzteRueckreiseFehlt = tage.length > 0 && bericht.status === 'abgeschlossen' && !letzterTag.rueckreise_bis && !hasNachtrag
+  const canDeleteBericht = employee?.role === 'Administrator' || employee?.role === 'Disposition' || employee?.role === 'CEO'
 
   if (mode === 'sign') {
     return (
@@ -154,6 +158,19 @@ export function BerichtDetail() {
     }
   }
 
+  async function handleDeleteBericht() {
+    if (!bericht || !order) return
+    const ok = await confirm({ message: `Servicebericht ${bericht.bericht_nummer} wirklich unwiderruflich löschen?`, danger: true, confirmLabel: 'Löschen' })
+    if (!ok) return
+    const { error } = await supabase.from('serviceberichte').delete().eq('id', bericht.id)
+    if (error) {
+      toast(error.code === '23503' ? 'Dieser Bericht hat einen Nachtrag — bitte zuerst den Nachtrag löschen.' : 'Fehler: ' + error.message)
+      return
+    }
+    toast('Servicebericht gelöscht.')
+    navigate(`/auftraege/${order.id}`)
+  }
+
   async function markAbgerechnet() {
     const ok = await confirm({ message: `Servicebericht für ${machine?.bezeichnung || ''} wirklich als abgerechnet markieren?` })
     if (!ok) return
@@ -173,7 +190,10 @@ export function BerichtDetail() {
           <div className="font-semibold">Auftrag #{order.id} · {techniker?.name || '–'}</div>
           <div className="font-mono text-xs text-ink-soft">{bericht.bericht_nummer}</div>
         </div>
-        <BerichtStatusTag status={bericht.status} abgerechnet={bericht.abgerechnet} />
+        <div className="flex items-center gap-2">
+          <BerichtStatusTag status={bericht.status} abgerechnet={bericht.abgerechnet} />
+          {canDeleteBericht && <button className="btn btn-danger btn-sm" onClick={handleDeleteBericht}>Löschen</button>}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3.5 mb-3.5 max-sm:grid-cols-1">
@@ -288,6 +308,9 @@ export function BerichtDetail() {
           Die Rückreise des letzten Tages ({letzterTag.datum.split('-').reverse().join('.')}) fehlt noch.
           <button className="btn btn-amber btn-sm" onClick={() => setShowRueckreiseNachtrag(true)}>Rückreise eintragen</button>
         </div>
+      )}
+      {bericht.status === 'abgeschlossen' && hasNachtrag && (
+        <div className="border border-line bg-paper-2 p-3 text-sm mt-3">✓ Die Rückreise wurde bereits über einen Nachtrags-Bericht erfasst.</div>
       )}
       {bericht.status === 'abgeschlossen' && !bericht.abgerechnet && employee?.role !== 'Techniker' && (
         <div className="mt-3"><button className="btn btn-outline btn-sm" onClick={markAbgerechnet}>Als abgerechnet markieren</button></div>

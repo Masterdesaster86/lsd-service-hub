@@ -28,7 +28,7 @@ export function OrdersList() {
 
   useEffect(() => { load() }, [])
 
-  const canCreate = employee?.role === 'Administrator' || employee?.role === 'Disposition'
+  const canCreate = employee?.role === 'Administrator' || employee?.role === 'Disposition' || employee?.role === 'CEO'
 
   const counts = useMemo(() => {
     const list = orders || []

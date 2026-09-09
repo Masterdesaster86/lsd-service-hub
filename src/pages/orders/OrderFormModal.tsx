@@ -34,7 +34,7 @@ export function OrderFormModal({ order, onClose, onSaved }: Props) {
 
   useEffect(() => {
     supabase.from('customers').select('*').order('name').then(({ data }) => setCustomers(data || []))
-    supabase.from('employees').select('*').eq('role', 'Techniker').order('name').then(({ data }) => setEmployees(data || []))
+    supabase.from('employees').select('*').in('role', ['Techniker', 'CEO']).order('name').then(({ data }) => setEmployees(data || []))
     supabase.from('machines').select('*').then(({ data }) => setMachines(data || []))
     supabase.from('ansprechpartner').select('*').then(({ data }) => setAnsprechpartner(data || []))
   }, [])

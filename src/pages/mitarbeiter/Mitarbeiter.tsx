@@ -8,6 +8,7 @@ import { MitarbeiterFormModal } from './MitarbeiterFormModal'
 
 const ROLE_TAG: Record<string, string> = {
   Administrator: 'tag-unterwegs',
+  CEO: 'tag-geplant',
   Disposition: 'tag-arbeit',
   Techniker: 'tag-neu',
 }

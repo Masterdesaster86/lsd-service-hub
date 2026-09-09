@@ -1,14 +1,15 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { LOGO_URL } from '../lib/branding'
+import { NotificationBell } from './NotificationBell'
 
 const NAV_ITEMS = [
-  { to: '/auftraege', abbr: 'AU', label: 'Serviceaufträge', roles: ['Administrator', 'Disposition', 'Techniker'] },
-  { to: '/kunden', abbr: 'KU', label: 'Kunden', roles: ['Administrator', 'Disposition', 'Techniker'] },
-  { to: '/maschinen', abbr: 'MA', label: 'Maschinen', roles: ['Administrator', 'Disposition', 'Techniker'] },
-  { to: '/plantafel', abbr: 'PL', label: 'Plantafel', roles: ['Administrator', 'Disposition'] },
-  { to: '/verwaltung', abbr: 'VW', label: 'Meine Verwaltung', roles: ['Techniker'] },
-  { to: '/mitarbeiter', abbr: 'MI', label: 'Mitarbeiter', roles: ['Administrator'] },
+  { to: '/auftraege', abbr: 'AU', label: 'Serviceaufträge', roles: ['Administrator', 'Disposition', 'Techniker', 'CEO'] },
+  { to: '/kunden', abbr: 'KU', label: 'Kunden', roles: ['Administrator', 'Disposition', 'Techniker', 'CEO'] },
+  { to: '/maschinen', abbr: 'MA', label: 'Maschinen', roles: ['Administrator', 'Disposition', 'Techniker', 'CEO'] },
+  { to: '/plantafel', abbr: 'PL', label: 'Plantafel', roles: ['Administrator', 'Disposition', 'CEO'] },
+  { to: '/verwaltung', abbr: 'VW', label: 'Meine Verwaltung', roles: ['Techniker', 'CEO'] },
+  { to: '/mitarbeiter', abbr: 'MI', label: 'Mitarbeiter', roles: ['Administrator', 'CEO'] },
 ]
 
 export function AppShell() {
@@ -22,6 +23,7 @@ export function AppShell() {
           <img src={LOGO_URL} alt="LSD Maschinenservice" className="h-7 w-auto" />
         </div>
         <div className="text-xs text-white/60 mr-2">{employee?.name} · {employee?.role}</div>
+        <NotificationBell />
         <button onClick={signOut} className="btn btn-outline btn-sm !border-white/30 !text-white hover:!bg-white/10">Abmelden</button>
       </div>
       <div className="flex flex-1 min-h-0">
