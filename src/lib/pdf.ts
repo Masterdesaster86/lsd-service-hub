@@ -4,13 +4,15 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { LOGO_URL, PDF_HINTERGRUND_URL } from './branding'
-import type { Employee, Machine, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from './types'
+import type { Ansprechpartner, Customer, Employee, Machine, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from './types'
 import { calcBerichtTotals, calcDay } from './zeit'
-import { customerAddress, formatDateDE, hhmm } from './format'
+import { formatDateDE, hhmm } from './format'
 
 const GRAPHITE = '#1B1F24'
-const AMBER = '#E2A63B'
-const STEEL = '#4E7A96'
+// Firmenfarben, direkt aus dem Logo entnommen
+const BLAU = '#0070B8'        // Hauptton für Akzente
+const BLAU_DUNKEL = '#003868' // Abschnittsüberschriften
+const BLAU_HELL = '#5AB0E4'   // Text auf dunklem Grund
 const INK = '#20242A'
 const INK_SOFT = '#565F68'
 const LINE = '#C7CBC3'
@@ -54,13 +56,14 @@ function setupPage(doc: jsPDF, hintergrund: string) {
 }
 
 /** Heller, ruhiger Kopfbereich: schmaler Akzentstreifen oben, Titel mit
- * Amber-Unterstrich, Logo rechts auf hellem Grund (dort hat es den vollen
+ * blauem Unterstrich, Logo rechts auf hellem Grund (dort hat es den vollen
  * Kontrast — auf dunklem Balken gingen die dunklen Logoteile unter).
+ * `felder` sind beschriftete Kennnummern, z.B. Auftrags- und Berichtsnummer.
  * Gibt die Y-Position zurück, an der der Inhalt beginnen kann. */
-function drawHeader(doc: jsPDF, logo: string, title: string, wert: string, label: string, zusatz?: string): number {
+function drawHeader(doc: jsPDF, logo: string, title: string, felder: [string, string][], zusatz?: string): number {
   doc.setFillColor(GRAPHITE)
   doc.rect(0, 0, PAGE_W, 2.6, 'F')
-  doc.setFillColor(AMBER)
+  doc.setFillColor(BLAU)
   doc.rect(0, 0, 58, 2.6, 'F')
 
   doc.setTextColor(GRAPHITE)
@@ -70,17 +73,20 @@ function drawHeader(doc: jsPDF, logo: string, title: string, wert: string, label
   doc.text(title, MARGIN, 15)
   doc.setCharSpace(0)
 
-  doc.setFillColor(AMBER)
+  doc.setFillColor(BLAU)
   doc.rect(MARGIN, 17.6, 22, 1.2, 'F')
 
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(7)
-  doc.setTextColor(INK_SOFT)
-  doc.text(label.toUpperCase(), MARGIN, 24)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(12.5)
-  doc.setTextColor(GRAPHITE)
-  doc.text(wert, MARGIN, 29.5)
+  felder.forEach(([label, wert], i) => {
+    const x = MARGIN + i * 54
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7)
+    doc.setTextColor(INK_SOFT)
+    doc.text(label.toUpperCase(), x, 24)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(12.5)
+    doc.setTextColor(GRAPHITE)
+    doc.text(wert, x, 29.5)
+  })
 
   const logoH = 13, logoW = logoH * LOGO_RATIO
   doc.addImage(logo, 'PNG', PAGE_W - MARGIN - logoW, 8.5, logoW, logoH)
@@ -116,7 +122,7 @@ function drawFooterAndPageNumbers(doc: jsPDF) {
 function sectionTitle(doc: jsPDF, text: string, y: number): number {
   doc.setFontSize(9.5)
   doc.setFont('helvetica', 'bold')
-  doc.setTextColor(STEEL)
+  doc.setTextColor(BLAU_DUNKEL)
   doc.text(text.toUpperCase(), MARGIN, y)
   doc.setTextColor(INK)
   doc.setFont('helvetica', 'normal')
@@ -135,25 +141,46 @@ function textBox(doc: jsPDF, y: number, text: string, minHeight = 12): number {
   return y + h + 4
 }
 
-/** Dreispaltiges Label/Wert-Raster für Stammdaten. Leere [label,value]-Paare werden übersprungen. */
+/** Dreispaltiges Label/Wert-Raster für Stammdaten. Leere [label,value]-Paare
+ * werden übersprungen. Werte dürfen Zeilenumbrüche enthalten: die erste Zeile
+ * steht kräftig, weitere Zeilen (z.B. Telefon, E-Mail) etwas kleiner darunter. */
 function fieldRow(doc: jsPDF, y: number, fields: [string, string][]): number {
   const colW = CONTENT_W / fields.length
-  let maxLines = 1
+  let maxZeilen = 1
   fields.forEach(([label, value], i) => {
     if (!label && !value) return
     const x = MARGIN + i * colW
     doc.setFontSize(7)
     doc.setTextColor(INK_SOFT)
     doc.text(label.toUpperCase(), x, y)
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'bold')
     doc.setTextColor(INK)
-    const lines = doc.splitTextToSize(value || '–', colW - 4)
-    doc.text(lines, x, y + 4.5)
-    maxLines = Math.max(maxLines, lines.length)
+
+    let zeile = 0
+    ;(value || '–').split('\n').forEach((absatz, idx) => {
+      const istErste = idx === 0
+      doc.setFont('helvetica', istErste ? 'bold' : 'normal')
+      doc.setFontSize(istErste ? 10 : 9)
+      const teile = doc.splitTextToSize(absatz, colW - 4)
+      doc.text(teile, x, y + 4.5 + zeile * 4)
+      zeile += teile.length
+    })
+    maxZeilen = Math.max(maxZeilen, zeile)
     doc.setFont('helvetica', 'normal')
   })
-  return y + 4.5 + maxLines * 4 + 2
+  return y + 4.5 + maxZeilen * 4 + 2
+}
+
+/** Straße und Ort untereinander statt in einer Zeile. */
+function adresseMehrzeilig(kunde: Customer | null | undefined): string {
+  if (!kunde) return '–'
+  const ort = `${kunde.plz ?? ''} ${kunde.ort ?? ''}`.trim()
+  return [kunde.strasse, ort].filter(Boolean).join('\n') || '–'
+}
+
+/** Name, Telefon und E-Mail untereinander. */
+function ansprechpartnerMehrzeilig(ap: Ansprechpartner | null | undefined): string {
+  if (!ap) return '–'
+  return [ap.name, ap.telefon, ap.email].filter(Boolean).join('\n')
 }
 
 function divider(doc: jsPDF, y: number): number {
@@ -188,7 +215,10 @@ export async function buildBerichtPdf(input: BerichtPdfInput): Promise<jsPDF> {
   const totals = calcBerichtTotals(tage)
 
   setupPage(doc, hintergrund)
-  let y = drawHeader(doc, logo, 'SERVICEBERICHT', `#${order.id}`, 'Auftragsnummer')
+  let y = drawHeader(doc, logo, 'SERVICEBERICHT', [
+    ['Auftragsnummer', `#${order.id}`],
+    ['Servicebericht-Nr.', bericht.bericht_nummer],
+  ])
 
   y = fieldRow(doc, y, [
     ['Auftraggeber', order.auftraggeber?.name || '–'],
@@ -196,8 +226,8 @@ export async function buildBerichtPdf(input: BerichtPdfInput): Promise<jsPDF> {
     ['Techniker', techniker?.name || '–'],
   ])
   y = fieldRow(doc, y, [
-    ['Adresse', customerAddress(order.einsatzkunde)],
-    ['Ansprechpartner', order.ansprechpartner ? `${order.ansprechpartner.name}${order.ansprechpartner.telefon ? ' · ' + order.ansprechpartner.telefon : ''}` : '–'],
+    ['Adresse', adresseMehrzeilig(order.einsatzkunde)],
+    ['Ansprechpartner', ansprechpartnerMehrzeilig(order.ansprechpartner)],
     ['Einsatzbeginn (geplant)', formatDateDE(order.einsatzbeginn)],
   ])
   y = divider(doc, y)
@@ -254,7 +284,9 @@ export async function buildBerichtPdf(input: BerichtPdfInput): Promise<jsPDF> {
         const hin = `${hhmm(t.hinreise_von) || '–'}${t.km_hin ? `\n(${t.km_hin} km)` : ''}`
         const rueck = `${hhmm(t.rueckreise_bis) || '– offen –'}${t.km_rueck ? `\n(${t.km_rueck} km)` : ''}`
         const pause = t.pause_von ? `${hhmm(t.pause_von)}–${hhmm(t.pause_bis)}` : '–'
-        const pauseWithUeb = t.uebernachtung ? `${pause}\n🏨 Übernachtung` : pause
+        // Kein Emoji: die PDF-Standardschrift kann es nicht darstellen und
+        // gibt stattdessen Buchstabensalat aus.
+        const pauseWithUeb = t.uebernachtung ? `${pause}\nmit Übernachtung` : pause
         return [formatDateDE(t.datum), hin, `${hhmm(t.arbeitsbeginn) || '–'}–${hhmm(t.arbeitsende) || '–'}`, rueck, pauseWithUeb, reiseTxt, arbeitTxt]
       }),
     })
@@ -272,7 +304,7 @@ export async function buildBerichtPdf(input: BerichtPdfInput): Promise<jsPDF> {
     ].filter(Boolean).join(' ')
     doc.setFillColor(GRAPHITE)
     doc.rect(MARGIN, y, CONTENT_W, 8, 'F')
-    doc.setTextColor(AMBER)
+    doc.setTextColor(BLAU_HELL)
     doc.setFontSize(8.5)
     doc.setFont('helvetica', 'bold')
     doc.text(`Gesamt: ${summaryParts}`, MARGIN + 3, y + 5.3)
@@ -391,7 +423,7 @@ export async function buildNachweisPdf(args: {
   const [logo, hintergrund] = await Promise.all([bildAlsDataUrl(LOGO_URL), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   setupPage(doc, hintergrund)
-  let y = drawHeader(doc, logo, 'STUNDENNACHWEIS', monatLabel, 'Zeitraum', technikerName)
+  let y = drawHeader(doc, logo, 'STUNDENNACHWEIS', [['Zeitraum', monatLabel]], technikerName)
   y = sectionTitle(doc, 'Erfasste Tage', y)
 
   autoTable(doc, {
