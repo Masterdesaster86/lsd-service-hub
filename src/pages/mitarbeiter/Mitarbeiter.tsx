@@ -58,6 +58,9 @@ export function Mitarbeiter() {
               <div>
                 <div className={`font-semibold ${e.aktiv ? '' : 'text-ink-soft'}`}>{e.name} {!e.aktiv && <span className="font-normal text-xs">(deaktiviert)</span>}</div>
                 <div className="text-[13px] text-ink-soft">{e.email || '–'}</div>
+                {!e.auth_user_id && (
+                  <div className="text-[13px] text-ink-soft mt-0.5">Noch kein Login — beim Bearbeiten ein Passwort vergeben.</div>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <span className={`tag ${ROLE_TAG[e.role] || 'tag-neu'}`}>{e.role}</span>

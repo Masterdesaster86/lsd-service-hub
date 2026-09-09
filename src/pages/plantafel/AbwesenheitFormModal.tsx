@@ -22,6 +22,10 @@ export function AbwesenheitFormModal({ abwesenheit, mitarbeiter, onClose, onSave
   const [bis, setBis] = useState(abwesenheit?.bis || '')
   const [bemerkung, setBemerkung] = useState(abwesenheit?.bemerkung || '')
   const [saving, setSaving] = useState(false)
+  // Stammt der Eintrag aus einem genehmigten Urlaubsantrag, gehoeren Mitarbeiter
+  // und Art zum Antrag und duerfen hier nicht umgebogen werden. Der Zeitraum
+  // schon — den zieht die Datenbank auf den Antrag nach.
+  const ausAntrag = !!abwesenheit?.urlaubsantrag_id
 
   async function handleSave() {
     if (!technikerId) { toast('Bitte einen Mitarbeiter wählen.'); return }
@@ -44,18 +48,23 @@ export function AbwesenheitFormModal({ abwesenheit, mitarbeiter, onClose, onSave
       <div className="grid grid-cols-2 gap-3.5">
         <div className="col-span-2">
           <label>Mitarbeiter</label>
-          <select value={technikerId} onChange={(e) => setTechnikerId(e.target.value)}>
+          <select value={technikerId} disabled={ausAntrag} onChange={(e) => setTechnikerId(e.target.value)}>
             <option value="">– wählen –</option>
             {mitarbeiter.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
         </div>
         <div>
           <label>Art</label>
-          <select value={art} onChange={(e) => setArt(e.target.value)}>
+          <select value={art} disabled={ausAntrag} onChange={(e) => setArt(e.target.value)}>
             {ARTEN.map((a) => <option key={a} value={a}>{a}</option>)}
           </select>
         </div>
         <div />
+        {ausAntrag && (
+          <p className="col-span-2 text-[13px] text-ink-soft -mt-1">
+            Aus einem genehmigten Urlaubsantrag entstanden. Mitarbeiter und Art sind deshalb fest; ein geänderter Zeitraum wird beim Techniker mit übernommen.
+          </p>
+        )}
         <div><label>Von</label><input type="date" value={von} onChange={(e) => setVon(e.target.value)} /></div>
         <div><label>Bis</label><input type="date" value={bis} onChange={(e) => setBis(e.target.value)} /></div>
         <div className="col-span-2"><label>Bemerkung</label><input value={bemerkung} onChange={(e) => setBemerkung(e.target.value)} placeholder="optional" /></div>

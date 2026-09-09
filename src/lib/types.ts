@@ -22,7 +22,8 @@ export type OrderStatus = 'neu' | 'in Arbeit' | 'erledigt' | 'abgerechnet'
 export type BerichtStatus = 'offen' | 'abgeschlossen'
 export type ArbeitStatus = 'offen' | 'abgeschlossen'
 export type AbwesenheitArt = 'Urlaub' | 'Krank' | 'Schulung' | 'Kurzarbeit'
-export type AntragStatus = 'beantragt' | 'genehmigt' | 'abgelehnt'
+/** "storniert" = war genehmigt, der Plantafel-Eintrag wurde aber wieder gelöscht. */
+export type AntragStatus = 'beantragt' | 'genehmigt' | 'abgelehnt' | 'storniert'
 
 /** Order joined with the customer/contact/technician data views need everywhere. */
 export interface OrderWithRelations extends Order {

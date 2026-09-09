@@ -17,24 +17,30 @@ export type Database = {
           art: string
           bemerkung: string | null
           bis: string
+          created_at: string
           id: string
           techniker_id: string
+          urlaubsantrag_id: string | null
           von: string
         }
         Insert: {
           art: string
           bemerkung?: string | null
           bis: string
+          created_at?: string
           id?: string
           techniker_id: string
+          urlaubsantrag_id?: string | null
           von: string
         }
         Update: {
           art?: string
           bemerkung?: string | null
           bis?: string
+          created_at?: string
           id?: string
           techniker_id?: string
+          urlaubsantrag_id?: string | null
           von?: string
         }
         Relationships: [
@@ -43,6 +49,13 @@ export type Database = {
             columns: ["techniker_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abwesenheiten_urlaubsantrag_id_fkey"
+            columns: ["urlaubsantrag_id"]
+            isOneToOne: false
+            referencedRelation: "urlaubsantraege"
             referencedColumns: ["id"]
           },
         ]

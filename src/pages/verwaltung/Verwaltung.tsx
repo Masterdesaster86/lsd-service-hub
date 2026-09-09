@@ -57,10 +57,13 @@ export function Verwaltung() {
       ) : (
         <div className="flex flex-col gap-1.5 mb-6">
           {antraege.map((a) => (
-            <div key={a.id} className="card p-3 flex items-center justify-between gap-3 flex-wrap">
+            <div key={a.id} className={`card p-3 flex items-center justify-between gap-3 flex-wrap ${a.status === 'storniert' ? 'opacity-70' : ''}`}>
               <div>
                 <div className="font-semibold text-sm">Urlaub {zeitraum(a.von, a.bis)}</div>
                 <div className="text-[13px] text-ink-soft">{a.bemerkung || '–'} · beantragt am {new Date(a.beantragt_am).toLocaleDateString('de-DE')}</div>
+                {a.status === 'storniert' && (
+                  <div className="text-[13px] text-ink-soft mt-0.5">Dieser Urlaub wurde wieder aus der Planung genommen. Bei Bedarf bitte neu beantragen.</div>
+                )}
               </div>
               <AntragStatusTag status={a.status} />
             </div>

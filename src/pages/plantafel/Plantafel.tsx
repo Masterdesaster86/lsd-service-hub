@@ -132,15 +132,19 @@ export function Plantafel() {
   }
 
   async function abwesenheitLoeschen(a: Abwesenheit) {
+    // Bei einem genehmigten Urlaub haengt ein Antrag des Technikers daran. Der
+    // springt per Datenbank-Trigger auf "storniert" — darauf hier hinweisen.
+    const ausAntrag = !!a.urlaubsantrag_id
     const ok = await confirm({
-      message: `Abwesenheit "${a.art}" von ${employeesById[a.techniker_id]?.name || '–'} (${zeitraum(a.von, a.bis)}) wirklich löschen?`,
+      message: `Abwesenheit "${a.art}" von ${employeesById[a.techniker_id]?.name || '–'} (${zeitraum(a.von, a.bis)}) wirklich löschen?`
+        + (ausAntrag ? ' Der Urlaubsantrag wird dem Techniker dann als storniert angezeigt.' : ''),
       danger: true,
       confirmLabel: 'Löschen',
     })
     if (!ok) return
     const { error } = await supabase.from('abwesenheiten').delete().eq('id', a.id)
     if (error) { toast('Fehler: ' + error.message); return }
-    toast('Abwesenheit gelöscht.')
+    toast(ausAntrag ? 'Urlaub gelöscht und Antrag auf storniert gesetzt.' : 'Abwesenheit gelöscht.')
     load()
   }
 

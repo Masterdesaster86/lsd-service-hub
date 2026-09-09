@@ -30,5 +30,6 @@ export function ArbeitStatusTag({ status }: { status: string }) {
 export function AntragStatusTag({ status }: { status: string }) {
   if (status === 'genehmigt') return <span className="tag tag-geplant">Genehmigt</span>
   if (status === 'abgelehnt') return <span className="tag" style={{ background: '#F5DBD8', color: '#8A2E25' }}>Abgelehnt</span>
+  if (status === 'storniert') return <span className="tag" style={{ background: '#E3E7EA', color: '#6B747D' }}>Storniert</span>
   return <span className="tag tag-arbeit">Beantragt</span>
 }
