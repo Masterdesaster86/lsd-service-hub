@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { Ansprechpartner, Customer, Employee, Machine, OrderWithRelations } from '../../lib/types'
 import { Modal, ModalActions, ModalTitle } from '../../components/ui/Modal'
+import { SearchableSelect } from '../../components/ui/SearchableSelect'
 import { useToast } from '../../components/ui/Toast'
 
 interface Props {
@@ -39,6 +40,7 @@ export function OrderFormModal({ order, onClose, onSaved }: Props) {
     supabase.from('ansprechpartner').select('*').then(({ data }) => setAnsprechpartner(data || []))
   }, [])
 
+  const customerOptions = useMemo(() => customers.map((c) => ({ id: c.id, label: c.name })), [customers])
   const kundenMachines = useMemo(() => machines.filter((m) => m.kunde_id === einsatzkundeId), [machines, einsatzkundeId])
   const kundenAnsprechpartner = useMemo(() => ansprechpartner.filter((a) => a.kunde_id === einsatzkundeId), [ansprechpartner, einsatzkundeId])
 
@@ -135,18 +137,12 @@ export function OrderFormModal({ order, onClose, onSaved }: Props) {
         {!editing && (
           <div>
             <label>Auftraggeber *</label>
-            <select value={auftraggeberId} onChange={(e) => setAuftraggeberId(e.target.value)}>
-              <option value="">– wählen –</option>
-              {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <SearchableSelect value={auftraggeberId} onChange={setAuftraggeberId} options={customerOptions} />
           </div>
         )}
         <div>
           <label>Einsatzkunde *</label>
-          <select value={einsatzkundeId} onChange={(e) => setEinsatzkundeId(e.target.value)}>
-            <option value="">– wählen –</option>
-            {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <SearchableSelect value={einsatzkundeId} onChange={setEinsatzkundeId} options={customerOptions} />
         </div>
       </div>
 

@@ -101,7 +101,9 @@ export function OrderDetail() {
         </div>
         {order.ansprechpartner && (
           <Field label="Ansprechpartner">
-            {order.ansprechpartner.name}{order.ansprechpartner.telefon && <> · <a href={telHref(order.ansprechpartner.telefon)} className="text-steel no-underline">📞 {order.ansprechpartner.telefon}</a></>}
+            {order.ansprechpartner.name}
+            {order.ansprechpartner.telefon && <> · <a href={telHref(order.ansprechpartner.telefon)} className="text-steel no-underline">📞 {order.ansprechpartner.telefon}</a></>}
+            {order.ansprechpartner.email && <> · <a href={`mailto:${order.ansprechpartner.email}`} className="text-steel no-underline">✉️ {order.ansprechpartner.email}</a></>}
           </Field>
         )}
         {order.bestellnummer && <Field label="Bestellnummer" value={order.bestellnummer} />}

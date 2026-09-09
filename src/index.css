@@ -122,6 +122,19 @@ label {
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
+/* Checkbox-/Radio-Listen (z.B. Techniker- und Maschinenauswahl) nutzen <label>
+   für Klickbarkeit, sollen aber wie normaler Text aussehen, nicht wie ein
+   Formularlabel. Muss hier (unlayered) stehen, sonst gewinnt Tailwinds
+   .normal-case-Utility nicht gegen die label-Regel oben. */
+label.normal-case {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--color-ink);
+  display: flex;
+  text-transform: none;
+  letter-spacing: normal;
+  margin-bottom: 0;
+}
 
 .tag {
   display: inline-flex;

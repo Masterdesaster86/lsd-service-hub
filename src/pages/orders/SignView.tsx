@@ -75,7 +75,9 @@ export function SignView({ bericht, tage, ersatzteile, machine, techniker, order
   async function handleShare() {
     if (!completedPdf) return
     setSharing(true)
-    const result = await sharePdf(completedPdf, berichtPdfFilename(bericht), `Servicebericht ${bericht.bericht_nummer}`, `Servicebericht ${bericht.bericht_nummer} für Auftrag #${order.id}`)
+    const kundeEmail = order.ansprechpartner?.email
+    const shareText = `Servicebericht ${bericht.bericht_nummer} für Auftrag #${order.id}` + (kundeEmail ? `\nFür: ${kundeEmail}` : '')
+    const result = await sharePdf(completedPdf, berichtPdfFilename(bericht), `Servicebericht ${bericht.bericht_nummer}`, shareText)
     setSharing(false)
     if (result === 'unsupported') toast('Teilen wird auf diesem Gerät nicht unterstützt — bitte stattdessen herunterladen.')
     else if (result === 'error') toast('Teilen fehlgeschlagen.')
@@ -89,6 +91,11 @@ export function SignView({ bericht, tage, ersatzteile, machine, techniker, order
           <div className="font-semibold mb-1">✓ Servicebericht {bericht.bericht_nummer} abgeschlossen</div>
           <p className="text-sm text-ink-soft m-0">Beide Unterschriften wurden gespeichert. Der Bericht liegt jetzt in Auftrag #{order.id} — die Disposition kann ihn dort jederzeit herunterladen. Du kannst ihn hier optional direkt an den Kunden schicken oder herunterladen.</p>
         </div>
+        {order.ansprechpartner?.email && (
+          <p className="text-sm text-ink-soft -mt-3 mb-4">
+            ✉️ Ansprechpartner-E-Mail: <b className="text-ink">{order.ansprechpartner.email}</b> — im "Teilen"-Dialog bitte manuell als Empfänger auswählen bzw. eintragen (Apple/Android füllen das Empfänger-Feld nicht automatisch aus).
+          </p>
+        )}
         <div className="flex gap-2.5 flex-wrap">
           <button className="btn btn-amber" disabled={sharing} onClick={handleShare}>{sharing ? 'Öffne Teilen…' : '📤 Per E-Mail / Teilen senden'}</button>
           <button className="btn btn-outline" onClick={() => completedPdf.save(berichtPdfFilename(bericht))}>PDF herunterladen</button>

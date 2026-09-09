@@ -148,7 +148,9 @@ export function BerichtDetail() {
     try {
       const pdf = await buildPdfForDownload()
       if (!pdf) return
-      const result = await sharePdf(pdf, berichtPdfFilename(bericht), `Servicebericht ${bericht.bericht_nummer}`, `Servicebericht ${bericht.bericht_nummer} für Auftrag #${order?.id}`)
+      const kundeEmail = order?.ansprechpartner?.email
+      const shareText = `Servicebericht ${bericht.bericht_nummer} für Auftrag #${order?.id}` + (kundeEmail ? `\nFür: ${kundeEmail}` : '')
+      const result = await sharePdf(pdf, berichtPdfFilename(bericht), `Servicebericht ${bericht.bericht_nummer}`, shareText)
       if (result === 'unsupported') toast('Teilen wird auf diesem Gerät nicht unterstützt — bitte stattdessen herunterladen.')
       else if (result === 'error') toast('Teilen fehlgeschlagen.')
     } catch (e) {
@@ -296,7 +298,10 @@ export function BerichtDetail() {
       )}
       {bericht.status === 'abgeschlossen' && (
         <div className="border border-green p-3 text-sm mt-4 flex items-center justify-between gap-3 flex-wrap">
-          <span>✓ Abgeschlossen am {bericht.abgeschlossen_am ? new Date(bericht.abgeschlossen_am).toLocaleString('de-DE') : '–'} · Techniker und Kunde haben unterschrieben.</span>
+          <span>
+            ✓ Abgeschlossen am {bericht.abgeschlossen_am ? new Date(bericht.abgeschlossen_am).toLocaleString('de-DE') : '–'} · Techniker und Kunde haben unterschrieben.
+            {order.ansprechpartner?.email && <><br /><span className="text-ink-soft">✉️ Ansprechpartner: {order.ansprechpartner.email}</span></>}
+          </span>
           <div className="flex gap-2 flex-wrap">
             {canShareFiles && <button className="btn btn-amber btn-sm" disabled={sharingPdf} onClick={handleSharePdf}>{sharingPdf ? 'Öffne Teilen…' : '📤 Teilen / E-Mail'}</button>}
             <button className="btn btn-outline btn-sm" disabled={downloadingPdf} onClick={handleDownloadPdf}>{downloadingPdf ? 'Erzeuge PDF…' : 'PDF herunterladen'}</button>

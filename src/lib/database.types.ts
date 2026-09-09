@@ -50,6 +50,7 @@ export type Database = {
       ansprechpartner: {
         Row: {
           abteilung: string | null
+          email: string | null
           id: string
           kunde_id: string
           name: string
@@ -57,6 +58,7 @@ export type Database = {
         }
         Insert: {
           abteilung?: string | null
+          email?: string | null
           id?: string
           kunde_id: string
           name: string
@@ -64,6 +66,7 @@ export type Database = {
         }
         Update: {
           abteilung?: string | null
+          email?: string | null
           id?: string
           kunde_id?: string
           name?: string
