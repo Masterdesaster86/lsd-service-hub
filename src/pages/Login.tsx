@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../lib/AuthContext'
-import { LOGO_URL } from '../lib/branding'
+import { APP_HINTERGRUND_URL, LOGO_URL } from '../lib/branding'
 
 export function Login() {
   const { signIn } = useAuth()
@@ -19,7 +19,12 @@ export function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-graphite p-6 relative overflow-hidden">
+    <div
+      className="min-h-screen flex items-center justify-center bg-graphite p-6 relative overflow-hidden bg-cover bg-center"
+      style={{ backgroundImage: `url(${APP_HINTERGRUND_URL})` }}
+    >
+      {/* Abdunkelung, damit die Anmeldekarte klar im Vordergrund steht */}
+      <div className="absolute inset-0 bg-graphite/70 pointer-events-none" />
       <img src={LOGO_URL} alt="" aria-hidden className="absolute w-[900px] max-w-none opacity-[0.06] pointer-events-none select-none" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-8deg)' }} />
       <form onSubmit={handleSubmit} className="relative bg-paper w-full max-w-sm p-8 shadow-xl">
         <div className="flex items-center gap-2.5 mb-6">

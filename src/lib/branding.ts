@@ -4,6 +4,10 @@
 const BASE = 'https://cyvjcskxqluqmerjxqty.supabase.co/storage/v1/object/public/machine-photos/branding'
 
 export const LOGO_URL = `${BASE}/lsd-logo.png`
+/** Werkfoto (Heidenhain-Steuerung) — im PDF als heller Hintergrund, der nach
+ * unten weich ausläuft; in der App als abgedunkelter Login-Hintergrund. */
+export const PDF_HINTERGRUND_URL = `${BASE}/pdf-hintergrund.jpg`
+export const APP_HINTERGRUND_URL = `${BASE}/app-hintergrund.jpg`
 export const ICON_512_URL = `${BASE}/icon-512.png`
 export const ICON_192_URL = `${BASE}/icon-192.png`
 export const APPLE_TOUCH_ICON_URL = `${BASE}/apple-touch-icon.png`

@@ -3,7 +3,7 @@
 // dem LSD-Maschinenservice-Logo, das aus dieser Vorlage extrahiert wurde.
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { LOGO_URL } from './branding'
+import { LOGO_URL, PDF_HINTERGRUND_URL } from './branding'
 import type { Employee, Machine, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from './types'
 import { calcBerichtTotals, calcDay } from './zeit'
 import { customerAddress, formatDateDE, hhmm } from './format'
@@ -25,10 +25,11 @@ const AGB_TEXT = 'Die Berechnung und Durchführung der Leistungen erfolgt nach u
 // Logo-Seitenverhältnis (Breite/Höhe) des extrahierten PNGs.
 const LOGO_RATIO = 646 / 254
 
-let logoDataUrlPromise: Promise<string> | null = null
-function getLogoDataUrl(): Promise<string> {
-  if (!logoDataUrlPromise) {
-    logoDataUrlPromise = fetch(LOGO_URL)
+const bildCache = new Map<string, Promise<string>>()
+function bildAlsDataUrl(url: string): Promise<string> {
+  let vorhanden = bildCache.get(url)
+  if (!vorhanden) {
+    vorhanden = fetch(url)
       .then((res) => res.blob())
       .then((blob) => new Promise<string>((resolve, reject) => {
         const reader = new FileReader()
@@ -36,23 +37,20 @@ function getLogoDataUrl(): Promise<string> {
         reader.onerror = reject
         reader.readAsDataURL(blob)
       }))
+    bildCache.set(url, vorhanden)
   }
-  return logoDataUrlPromise
+  return vorhanden
 }
 
-function addWatermark(doc: jsPDF, logo: string) {
-  const w = 170, h = w / LOGO_RATIO
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const GState = (doc as any).GState
-  doc.saveGraphicsState()
-  if (GState) doc.setGState(new GState({ opacity: 0.045 }))
-  doc.addImage(logo, 'PNG', PAGE_W / 2 - w / 2, PAGE_H / 2 - h / 2, w, h, undefined, 'NONE', -8)
-  doc.restoreGraphicsState()
+/** Werkfoto als Seitenhintergrund. Das Bild ist bereits aufgehellt und läuft
+ * nach oben hin transparent aus, damit Text und Tabellen lesbar bleiben. */
+function addHintergrund(doc: jsPDF, hintergrund: string) {
+  doc.addImage(hintergrund, 'JPEG', 0, 0, PAGE_W, PAGE_H)
 }
 
-function setupPage(doc: jsPDF, logo: string) {
-  addWatermark(doc, logo)
-  doc.internal.events.subscribe('addPage', () => addWatermark(doc, logo))
+function setupPage(doc: jsPDF, hintergrund: string) {
+  addHintergrund(doc, hintergrund)
+  doc.internal.events.subscribe('addPage', () => addHintergrund(doc, hintergrund))
 }
 
 function drawHeader(doc: jsPDF, logo: string, title: string, idLine: [string, string]) {
@@ -161,11 +159,11 @@ export interface BerichtPdfInput {
 
 export async function buildBerichtPdf(input: BerichtPdfInput): Promise<jsPDF> {
   const { bericht, tage, ersatzteile, machine, techniker, order } = input
-  const logo = await getLogoDataUrl()
+  const [logo, hintergrund] = await Promise.all([bildAlsDataUrl(LOGO_URL), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const totals = calcBerichtTotals(tage)
 
-  setupPage(doc, logo)
+  setupPage(doc, hintergrund)
   drawHeader(doc, logo, 'SERVICEBERICHT', [`#${order.id}`, 'Auftragsnummer'])
 
   let y = 35
@@ -367,9 +365,9 @@ export async function buildNachweisPdf(args: {
   fehltage: { krank: number; schulung: number; kurzarbeit: number; urlaub: number }
 }): Promise<jsPDF> {
   const { technikerName, monatLabel, zeilen, sum, fehltage } = args
-  const logo = await getLogoDataUrl()
+  const [logo, hintergrund] = await Promise.all([bildAlsDataUrl(LOGO_URL), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-  setupPage(doc, logo)
+  setupPage(doc, hintergrund)
   drawHeader(doc, logo, 'STUNDENNACHWEIS', [monatLabel, technikerName])
 
   let y = 38
