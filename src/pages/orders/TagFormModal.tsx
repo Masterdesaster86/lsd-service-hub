@@ -137,8 +137,8 @@ function SectionToggle({ title, checked, onChange, checkboxLabel }: { title: str
   return (
     <div className="flex items-center justify-between mt-5 mb-1">
       <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft">{title}</div>
-      <label className="flex items-center gap-1.5 text-[12.5px] text-ink-soft font-normal normal-case cursor-pointer">
-        <input type="checkbox" className="w-auto accent-amber" checked={checked} onChange={(e) => onChange(e.target.checked)} /> {checkboxLabel}
+      <label className="check-inline">
+        <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} /> {checkboxLabel}
       </label>
     </div>
   )

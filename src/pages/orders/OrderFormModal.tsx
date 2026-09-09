@@ -148,11 +148,11 @@ export function OrderFormModal({ order, onClose, onSaved }: Props) {
 
       <div className="mt-3.5">
         <label>Techniker (mehrere möglich)</label>
-        <div className="flex flex-col gap-1.5 border border-line p-2.5 max-h-36 overflow-y-auto bg-white">
+        <div className="border border-line px-2.5 max-h-44 overflow-y-auto bg-white">
           {employees.map((e) => (
-            <label key={e.id} className="flex items-center gap-2 text-sm font-normal normal-case">
-              <input type="checkbox" className="w-auto" checked={technikerIds.includes(e.id)} onChange={() => toggle(technikerIds, setTechnikerIds, e.id)} />
-              {e.name}{!e.aktiv && ' (deaktiviert)'}
+            <label key={e.id} className="check-row">
+              <input type="checkbox" checked={technikerIds.includes(e.id)} onChange={() => toggle(technikerIds, setTechnikerIds, e.id)} />
+              <span>{e.name}{!e.aktiv && <span className="check-row-note"> (deaktiviert)</span>}</span>
             </label>
           ))}
         </div>
@@ -167,15 +167,15 @@ export function OrderFormModal({ order, onClose, onSaved }: Props) {
 
       <div className="mt-3.5">
         <label>Maschine(n) beim Einsatzkunden</label>
-        <div className="flex flex-col gap-1.5 border border-line p-2.5 max-h-36 overflow-y-auto bg-white">
+        <div className="border border-line px-2.5 max-h-44 overflow-y-auto bg-white">
           {einsatzkundeId === '' ? (
-            <div className="text-sm text-ink-soft normal-case">Bitte zuerst Einsatzkunde wählen.</div>
+            <div className="text-sm text-ink-soft py-2">Bitte zuerst Einsatzkunde wählen.</div>
           ) : kundenMachines.length === 0 ? (
-            <div className="text-sm text-ink-soft normal-case">Für diesen Kunden sind noch keine Maschinen hinterlegt.</div>
+            <div className="text-sm text-ink-soft py-2">Für diesen Kunden sind noch keine Maschinen hinterlegt.</div>
           ) : kundenMachines.map((m) => (
-            <label key={m.id} className="flex items-center gap-2 text-sm font-normal normal-case">
-              <input type="checkbox" className="w-auto" checked={machineIds.includes(m.id)} onChange={() => toggle(machineIds, setMachineIds, m.id)} />
-              {m.bezeichnung} <span className="text-ink-soft text-xs">— {m.hersteller || ''}</span>
+            <label key={m.id} className="check-row">
+              <input type="checkbox" checked={machineIds.includes(m.id)} onChange={() => toggle(machineIds, setMachineIds, m.id)} />
+              <span>{m.bezeichnung}{m.hersteller && <span className="check-row-note"> — {m.hersteller}</span>}</span>
             </label>
           ))}
         </div>

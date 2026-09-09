@@ -21,6 +21,7 @@ export function OrdersList() {
   const [orders, setOrders] = useState<OrderWithRelations[] | null>(null)
   const [tab, setTab] = useState<Tab>('neu')
   const [showNew, setShowNew] = useState(false)
+  const [nurMeine, setNurMeine] = useState(false)
 
   async function load() {
     setOrders(await fetchOrders())
@@ -30,23 +31,30 @@ export function OrdersList() {
 
   const canCreate = employee?.role === 'Administrator' || employee?.role === 'Disposition' || employee?.role === 'CEO'
 
-  const counts = useMemo(() => {
+  // Wer alle Aufträge sieht, aber selbst eingeplant werden kann (CEO), kann
+  // zwischen "alle" und "nur meine" umschalten.
+  const kannUmschalten = employee?.role === 'CEO'
+  const sichtbar = useMemo(() => {
     const list = orders || []
-    return {
-      neu: list.filter((o) => o.status === 'neu').length,
-      'in Arbeit': list.filter((o) => o.status === 'in Arbeit').length,
-      erledigt: list.filter((o) => o.status === 'erledigt' || o.status === 'abgerechnet').length,
-    }
-  }, [orders])
+    if (!kannUmschalten || nurMeine === false) return list
+    return list.filter((o) => o.techniker.some((t) => t.id === employee?.id))
+  }, [orders, kannUmschalten, nurMeine, employee?.id])
+
+  const counts = useMemo(() => ({
+    neu: sichtbar.filter((o) => o.status === 'neu').length,
+    'in Arbeit': sichtbar.filter((o) => o.status === 'in Arbeit').length,
+    erledigt: sichtbar.filter((o) => o.status === 'erledigt' || o.status === 'abgerechnet').length,
+  }), [sichtbar])
 
   const filtered = useMemo(() => {
-    const list = orders || []
-    if (tab === 'erledigt') return list.filter((o) => o.status === 'erledigt' || o.status === 'abgerechnet')
-    return list.filter((o) => o.status === tab)
-  }, [orders, tab])
+    if (tab === 'erledigt') return sichtbar.filter((o) => o.status === 'erledigt' || o.status === 'abgerechnet')
+    return sichtbar.filter((o) => o.status === tab)
+  }, [sichtbar, tab])
 
   const roleNote = employee?.role === 'Techniker'
     ? `Gefiltert auf deine eigenen Aufträge (${employee.name})`
+    : kannUmschalten && nurMeine
+    ? `Nur Aufträge, für die du eingeplant bist (${employee?.name})`
     : `Alle Aufträge sichtbar (Rolle: ${employee?.role})`
 
   return (
@@ -58,6 +66,13 @@ export function OrdersList() {
         </div>
         {canCreate && <button className="btn btn-amber" onClick={() => setShowNew(true)}>+ Neuer Auftrag</button>}
       </div>
+
+      {kannUmschalten && (
+        <div className="flex gap-1.5 mb-3 flex-wrap">
+          <button className={`btn btn-sm ${!nurMeine ? 'btn-dark' : 'btn-outline'}`} onClick={() => setNurMeine(false)}>Alle Aufträge</button>
+          <button className={`btn btn-sm ${nurMeine ? 'btn-dark' : 'btn-outline'}`} onClick={() => setNurMeine(true)}>Nur meine</button>
+        </div>
+      )}
 
       <div className="flex gap-2 mb-4 flex-wrap">
         {TABS.map((t) => (

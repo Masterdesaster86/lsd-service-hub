@@ -6,7 +6,9 @@ import type { Abwesenheit, Employee, OrderWithRelations, Urlaubsantrag } from '.
 import { OrderStatusTag } from '../../components/ui/StatusTag'
 import { useToast } from '../../components/ui/Toast'
 import { useConfirm } from '../../components/ui/ConfirmProvider'
+import { useAuth } from '../../lib/AuthContext'
 import { WOCHENTAGE, addDays, formatDMY, parseISO } from '../../lib/zeit'
+import { AbwesenheitFormModal } from './AbwesenheitFormModal'
 
 const MONATSNAMEN = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
 
@@ -39,7 +41,10 @@ export function Plantafel() {
   const navigate = useNavigate()
   const toast = useToast()
   const confirm = useConfirm()
+  const { employee } = useAuth()
 
+  const darfAbwesenheitenPflegen = employee?.role === 'CEO' || employee?.role === 'Disposition' || employee?.role === 'Administrator'
+  const [abwesenheitForm, setAbwesenheitForm] = useState<{ open: boolean; eintrag?: Abwesenheit }>({ open: false })
   const [viewMode, setViewMode] = useState<ViewMode>('woche')
   const [weekStart, setWeekStart] = useState(() => mondayOfWeek(new Date()))
   const [monthAnchor, setMonthAnchor] = useState(() => { const d = new Date(); d.setDate(1); return d })
@@ -123,6 +128,19 @@ export function Plantafel() {
     load()
   }
 
+  async function abwesenheitLoeschen(a: Abwesenheit) {
+    const ok = await confirm({
+      message: `Abwesenheit "${a.art}" von ${employeesById[a.techniker_id]?.name || '–'} (${a.von}${a.bis !== a.von ? ` – ${a.bis}` : ''}) wirklich löschen?`,
+      danger: true,
+      confirmLabel: 'Löschen',
+    })
+    if (!ok) return
+    const { error } = await supabase.from('abwesenheiten').delete().eq('id', a.id)
+    if (error) { toast('Fehler: ' + error.message); return }
+    toast('Abwesenheit gelöscht.')
+    load()
+  }
+
   async function ablehnen(a: Urlaubsantrag) {
     const ok = await confirm({ message: `Urlaubsantrag von ${employeesById[a.techniker_id]?.name || ''} wirklich ablehnen?`, danger: true, confirmLabel: 'Ablehnen' })
     if (!ok) return
@@ -203,7 +221,12 @@ export function Plantafel() {
         </>
       )}
 
-      <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft mt-4 mb-1.5">Geplante Urlaube &amp; Krankheitstage ({bevorstehendeAbwesenheiten.length})</div>
+      <div className="flex items-center gap-2 flex-wrap mt-4 mb-1.5">
+        <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft">Geplante Urlaube &amp; Krankheitstage ({bevorstehendeAbwesenheiten.length})</div>
+        {darfAbwesenheitenPflegen && (
+          <button className="btn btn-outline btn-sm" onClick={() => setAbwesenheitForm({ open: true })}>+ Abwesenheit</button>
+        )}
+      </div>
       {bevorstehendeAbwesenheiten.length === 0 ? (
         <div className="text-sm text-ink-soft border border-dashed border-line p-4 text-center mb-4">Keine laufenden oder bevorstehenden Abwesenheiten.</div>
       ) : (
@@ -212,7 +235,15 @@ export function Plantafel() {
             <div key={a.id} className="card p-3 flex items-center justify-between gap-3 flex-wrap">
               <div className="font-semibold text-sm">{employeesById[a.techniker_id]?.name || '–'}</div>
               <div className="text-[13px] text-ink-soft">{a.von}{a.bis !== a.von ? ` – ${a.bis}` : ''}</div>
-              <span className={`tag ${a.art === 'Urlaub' ? 'tag-geplant' : a.art === 'Krank' ? 'tag-unterwegs' : 'tag-arbeit'}`}>{a.art}</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className={`tag ${a.art === 'Urlaub' ? 'tag-geplant' : a.art === 'Krank' ? 'tag-unterwegs' : 'tag-arbeit'}`}>{a.art}</span>
+                {darfAbwesenheitenPflegen && (
+                  <>
+                    <button className="btn btn-outline btn-sm" onClick={() => setAbwesenheitForm({ open: true, eintrag: a })}>Bearbeiten</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => abwesenheitLoeschen(a)}>Löschen</button>
+                  </>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -344,6 +375,15 @@ export function Plantafel() {
           </table>
           <p className="text-xs text-ink-soft p-2 m-0">U = Urlaubstage, K = Krankheitstage (Anzahl der Abwesenheits-Einträge, die den jeweiligen Monat überschneiden).</p>
         </div>
+      )}
+
+      {abwesenheitForm.open && (
+        <AbwesenheitFormModal
+          abwesenheit={abwesenheitForm.eintrag}
+          mitarbeiter={Object.values(employeesById).filter((e) => e.aktiv).sort((a, b) => a.name.localeCompare(b.name))}
+          onClose={() => setAbwesenheitForm({ open: false })}
+          onSaved={() => { setAbwesenheitForm({ open: false }); load() }}
+        />
       )}
     </div>
   )

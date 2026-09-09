@@ -46,6 +46,9 @@ export function OrderDetail() {
   if (!order) return <div className="text-sm text-ink-soft">Lädt…</div>
 
   const isTechniker = employee?.role === 'Techniker'
+  // Einen Servicebericht darf jeder anlegen, der auf dem Auftrag eingeplant ist
+  // — unabhängig von der Rolle (Techniker wie CEO).
+  const istEingeplant = order.techniker.some((t) => t.id === employee?.id)
 
   async function handleDelete() {
     if ((berichte?.length || 0) > 0) {
@@ -114,7 +117,7 @@ export function OrderDetail() {
 
       <div className="flex items-center gap-2 mb-1">
         <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft">Serviceberichte</div>
-        {isTechniker && <button className="btn btn-amber btn-sm" onClick={() => setShowNewBericht(true)}>+ Servicebericht</button>}
+        {istEingeplant && <button className="btn btn-amber btn-sm" onClick={() => setShowNewBericht(true)}>+ Servicebericht</button>}
       </div>
       <p className="text-sm text-ink-soft mb-2.5">{isTechniker ? 'Nur deine eigenen Berichte für diesen Auftrag.' : 'Alle Berichte aller Techniker für diesen Auftrag.'}</p>
 

@@ -113,6 +113,15 @@ input:focus, select:focus, textarea:focus {
   outline: 2px solid var(--color-amber);
   outline-offset: -1px;
 }
+/* Checkboxen/Radios sind keine Textfelder — sie dürfen nicht die volle Breite
+   einnehmen. Muss unlayered stehen, sonst gewinnt die input-Regel oben. */
+input[type="checkbox"], input[type="radio"] {
+  width: auto;
+  flex: none;
+  padding: 0;
+  margin: 0;
+  accent-color: var(--color-amber);
+}
 label {
   font-size: 12px;
   font-weight: 600;
@@ -122,18 +131,40 @@ label {
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
-/* Checkbox-/Radio-Listen (z.B. Techniker- und Maschinenauswahl) nutzen <label>
-   für Klickbarkeit, sollen aber wie normaler Text aussehen, nicht wie ein
-   Formularlabel. Muss hier (unlayered) stehen, sonst gewinnt Tailwinds
-   .normal-case-Utility nicht gegen die label-Regel oben. */
-label.normal-case {
+/* Zeile in einer Auswahlliste (Techniker, Maschinen). Nutzt <label> für die
+   Klickbarkeit, soll aber wie normaler Listentext aussehen — nicht wie ein
+   Formular-Label. Steht bewusst hier als eigene Klasse, weil unlayered CSS
+   (die label-Regel oben) sonst gegen Tailwind-Utilities gewinnt. */
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 14px;
   font-weight: 400;
   color: var(--color-ink);
-  display: flex;
   text-transform: none;
   letter-spacing: normal;
-  margin-bottom: 0;
+  margin: 0;
+  padding: 8px 2px;
+  border-bottom: 1px solid var(--color-line);
+  cursor: pointer;
+}
+.check-row:last-child { border-bottom: none; }
+.check-row:hover { background: var(--color-paper-2); }
+.check-row-multi { align-items: flex-start; }
+.check-row-note { color: var(--color-ink-soft); font-size: 12.5px; }
+/* Kompakter Inline-Schalter (z.B. "Pause eingetragen") ohne Trennlinie. */
+.check-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--color-ink-soft);
+  text-transform: none;
+  letter-spacing: normal;
+  margin: 0;
+  cursor: pointer;
 }
 
 .tag {

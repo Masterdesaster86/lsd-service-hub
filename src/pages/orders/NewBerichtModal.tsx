@@ -57,13 +57,13 @@ export function NewBerichtModal({ order, onClose, onCreated }: { order: OrderWit
       ) : machines.length === 0 ? (
         <div className="text-sm text-ink-soft border border-dashed border-line p-4 text-center">Für diesen Kunden sind noch keine Maschinen hinterlegt.</div>
       ) : (
-        <div className="flex flex-col gap-1.5 border border-line p-2.5 bg-white">
+        <div className="border border-line px-2.5 bg-white">
           {machines.map((m) => (
-            <label key={m.id} className="flex items-start gap-2 text-sm font-normal normal-case cursor-pointer">
-              <input type="radio" name="berichtMa" className="w-auto mt-1" checked={maschineId === m.id} onChange={() => setMaschineId(m.id)} />
+            <label key={m.id} className="check-row check-row-multi">
+              <input type="radio" name="berichtMa" className="mt-1" checked={maschineId === m.id} onChange={() => setMaschineId(m.id)} />
               <span>
                 <span className="font-semibold">{m.bezeichnung}</span><br />
-                <span className="text-ink-soft text-xs">Maschinennr. {m.nummer || '–'} · Kunden-Maschinennr. {m.kunden_maschinennummer || '–'}</span>
+                <span className="check-row-note">Maschinennr. {m.nummer || '–'} · Kunden-Maschinennr. {m.kunden_maschinennummer || '–'}</span>
               </span>
             </label>
           ))}
