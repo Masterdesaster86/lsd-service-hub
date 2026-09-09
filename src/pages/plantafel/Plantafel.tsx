@@ -8,7 +8,10 @@ import { useToast } from '../../components/ui/Toast'
 import { useConfirm } from '../../components/ui/ConfirmProvider'
 import { useAuth } from '../../lib/AuthContext'
 import { WOCHENTAGE, addDays, formatDMY, parseISO } from '../../lib/zeit'
+import { formatDateDE } from '../../lib/format'
 import { AbwesenheitFormModal } from './AbwesenheitFormModal'
+
+const zeitraum = (von: string, bis: string) => (von === bis ? formatDateDE(von) : `${formatDateDE(von)} – ${formatDateDE(bis)}`)
 
 const MONATSNAMEN = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
 
@@ -120,7 +123,7 @@ export function Plantafel() {
   }
 
   async function genehmigen(a: Urlaubsantrag) {
-    const ok = await confirm({ message: `Urlaubsantrag von ${employeesById[a.techniker_id]?.name || ''} (${a.von}${a.bis !== a.von ? ` – ${a.bis}` : ''}) genehmigen?` })
+    const ok = await confirm({ message: `Urlaubsantrag von ${employeesById[a.techniker_id]?.name || ''} (${zeitraum(a.von, a.bis)}) genehmigen?` })
     if (!ok) return
     const { error: e1 } = await supabase.from('urlaubsantraege').update({ status: 'genehmigt' }).eq('id', a.id)
     if (e1) { toast('Fehler: ' + e1.message); return }
@@ -130,7 +133,7 @@ export function Plantafel() {
 
   async function abwesenheitLoeschen(a: Abwesenheit) {
     const ok = await confirm({
-      message: `Abwesenheit "${a.art}" von ${employeesById[a.techniker_id]?.name || '–'} (${a.von}${a.bis !== a.von ? ` – ${a.bis}` : ''}) wirklich löschen?`,
+      message: `Abwesenheit "${a.art}" von ${employeesById[a.techniker_id]?.name || '–'} (${zeitraum(a.von, a.bis)}) wirklich löschen?`,
       danger: true,
       confirmLabel: 'Löschen',
     })
@@ -208,7 +211,7 @@ export function Plantafel() {
             {antraege.map((a) => (
               <div key={a.id} className="card p-3 flex items-center justify-between gap-3 flex-wrap">
                 <div>
-                  <div className="font-semibold text-sm">{employeesById[a.techniker_id]?.name || '–'} · {a.von}{a.bis !== a.von ? ` – ${a.bis}` : ''}</div>
+                  <div className="font-semibold text-sm">{employeesById[a.techniker_id]?.name || '–'} · {zeitraum(a.von, a.bis)}</div>
                   <div className="text-[13px] text-ink-soft">{a.bemerkung || '–'} · beantragt am {new Date(a.beantragt_am).toLocaleDateString('de-DE')}</div>
                 </div>
                 <div className="flex gap-1.5">
@@ -234,7 +237,7 @@ export function Plantafel() {
           {bevorstehendeAbwesenheiten.map((a) => (
             <div key={a.id} className="card p-3 flex items-center justify-between gap-3 flex-wrap">
               <div className="font-semibold text-sm">{employeesById[a.techniker_id]?.name || '–'}</div>
-              <div className="text-[13px] text-ink-soft">{a.von}{a.bis !== a.von ? ` – ${a.bis}` : ''}</div>
+              <div className="text-[13px] text-ink-soft">{zeitraum(a.von, a.bis)}</div>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className={`tag ${a.art === 'Urlaub' ? 'tag-geplant' : a.art === 'Krank' ? 'tag-unterwegs' : 'tag-arbeit'}`}>{a.art}</span>
                 {darfAbwesenheitenPflegen && (

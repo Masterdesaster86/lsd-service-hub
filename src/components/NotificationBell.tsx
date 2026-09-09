@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
+import { formatDateDE } from '../lib/format'
+
+const zeitraum = (von: string, bis: string) => (von === bis ? formatDateDE(von) : `${formatDateDE(von)} – ${formatDateDE(bis)}`)
 
 interface PendingItem { type: 'urlaub' | 'krank'; text: string }
 
@@ -24,11 +27,11 @@ export function NotificationBell() {
     const list: PendingItem[] = []
     ;(antraege || []).forEach((a) => list.push({
       type: 'urlaub',
-      text: `Urlaubsantrag von ${nameById[a.techniker_id] || '–'}: ${a.von}${a.bis !== a.von ? ` – ${a.bis}` : ''}`,
+      text: `Urlaubsantrag von ${nameById[a.techniker_id] || '–'}: ${zeitraum(a.von, a.bis)}`,
     }))
     ;(abw || []).filter((a) => a.art !== 'Urlaub').forEach((a) => list.push({
       type: 'krank',
-      text: `${a.art} gemeldet: ${nameById[a.techniker_id] || '–'} (${a.von}${a.bis !== a.von ? ` – ${a.bis}` : ''})`,
+      text: `${a.art} gemeldet: ${nameById[a.techniker_id] || '–'} (${zeitraum(a.von, a.bis)})`,
     }))
     setItems(list)
   }

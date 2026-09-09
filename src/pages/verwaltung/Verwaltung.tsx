@@ -6,6 +6,9 @@ import { AntragStatusTag } from '../../components/ui/StatusTag'
 import { FehlzeitModal } from './FehlzeitModal'
 import { UrlaubsantragModal } from './UrlaubsantragModal'
 import { Monatsnachweis } from './Monatsnachweis'
+import { formatDateDE } from '../../lib/format'
+
+const zeitraum = (von: string, bis: string) => (von === bis ? formatDateDE(von) : `${formatDateDE(von)} – ${formatDateDE(bis)}`)
 
 function currentMonthValue() {
   const d = new Date()
@@ -56,7 +59,7 @@ export function Verwaltung() {
           {antraege.map((a) => (
             <div key={a.id} className="card p-3 flex items-center justify-between gap-3 flex-wrap">
               <div>
-                <div className="font-semibold text-sm">Urlaub {a.von}{a.bis !== a.von ? ` – ${a.bis}` : ''}</div>
+                <div className="font-semibold text-sm">Urlaub {zeitraum(a.von, a.bis)}</div>
                 <div className="text-[13px] text-ink-soft">{a.bemerkung || '–'} · beantragt am {new Date(a.beantragt_am).toLocaleDateString('de-DE')}</div>
               </div>
               <AntragStatusTag status={a.status} />
@@ -72,7 +75,7 @@ export function Verwaltung() {
         <div className="flex flex-col gap-1.5 mb-6">
           {abwesenheiten.map((a) => (
             <div key={a.id} className="card p-3">
-              <div className="font-semibold text-sm">{a.art} · {a.von}{a.bis !== a.von ? ` – ${a.bis}` : ''}</div>
+              <div className="font-semibold text-sm">{a.art} · {zeitraum(a.von, a.bis)}</div>
               <div className="text-[13px] text-ink-soft">{a.bemerkung || '–'}</div>
             </div>
           ))}
