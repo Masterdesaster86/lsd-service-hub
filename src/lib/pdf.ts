@@ -166,7 +166,7 @@ export async function buildBerichtPdf(input: BerichtPdfInput): Promise<jsPDF> {
   const totals = calcBerichtTotals(tage)
 
   setupPage(doc, logo)
-  drawHeader(doc, logo, 'SERVICEBERICHT', [`#${order.id}`, 'Auftragsnummer (easybill)'])
+  drawHeader(doc, logo, 'SERVICEBERICHT', [`#${order.id}`, 'Auftragsnummer'])
 
   let y = 35
   y = fieldRow(doc, y, [
