@@ -38,6 +38,24 @@ function abwesenheitUeberschneidetMonat(a: Abwesenheit, jahr: number, monat: num
 }
 
 interface DragData { orderId: string; fromTech: string; fromDate: string }
+
+interface BerichtKurz { auftrag_id: string; techniker_id: string; status: string }
+
+/**
+ * Wie weit darf die Karte eines Technikers noch bewegt werden?
+ *
+ * Sobald ein Techniker zu einem Auftrag einen Bericht angefangen hat, darf er
+ * nicht mehr aus dem Auftrag fallen: Techniker sehen nur Auftraege, denen sie
+ * zugeteilt sind — sein angefangener Bericht waere sonst nicht mehr erreichbar.
+ * Ist der Bericht schon abgeschlossen, ist der Einsatz dokumentiert; dann ergibt
+ * auch ein neuer Termin keinen Sinn mehr.
+ */
+type Sperre = 'frei' | 'nurTag' | 'gesperrt'
+
+const SPERR_TEXT: Record<Exclude<Sperre, 'frei'>, string> = {
+  nurTag: 'Für diesen Auftrag gibt es schon einen offenen Servicebericht des Technikers. Der Tag lässt sich noch verschieben, der Techniker nicht mehr.',
+  gesperrt: 'Für diesen Auftrag gibt es einen abgeschlossenen Servicebericht des Technikers. Der Eintrag lässt sich nicht mehr verschieben.',
+}
 type ViewMode = 'woche' | 'monat' | 'jahr'
 
 export function Plantafel() {
@@ -56,19 +74,22 @@ export function Plantafel() {
   const [abwesenheiten, setAbwesenheiten] = useState<Abwesenheit[]>([])
   const [antraege, setAntraege] = useState<Urlaubsantrag[]>([])
   const [employeesById, setEmployeesById] = useState<Record<string, Employee>>({})
+  const [berichte, setBerichte] = useState<BerichtKurz[]>([])
   const [drag, setDrag] = useState<DragData | null>(null)
 
   async function load() {
-    const [{ data: emp }, all, { data: abw }, { data: ant }] = await Promise.all([
+    const [{ data: emp }, all, { data: abw }, { data: ant }, { data: ber }] = await Promise.all([
       supabase.from('employees').select('*').in('role', ['Techniker', 'CEO']).eq('aktiv', true).order('name'),
       fetchOrders(),
       supabase.from('abwesenheiten').select('*'),
       supabase.from('urlaubsantraege').select('*').eq('status', 'beantragt'),
+      supabase.from('serviceberichte').select('auftrag_id, techniker_id, status'),
     ])
     setTechnicians(emp || [])
     setOrders(all.filter((o) => o.status !== 'erledigt' && o.status !== 'abgerechnet'))
     setAbwesenheiten(abw || [])
     setAntraege(ant || [])
+    setBerichte(ber || [])
     const { data: allEmp } = await supabase.from('employees').select('*')
     setEmployeesById(Object.fromEntries((allEmp || []).map((e) => [e.id, e])))
   }
@@ -96,10 +117,34 @@ export function Plantafel() {
     return abwesenheiten.find((a) => techId === a.techniker_id && d >= parseISO(a.von)! && d <= parseISO(a.bis)!)
   }
 
+  function sperreFuer(orderId: string, techId: string): Sperre {
+    if (!techId) return 'frei'
+    const eigene = berichte.filter((b) => b.auftrag_id === orderId && b.techniker_id === techId)
+    if (eigene.some((b) => b.status === 'abgeschlossen')) return 'gesperrt'
+    return eigene.length > 0 ? 'nurTag' : 'frei'
+  }
+
   async function applyDrop(techId: string, dateStr: string) {
     if (!drag) return
     const order = orders.find((o) => o.id === drag.orderId)
     if (!order) return
+
+    const sperre = sperreFuer(order.id, drag.fromTech)
+    if (sperre === 'gesperrt') { toast(SPERR_TEXT.gesperrt); setDrag(null); return }
+    // Bei "nurTag" darf die Karte in derselben Zeile bleiben — ein anderer
+    // Techniker oder der Pool wuerde den Bericht abhaengen.
+    if (sperre === 'nurTag' && techId !== drag.fromTech) { toast(SPERR_TEXT.nurTag); setDrag(null); return }
+
+    // Bleibt die Karte in derselben Zeile, aendert sich nur der Termin. Die
+    // Zuteilung darf dann nicht angefasst werden: Loeschen und Wiedereintragen
+    // wuerde den Techniker aus dem Auftrag werfen.
+    if (techId && techId === drag.fromTech) {
+      await supabase.from('orders').update({ einsatzbeginn: isoFromDMY(dateStr) }).eq('id', order.id)
+      toast(`Auftrag #${order.id} verschoben auf ${dateStr}.`)
+      setDrag(null)
+      load()
+      return
+    }
 
     if (drag.fromTech) {
       await supabase.from('order_techniker').delete().eq('order_id', order.id).eq('techniker_id', drag.fromTech)
@@ -158,13 +203,16 @@ export function Plantafel() {
   }
 
   function PlanCard({ order, draggable, fromTech, fromDate, continuation }: { order: OrderWithRelations; draggable: boolean; fromTech?: string; fromDate?: string; continuation?: boolean }) {
+    const sperre = sperreFuer(order.id, fromTech || '')
+    const ziehbar = draggable && sperre !== 'gesperrt'
+    const rand = sperre === 'gesperrt' ? 'border-l-2 border-l-red' : sperre === 'nurTag' ? 'border-l-2 border-l-blau' : ''
     return (
       <div
-        draggable={draggable}
-        onDragStart={() => draggable && setDrag({ orderId: order.id, fromTech: fromTech || '', fromDate: fromDate || '' })}
+        draggable={ziehbar}
+        onDragStart={() => ziehbar && setDrag({ orderId: order.id, fromTech: fromTech || '', fromDate: fromDate || '' })}
         onClick={() => navigate(`/auftraege/${order.id}`)}
-        className={`text-xs bg-white border border-line p-1.5 mb-1 cursor-pointer ${draggable ? 'cursor-grab' : ''} ${continuation ? 'opacity-60 italic' : ''}`}
-        title={continuation ? `Fortsetzung von Auftrag #${order.id}` : undefined}
+        className={`text-xs bg-white border border-line p-1.5 mb-1 cursor-pointer ${rand} ${ziehbar ? 'cursor-grab' : ''} ${continuation ? 'opacity-60 italic' : ''}`}
+        title={continuation ? `Fortsetzung von Auftrag #${order.id}` : sperre !== 'frei' ? SPERR_TEXT[sperre] : undefined}
       >
         <b>#{order.id}</b> {order.einsatzkunde?.name}
         {!continuation && (order.dauer_tage || 1) > 1 && <span className="text-ink-soft"> · {order.dauer_tage} Tage</span>}
@@ -311,6 +359,11 @@ export function Plantafel() {
                 poolOrders.map((o) => <PlanCard key={o.id} order={o} draggable />)
               )}
             </div>
+          </div>
+
+          <div className="flex items-center gap-4 flex-wrap text-[13px] text-ink-soft mt-2 mb-4">
+            <span className="flex items-center gap-1.5"><span className="inline-block w-0.5 h-3.5 bg-blau" />Bericht angefangen — nur der Tag lässt sich verschieben</span>
+            <span className="flex items-center gap-1.5"><span className="inline-block w-0.5 h-3.5 bg-red" />Bericht abgeschlossen — nicht mehr verschiebbar</span>
           </div>
         </>
       )}
