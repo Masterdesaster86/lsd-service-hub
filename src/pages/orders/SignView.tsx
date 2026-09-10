@@ -5,6 +5,7 @@ import { SignaturePad, type SignaturePadHandle } from '../../components/ui/Signa
 import { useToast } from '../../components/ui/Toast'
 import { calcBerichtSpesen, calcBerichtTotals } from '../../lib/zeit'
 import { berichtPdfFilename, buildBerichtPdf, sharePdf } from '../../lib/pdf'
+import { adresseInZwischenablage, berichtMailBetreff, berichtMailText, berichtMailtoUrl } from '../../lib/berichtMail'
 import type { Employee, Machine, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from '../../lib/types'
 
 interface Props {
@@ -75,13 +76,23 @@ export function SignView({ bericht, tage, ersatzteile, machine, techniker, order
   async function handleShare() {
     if (!completedPdf) return
     setSharing(true)
-    const kundeEmail = order.ansprechpartner?.email
-    const shareText = `Servicebericht ${bericht.bericht_nummer} für Auftrag #${order.id}` + (kundeEmail ? `\nFür: ${kundeEmail}` : '')
-    const result = await sharePdf(completedPdf, berichtPdfFilename(bericht), `Servicebericht ${bericht.bericht_nummer}`, shareText)
+    // Zuerst die Adresse kopieren: nach dem Teilen-Dialog laesst Safari keinen
+    // Zugriff auf die Zwischenablage mehr zu.
+    const kopiert = await adresseInZwischenablage(order.ansprechpartner?.email)
+    const result = await sharePdf(
+      completedPdf,
+      berichtPdfFilename(bericht),
+      berichtMailBetreff(order, bericht),
+      berichtMailText(order, bericht, techniker?.name),
+    )
     setSharing(false)
     if (result === 'unsupported') toast('Teilen wird auf diesem Gerät nicht unterstützt — bitte stattdessen herunterladen.')
     else if (result === 'error') toast('Teilen fehlgeschlagen.')
-    else if (result === 'shared') toast('Servicebericht geteilt.')
+    else if (result === 'shared') {
+      toast(kopiert
+        ? 'Geteilt. Die E-Mail-Adresse liegt in der Zwischenablage — im Empfängerfeld einfügen.'
+        : 'Servicebericht geteilt.')
+    }
   }
 
   if (completedPdf) {
@@ -93,14 +104,28 @@ export function SignView({ bericht, tage, ersatzteile, machine, techniker, order
         </div>
         {order.ansprechpartner?.email && (
           <p className="text-sm text-ink-soft -mt-3 mb-4">
-            ✉️ Ansprechpartner-E-Mail: <b className="text-ink">{order.ansprechpartner.email}</b> — im "Teilen"-Dialog bitte manuell als Empfänger auswählen bzw. eintragen (Apple/Android füllen das Empfänger-Feld nicht automatisch aus).
+            ✉️ Ansprechpartner: <b className="text-ink">{order.ansprechpartner.email}</b> — Begleittext ist vorbereitet. Das Empfängerfeld füllen Apple und Android beim Teilen nicht aus; die Adresse wird beim Teilen in die Zwischenablage gelegt, du musst sie nur einfügen.
           </p>
         )}
         <div className="flex gap-2.5 flex-wrap">
           <button className="btn btn-amber" disabled={sharing} onClick={handleShare}>{sharing ? 'Öffne Teilen…' : '📤 Per E-Mail / Teilen senden'}</button>
+          {order.ansprechpartner?.email && (
+            <a
+              className="btn btn-outline"
+              href={berichtMailtoUrl(order, bericht, techniker?.name)}
+              onClick={() => completedPdf.save(berichtPdfFilename(bericht))}
+            >
+              ✉️ E-Mail mit Empfänger öffnen
+            </a>
+          )}
           <button className="btn btn-outline" onClick={() => completedPdf.save(berichtPdfFilename(bericht))}>PDF herunterladen</button>
           <button className="btn btn-outline" onClick={onDone}>Fertig, zurück zum Auftrag</button>
         </div>
+        {order.ansprechpartner?.email && (
+          <p className="text-[13px] text-ink-soft mt-3 mb-0">
+            „E-Mail mit Empfänger öffnen" trägt Empfänger, Betreff und Text ein und lädt das PDF herunter — anhängen musst du es dann selbst. Anhänge lassen sich über diesen Weg technisch nicht mitgeben.
+          </p>
+        )}
       </div>
     )
   }

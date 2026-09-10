@@ -8,6 +8,7 @@ import { BerichtStatusTag } from '../../components/ui/StatusTag'
 import { calcBerichtSpesen, calcBerichtTotals, calcDay } from '../../lib/zeit'
 import { hhmm } from '../../lib/format'
 import { berichtPdfFilename, buildBerichtPdf, sharePdf, urlToDataUrl } from '../../lib/pdf'
+import { adresseInZwischenablage, berichtMailBetreff, berichtMailText, berichtMailtoUrl } from '../../lib/berichtMail'
 import { useConfirm } from '../../components/ui/ConfirmProvider'
 import { useToast } from '../../components/ui/Toast'
 import { TagFormModal } from './TagFormModal'
@@ -148,11 +149,19 @@ export function BerichtDetail() {
     try {
       const pdf = await buildPdfForDownload()
       if (!pdf) return
-      const kundeEmail = order?.ansprechpartner?.email
-      const shareText = `Servicebericht ${bericht.bericht_nummer} für Auftrag #${order?.id}` + (kundeEmail ? `\nFür: ${kundeEmail}` : '')
-      const result = await sharePdf(pdf, berichtPdfFilename(bericht), `Servicebericht ${bericht.bericht_nummer}`, shareText)
+      if (!order) return
+      // Adresse vor dem Teilen-Dialog kopieren — danach lässt Safari keinen
+      // Zugriff auf die Zwischenablage mehr zu.
+      const kopiert = await adresseInZwischenablage(order.ansprechpartner?.email)
+      const result = await sharePdf(
+        pdf,
+        berichtPdfFilename(bericht),
+        berichtMailBetreff(order, bericht),
+        berichtMailText(order, bericht, techniker?.name),
+      )
       if (result === 'unsupported') toast('Teilen wird auf diesem Gerät nicht unterstützt — bitte stattdessen herunterladen.')
       else if (result === 'error') toast('Teilen fehlgeschlagen.')
+      else if (result === 'shared' && kopiert) toast('Geteilt. Die E-Mail-Adresse liegt in der Zwischenablage — im Empfängerfeld einfügen.')
     } catch (e) {
       toast(e instanceof Error ? e.message : 'PDF konnte nicht erzeugt werden.')
     } finally {
@@ -304,6 +313,16 @@ export function BerichtDetail() {
           </span>
           <div className="flex gap-2 flex-wrap">
             {canShareFiles && <button className="btn btn-amber btn-sm" disabled={sharingPdf} onClick={handleSharePdf}>{sharingPdf ? 'Öffne Teilen…' : '📤 Teilen / E-Mail'}</button>}
+            {order.ansprechpartner?.email && (
+              <a
+                className="btn btn-outline btn-sm"
+                href={berichtMailtoUrl(order, bericht, techniker?.name)}
+                onClick={handleDownloadPdf}
+                title="Öffnet die E-Mail mit Empfänger, Betreff und Text und lädt das PDF herunter — anhängen musst du es selbst."
+              >
+                ✉️ E-Mail mit Empfänger
+              </a>
+            )}
             <button className="btn btn-outline btn-sm" disabled={downloadingPdf} onClick={handleDownloadPdf}>{downloadingPdf ? 'Erzeuge PDF…' : 'PDF herunterladen'}</button>
           </div>
         </div>
