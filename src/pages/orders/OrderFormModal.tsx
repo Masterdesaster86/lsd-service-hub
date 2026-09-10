@@ -4,6 +4,9 @@ import type { Ansprechpartner, Customer, Employee, Machine, OrderWithRelations }
 import { Modal, ModalActions, ModalTitle } from '../../components/ui/Modal'
 import { SearchableSelect } from '../../components/ui/SearchableSelect'
 import { useToast } from '../../components/ui/Toast'
+import { CustomerFormModal } from '../customers/CustomerFormModal'
+import { AnsprechpartnerFormModal } from '../customers/AnsprechpartnerFormModal'
+import { MachineFormModal } from '../machines/MachineFormModal'
 
 interface Props {
   order?: OrderWithRelations
@@ -33,14 +36,41 @@ export function OrderFormModal({ order, onClose, onSaved }: Props) {
   const [auftragsnrKunde, setAuftragsnrKunde] = useState(order?.auftragsnr_kunde || '')
   const [meldetext, setMeldetext] = useState(order?.meldetext || '')
 
+  // Kunde, Maschine und Ansprechpartner lassen sich hier direkt anlegen — sonst
+  // müsste man den halb ausgefüllten Auftrag verwerfen und von vorn beginnen.
+  const [neuerKundeFuer, setNeuerKundeFuer] = useState<'auftraggeber' | 'einsatzkunde' | null>(null)
+  const [showNeueMaschine, setShowNeueMaschine] = useState(false)
+  const [showNeuerAp, setShowNeuerAp] = useState(false)
+
+  async function ladeKunden(auswaehlen?: string, feld?: 'auftraggeber' | 'einsatzkunde') {
+    const { data } = await supabase.from('customers').select('*').order('name')
+    setCustomers(data || [])
+    if (auswaehlen && feld === 'auftraggeber') setAuftraggeberId(auswaehlen)
+    if (auswaehlen && feld === 'einsatzkunde') setEinsatzkundeId(auswaehlen)
+  }
+
+  async function ladeMaschinen(anhaken?: string) {
+    const { data } = await supabase.from('machines').select('*')
+    setMachines(data || [])
+    if (anhaken) setMachineIds((prev) => (prev.includes(anhaken) ? prev : [...prev, anhaken]))
+  }
+
+  async function ladeAnsprechpartner(auswaehlen?: string) {
+    const { data } = await supabase.from('ansprechpartner').select('*')
+    setAnsprechpartner(data || [])
+    if (auswaehlen) setAnsprechpartnerId(auswaehlen)
+  }
+
   useEffect(() => {
-    supabase.from('customers').select('*').order('name').then(({ data }) => setCustomers(data || []))
+    ladeKunden()
     supabase.from('employees').select('*').in('role', ['Techniker', 'CEO']).order('name').then(({ data }) => setEmployees(data || []))
-    supabase.from('machines').select('*').then(({ data }) => setMachines(data || []))
-    supabase.from('ansprechpartner').select('*').then(({ data }) => setAnsprechpartner(data || []))
+    ladeMaschinen()
+    ladeAnsprechpartner()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const customerOptions = useMemo(() => customers.map((c) => ({ id: c.id, label: c.name })), [customers])
+  const einsatzkundeName = useMemo(() => customers.find((c) => c.id === einsatzkundeId)?.name, [customers, einsatzkundeId])
   const kundenMachines = useMemo(() => machines.filter((m) => m.kunde_id === einsatzkundeId), [machines, einsatzkundeId])
   const kundenAnsprechpartner = useMemo(() => ansprechpartner.filter((a) => a.kunde_id === einsatzkundeId), [ansprechpartner, einsatzkundeId])
 
@@ -138,11 +168,13 @@ export function OrderFormModal({ order, onClose, onSaved }: Props) {
           <div>
             <label>Auftraggeber *</label>
             <SearchableSelect value={auftraggeberId} onChange={setAuftraggeberId} options={customerOptions} />
+            <button className="btn btn-outline btn-sm mt-1.5" onClick={() => setNeuerKundeFuer('auftraggeber')}>+ Neuer Kunde</button>
           </div>
         )}
         <div>
           <label>Einsatzkunde *</label>
           <SearchableSelect value={einsatzkundeId} onChange={setEinsatzkundeId} options={customerOptions} />
+          <button className="btn btn-outline btn-sm mt-1.5" onClick={() => setNeuerKundeFuer('einsatzkunde')}>+ Neuer Kunde</button>
         </div>
       </div>
 
@@ -179,6 +211,9 @@ export function OrderFormModal({ order, onClose, onSaved }: Props) {
             </label>
           ))}
         </div>
+        {einsatzkundeId && (
+          <button className="btn btn-outline btn-sm mt-1.5" onClick={() => setShowNeueMaschine(true)}>+ Maschine anlegen</button>
+        )}
       </div>
 
       <div className="mt-3.5">
@@ -187,6 +222,9 @@ export function OrderFormModal({ order, onClose, onSaved }: Props) {
           <option value="">– noch nicht bekannt –</option>
           {kundenAnsprechpartner.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.abteilung || '–'})</option>)}
         </select>
+        {einsatzkundeId && (
+          <button className="btn btn-outline btn-sm mt-1.5" onClick={() => setShowNeuerAp(true)}>+ Ansprechpartner anlegen</button>
+        )}
       </div>
 
       <div className="mt-3.5">
@@ -198,6 +236,29 @@ export function OrderFormModal({ order, onClose, onSaved }: Props) {
         <button className="btn btn-amber" disabled={saving} onClick={handleSave}>{editing ? 'Speichern' : 'Auftrag anlegen'}</button>
         <button className="btn btn-outline" onClick={onClose}>Abbrechen</button>
       </ModalActions>
+
+      {neuerKundeFuer && (
+        <CustomerFormModal
+          onClose={() => setNeuerKundeFuer(null)}
+          onSaved={(id) => { const feld = neuerKundeFuer; setNeuerKundeFuer(null); ladeKunden(id, feld) }}
+        />
+      )}
+      {showNeueMaschine && einsatzkundeId && (
+        <MachineFormModal
+          kundeId={einsatzkundeId}
+          kundeName={einsatzkundeName}
+          onClose={() => setShowNeueMaschine(false)}
+          onSaved={(id) => { setShowNeueMaschine(false); ladeMaschinen(id) }}
+        />
+      )}
+      {showNeuerAp && einsatzkundeId && (
+        <AnsprechpartnerFormModal
+          kundeId={einsatzkundeId}
+          kundeName={einsatzkundeName || ''}
+          onClose={() => setShowNeuerAp(false)}
+          onSaved={(id) => { setShowNeuerAp(false); ladeAnsprechpartner(id) }}
+        />
+      )}
     </Modal>
   )
 }

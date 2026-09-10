@@ -4,7 +4,7 @@ import type { Ansprechpartner } from '../../lib/types'
 import { Modal, ModalActions, ModalTitle } from '../../components/ui/Modal'
 import { useToast } from '../../components/ui/Toast'
 
-export function AnsprechpartnerFormModal({ kundeId, kundeName, ansprechpartner, onClose, onSaved }: { kundeId: string; kundeName: string; ansprechpartner?: Ansprechpartner; onClose: () => void; onSaved: () => void }) {
+export function AnsprechpartnerFormModal({ kundeId, kundeName, ansprechpartner, onClose, onSaved }: { kundeId: string; kundeName: string; ansprechpartner?: Ansprechpartner; onClose: () => void; onSaved: (id: string) => void }) {
   const toast = useToast()
   const editing = !!ansprechpartner
   const [name, setName] = useState(ansprechpartner?.name || '')
@@ -17,13 +17,13 @@ export function AnsprechpartnerFormModal({ kundeId, kundeName, ansprechpartner, 
     if (!name.trim()) { toast('Bitte einen Namen eintragen.'); return }
     setSaving(true)
     const payload = { name: name.trim(), abteilung: abteilung || null, telefon: telefon || null, email: email.trim() || null }
-    const { error } = editing
-      ? await supabase.from('ansprechpartner').update(payload).eq('id', ansprechpartner!.id)
-      : await supabase.from('ansprechpartner').insert({ ...payload, kunde_id: kundeId })
+    const { data, error } = editing
+      ? await supabase.from('ansprechpartner').update(payload).eq('id', ansprechpartner!.id).select('id').single()
+      : await supabase.from('ansprechpartner').insert({ ...payload, kunde_id: kundeId }).select('id').single()
     setSaving(false)
-    if (error) { toast('Fehler: ' + error.message); return }
+    if (error || !data) { toast('Fehler: ' + error?.message); return }
     toast(editing ? 'Ansprechpartner aktualisiert.' : 'Ansprechpartner angelegt.')
-    onSaved()
+    onSaved(data.id)
   }
 
   return (
