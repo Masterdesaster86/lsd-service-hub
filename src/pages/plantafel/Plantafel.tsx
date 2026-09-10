@@ -76,6 +76,9 @@ export function Plantafel() {
   const [employeesById, setEmployeesById] = useState<Record<string, Employee>>({})
   const [berichte, setBerichte] = useState<BerichtKurz[]>([])
   const [drag, setDrag] = useState<DragData | null>(null)
+  // Zweiter Weg zum Umplanen: Karte antippen, dann Zielfeld antippen. Ziehen
+  // funktioniert nicht in jedem Browser und auf Tablets gar nicht.
+  const [auswahl, setAuswahl] = useState<DragData | null>(null)
 
   async function load() {
     const [{ data: emp }, all, { data: abw }, { data: ant }, { data: ber }] = await Promise.all([
@@ -127,30 +130,30 @@ export function Plantafel() {
     return eigene.length > 0 ? 'nurTag' : 'frei'
   }
 
-  async function applyDrop(techId: string, dateStr: string) {
-    if (!drag) return
-    const order = orders.find((o) => o.id === drag.orderId)
+  /** Führt die Umplanung aus. Quelle kommt entweder vom Ziehen oder vom
+   *  Antippen — beide Wege landen hier. */
+  async function verschiebe(quelle: DragData, techId: string, dateStr: string) {
+    const order = orders.find((o) => o.id === quelle.orderId)
     if (!order) return
 
-    const sperre = sperreFuer(order.id, drag.fromTech)
-    if (sperre === 'gesperrt') { toast(SPERR_TEXT.gesperrt); setDrag(null); return }
+    const sperre = sperreFuer(order.id, quelle.fromTech)
+    if (sperre === 'gesperrt') { toast(SPERR_TEXT.gesperrt); return }
     // Bei "nurTag" darf die Karte in derselben Zeile bleiben — ein anderer
     // Techniker oder der Pool wuerde den Bericht abhaengen.
-    if (sperre === 'nurTag' && techId !== drag.fromTech) { toast(SPERR_TEXT.nurTag); setDrag(null); return }
+    if (sperre === 'nurTag' && techId !== quelle.fromTech) { toast(SPERR_TEXT.nurTag); return }
 
     // Bleibt die Karte in derselben Zeile, aendert sich nur der Termin. Die
     // Zuteilung darf dann nicht angefasst werden: Loeschen und Wiedereintragen
     // wuerde den Techniker aus dem Auftrag werfen.
-    if (techId && techId === drag.fromTech) {
+    if (techId && techId === quelle.fromTech) {
       await supabase.from('orders').update({ einsatzbeginn: isoFromDMY(dateStr) }).eq('id', order.id)
       toast(`Auftrag #${order.id} verschoben auf ${dateStr}.`)
-      setDrag(null)
       load()
       return
     }
 
-    if (drag.fromTech) {
-      await supabase.from('order_techniker').delete().eq('order_id', order.id).eq('techniker_id', drag.fromTech)
+    if (quelle.fromTech) {
+      await supabase.from('order_techniker').delete().eq('order_id', order.id).eq('techniker_id', quelle.fromTech)
     }
     if (techId) {
       if (!order.techniker.some((t) => t.id === techId)) {
@@ -161,8 +164,24 @@ export function Plantafel() {
     } else {
       toast(`Auftrag #${order.id} zurück in den Pool gelegt.`)
     }
-    setDrag(null)
     load()
+  }
+
+  async function applyDrop(techId: string, dateStr: string) {
+    if (!drag) return
+    const quelle = drag
+    setDrag(null)
+    await verschiebe(quelle, techId, dateStr)
+  }
+
+  /** Klick auf ein Zielfeld, wenn vorher eine Karte zum Verschieben
+   *  ausgewählt wurde. Gibt true zurück, wenn der Klick verbraucht wurde. */
+  function zielGewaehlt(techId: string, dateStr: string): boolean {
+    if (!auswahl) return false
+    const quelle = auswahl
+    setAuswahl(null)
+    verschiebe(quelle, techId, dateStr)
+    return true
   }
 
   function isoFromDMY(dmy: string) {
@@ -209,6 +228,7 @@ export function Plantafel() {
     const sperre = sperreFuer(order.id, fromTech || '')
     const ziehbar = draggable && sperre !== 'gesperrt'
     const rand = sperre === 'gesperrt' ? 'border-l-2 border-l-red' : sperre === 'nurTag' ? 'border-l-2 border-l-blau' : ''
+    const ausgewaehlt = auswahl?.orderId === order.id && auswahl.fromTech === (fromTech || '')
     return (
       <div
         draggable={ziehbar}
@@ -220,8 +240,8 @@ export function Plantafel() {
           e.dataTransfer.effectAllowed = 'move'
           setDrag({ orderId: order.id, fromTech: fromTech || '', fromDate: fromDate || '' })
         }}
-        onClick={() => navigate(`/auftraege/${order.id}`)}
-        className={`text-xs bg-white border border-line p-1.5 mb-1 cursor-pointer ${rand} ${ziehbar ? 'cursor-grab' : ''} ${continuation ? 'opacity-60 italic' : ''}`}
+        onClick={(e) => { e.stopPropagation(); navigate(`/auftraege/${order.id}`) }}
+        className={`text-xs bg-white border border-line p-1.5 mb-1 cursor-pointer ${rand} ${ziehbar ? 'cursor-grab' : ''} ${continuation ? 'opacity-60 italic' : ''} ${ausgewaehlt ? 'outline-2 outline-blau' : ''}`}
         title={continuation ? `Fortsetzung von Auftrag #${order.id}` : sperre !== 'frei' ? SPERR_TEXT[sperre] : undefined}
       >
         <b>#{order.id}</b> {order.einsatzkunde?.name}
@@ -230,7 +250,20 @@ export function Plantafel() {
         {zeigeTechniker && order.techniker.length > 0 && (
           <div className="text-ink-soft mt-0.5">Techniker: {order.techniker.map((t) => t.name).join(', ')} · Termin fehlt</div>
         )}
-        <div className="mt-0.5"><OrderStatusTag status={order.status} /></div>
+        <div className="mt-0.5 flex items-center justify-between gap-1">
+          <OrderStatusTag status={order.status} />
+          {ziehbar && (
+            <button
+              className="text-[10px] font-semibold text-blau underline underline-offset-2 shrink-0"
+              onClick={(e) => {
+                e.stopPropagation()
+                setAuswahl(ausgewaehlt ? null : { orderId: order.id, fromTech: fromTech || '', fromDate: fromDate || '' })
+              }}
+            >
+              {ausgewaehlt ? 'Abbrechen' : 'Verschieben'}
+            </button>
+          )}
+        </div>
       </div>
     )
   }
@@ -319,7 +352,17 @@ export function Plantafel() {
 
       {viewMode === 'woche' && (
         <>
-          <p className="text-sm text-ink-soft mb-3">Aufträge aus dem Pool auf einen Techniker und Tag ziehen. Bereits eingeplante Aufträge lassen sich innerhalb der Tafel verschieben oder zurück in den Pool ziehen.</p>
+          {auswahl ? (
+            <div className="flex items-center gap-3 flex-wrap bg-blau/10 border border-blau p-2.5 mb-3">
+              <span className="text-sm">
+                <b>Auftrag #{auswahl.orderId}</b> wird verschoben — jetzt das Zielfeld anklicken
+                {auswahl.fromTech ? ' oder den Bereich „Nicht eingeplant“.' : '.'}
+              </span>
+              <button className="btn btn-outline btn-sm ml-auto" onClick={() => setAuswahl(null)}>Abbrechen</button>
+            </div>
+          ) : (
+            <p className="text-sm text-ink-soft mb-3">Aufträge auf einen Techniker und Tag ziehen — oder auf der Karte „Verschieben“ anklicken und dann das Zielfeld wählen. Das geht auch am Tablet.</p>
+          )}
           <div className="flex gap-4 items-start max-lg:flex-col">
             <div className="flex-1 overflow-x-auto border border-line bg-graphite">
               <div className="grid" style={{ gridTemplateColumns: `140px repeat(7, minmax(120px, 1fr))` }}>
@@ -342,7 +385,12 @@ export function Plantafel() {
                           key={tech.id + dateStr}
                           onDragOver={(e) => { if (!abw) { e.preventDefault(); e.dataTransfer.dropEffect = 'move' } }}
                           onDrop={(e) => { e.preventDefault(); if (abw) { toast('Techniker ist an diesem Tag abwesend.'); setDrag(null); return } applyDrop(tech.id, dateStr) }}
-                          className="p-1.5 bg-paper min-h-[70px] border-l border-t border-line"
+                          onClick={() => {
+                            if (!auswahl) return
+                            if (abw) { toast('Techniker ist an diesem Tag abwesend.'); setAuswahl(null); return }
+                            zielGewaehlt(tech.id, dateStr)
+                          }}
+                          className={`p-1.5 min-h-[70px] border-l border-t border-line ${auswahl && !abw ? 'bg-blau/10 cursor-pointer' : 'bg-paper'}`}
                         >
                           {abw ? (
                             <div className="text-xs text-ink-soft italic text-center mt-4">{abw.art}</div>
@@ -363,7 +411,8 @@ export function Plantafel() {
             <div
               onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
               onDrop={(e) => { e.preventDefault(); applyDrop('', '') }}
-              className="w-full lg:w-64 shrink-0 border border-line bg-white p-3"
+              onClick={() => { if (auswahl) zielGewaehlt('', '') }}
+              className={`w-full lg:w-64 shrink-0 border p-3 ${auswahl ? 'border-blau bg-blau/10 cursor-pointer' : 'border-line bg-white'}`}
             >
               <h3 className="text-sm font-semibold mt-0 mb-2">Nicht eingeplant ({poolOrders.length})</h3>
               {poolOrders.length === 0 ? (
