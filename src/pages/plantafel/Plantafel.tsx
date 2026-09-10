@@ -212,7 +212,14 @@ export function Plantafel() {
     return (
       <div
         draggable={ziehbar}
-        onDragStart={() => ziehbar && setDrag({ orderId: order.id, fromTech: fromTech || '', fromDate: fromDate || '' })}
+        onDragStart={(e) => {
+          if (!ziehbar) return
+          // Ohne Nutzdaten bricht Firefox den Zug sofort ab und Safari startet
+          // ihn gar nicht erst — Chrome ist da als einziger nachsichtig.
+          e.dataTransfer.setData('text/plain', order.id)
+          e.dataTransfer.effectAllowed = 'move'
+          setDrag({ orderId: order.id, fromTech: fromTech || '', fromDate: fromDate || '' })
+        }}
         onClick={() => navigate(`/auftraege/${order.id}`)}
         className={`text-xs bg-white border border-line p-1.5 mb-1 cursor-pointer ${rand} ${ziehbar ? 'cursor-grab' : ''} ${continuation ? 'opacity-60 italic' : ''}`}
         title={continuation ? `Fortsetzung von Auftrag #${order.id}` : sperre !== 'frei' ? SPERR_TEXT[sperre] : undefined}
@@ -333,7 +340,7 @@ export function Plantafel() {
                       return (
                         <div
                           key={tech.id + dateStr}
-                          onDragOver={(e) => { if (!abw) e.preventDefault() }}
+                          onDragOver={(e) => { if (!abw) { e.preventDefault(); e.dataTransfer.dropEffect = 'move' } }}
                           onDrop={(e) => { e.preventDefault(); if (abw) { toast('Techniker ist an diesem Tag abwesend.'); setDrag(null); return } applyDrop(tech.id, dateStr) }}
                           className="p-1.5 bg-paper min-h-[70px] border-l border-t border-line"
                         >
@@ -354,7 +361,7 @@ export function Plantafel() {
             </div>
 
             <div
-              onDragOver={(e) => e.preventDefault()}
+              onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
               onDrop={(e) => { e.preventDefault(); applyDrop('', '') }}
               className="w-full lg:w-64 shrink-0 border border-line bg-white p-3"
             >
