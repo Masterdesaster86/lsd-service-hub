@@ -11,12 +11,19 @@ export function CustomerFormModal({ customer, onClose, onSaved }: { customer?: C
   const [strasse, setStrasse] = useState(customer?.strasse || '')
   const [plz, setPlz] = useState(customer?.plz || '')
   const [ort, setOrt] = useState(customer?.ort || '')
+  const [rechnungsEmail, setRechnungsEmail] = useState(customer?.rechnungs_email || '')
   const [saving, setSaving] = useState(false)
 
   async function handleSave() {
     if (!name.trim()) { toast('Bitte einen Firmennamen eintragen.'); return }
     setSaving(true)
-    const payload = { name: name.trim(), strasse: strasse || null, plz: plz || null, ort: ort || null }
+    const payload = {
+      name: name.trim(),
+      strasse: strasse || null,
+      plz: plz || null,
+      ort: ort || null,
+      rechnungs_email: rechnungsEmail.trim() || null,
+    }
     if (editing) {
       const { error } = await supabase.from('customers').update(payload).eq('id', customer!.id)
       setSaving(false)
@@ -40,6 +47,11 @@ export function CustomerFormModal({ customer, onClose, onSaved }: { customer?: C
         <div className="col-span-2"><label>Straße</label><input value={strasse} onChange={(e) => setStrasse(e.target.value)} /></div>
         <div><label>PLZ</label><input value={plz} onChange={(e) => setPlz(e.target.value)} /></div>
         <div><label>Ort</label><input value={ort} onChange={(e) => setOrt(e.target.value)} /></div>
+        <div className="col-span-2">
+          <label>Rechnungs-E-Mail</label>
+          <input type="email" value={rechnungsEmail} onChange={(e) => setRechnungsEmail(e.target.value)} placeholder="optional, z. B. rechnungen@firma.de" />
+          <p className="text-[13px] text-ink-soft mt-1 mb-0">Sammeladresse der Buchhaltung. Bewusst kein Ansprechpartner, damit sie nicht versehentlich als Empfänger eines Serviceberichts ausgewählt wird.</p>
+        </div>
       </div>
       <ModalActions>
         <button className="btn btn-amber" disabled={saving} onClick={handleSave}>{editing ? 'Speichern' : 'Anlegen'}</button>

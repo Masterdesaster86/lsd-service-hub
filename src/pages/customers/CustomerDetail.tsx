@@ -69,6 +69,11 @@ export function CustomerDetail() {
         <div>
           <div className="text-lg font-bold">{customer.name}</div>
           <div className="text-sm text-ink-soft">{customer.strasse}, {customer.plz} {customer.ort}</div>
+          {customer.rechnungs_email && (
+            <div className="text-sm text-ink-soft mt-1">
+              Rechnungen an <a href={`mailto:${customer.rechnungs_email}`} className="text-steel no-underline">{customer.rechnungs_email}</a>
+            </div>
+          )}
         </div>
         <div className="flex gap-2">
           <button className="btn btn-outline btn-sm" onClick={() => setShowEdit(true)}>Bearbeiten</button>
