@@ -13,7 +13,9 @@ export function berichtMailBetreff(order: OrderWithRelations, bericht: Servicebe
     + (maschine ? ` – ${maschine.bezeichnung}` : '')
 }
 
-export function berichtMailText(order: OrderWithRelations, bericht: Servicebericht, technikerName?: string): string {
+/** Endet bewusst ohne Grußformel, Name und Firma — das steht schon in der
+ *  Outlook-Signatur und käme sonst doppelt. */
+export function berichtMailText(order: OrderWithRelations, bericht: Servicebericht): string {
   // Mit vollem Namen ansprechen statt "Herr/Frau" — die Anrede haengt sonst am
   // Geschlecht, das wir nicht kennen, und liest sich wie ein Serienbrief.
   const name = (order.ansprechpartner?.name || '').trim()
@@ -31,25 +33,18 @@ export function berichtMailText(order: OrderWithRelations, bericht: Serviceberic
     `Auftragsnummer: ${order.id}`,
   ]
   if (order.bestellnummer) zeilen.push(`Ihre Bestellnummer: ${order.bestellnummer}`)
-  zeilen.push(
-    '',
-    'Bei Rückfragen melden Sie sich gerne.',
-    '',
-    'Mit freundlichen Grüßen',
-    technikerName || '',
-    'LSD Maschinenservice',
-  )
+  zeilen.push('', 'Bei Rückfragen melden Sie sich gerne.')
   return zeilen.filter((z, i, a) => !(z === '' && a[i - 1] === '')).join('\n')
 }
 
 /** mailto:-Adresse mit Empfänger, Betreff und Text — der einzige Weg, das
  *  Empfängerfeld vorzubefüllen. Anhänge sind dabei technisch nicht möglich. */
-export function berichtMailtoUrl(order: OrderWithRelations, bericht: Servicebericht, technikerName?: string): string {
+export function berichtMailtoUrl(order: OrderWithRelations, bericht: Servicebericht): string {
   // Die Adresse gehoert unkodiert in den mailto-Pfad — manche Mailprogramme
   // uebernehmen ein kodiertes "@" sonst woertlich.
   const empfaenger = (order.ansprechpartner?.email || '').trim()
   const betreff = encodeURIComponent(berichtMailBetreff(order, bericht))
-  const text = encodeURIComponent(berichtMailText(order, bericht, technikerName))
+  const text = encodeURIComponent(berichtMailText(order, bericht))
   return `mailto:${empfaenger}?subject=${betreff}&body=${text}`
 }
 

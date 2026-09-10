@@ -157,7 +157,7 @@ export function BerichtDetail() {
         pdf,
         berichtPdfFilename(bericht),
         berichtMailBetreff(order, bericht),
-        berichtMailText(order, bericht, techniker?.name),
+        berichtMailText(order, bericht),
       )
       if (result === 'unsupported') toast('Teilen wird auf diesem Gerät nicht unterstützt — bitte stattdessen herunterladen.')
       else if (result === 'error') toast('Teilen fehlgeschlagen.')
@@ -316,7 +316,7 @@ export function BerichtDetail() {
             {order.ansprechpartner?.email && (
               <a
                 className="btn btn-outline btn-sm"
-                href={berichtMailtoUrl(order, bericht, techniker?.name)}
+                href={berichtMailtoUrl(order, bericht)}
                 onClick={handleDownloadPdf}
                 title="Öffnet die E-Mail mit Empfänger, Betreff und Text und lädt das PDF herunter — anhängen musst du es selbst."
               >

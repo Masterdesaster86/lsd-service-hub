@@ -83,7 +83,7 @@ export function SignView({ bericht, tage, ersatzteile, machine, techniker, order
       completedPdf,
       berichtPdfFilename(bericht),
       berichtMailBetreff(order, bericht),
-      berichtMailText(order, bericht, techniker?.name),
+      berichtMailText(order, bericht),
     )
     setSharing(false)
     if (result === 'unsupported') toast('Teilen wird auf diesem Gerät nicht unterstützt — bitte stattdessen herunterladen.')
@@ -112,7 +112,7 @@ export function SignView({ bericht, tage, ersatzteile, machine, techniker, order
           {order.ansprechpartner?.email && (
             <a
               className="btn btn-outline"
-              href={berichtMailtoUrl(order, bericht, techniker?.name)}
+              href={berichtMailtoUrl(order, bericht)}
               onClick={() => completedPdf.save(berichtPdfFilename(bericht))}
             >
               ✉️ E-Mail mit Empfänger öffnen
