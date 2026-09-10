@@ -4,6 +4,7 @@ import { useAuth } from '../../lib/AuthContext'
 import type { Machine, OrderWithRelations } from '../../lib/types'
 import { Modal, ModalActions, ModalTitle } from '../../components/ui/Modal'
 import { useToast } from '../../components/ui/Toast'
+import { MachineFormModal } from '../machines/MachineFormModal'
 
 export function NewBerichtModal({ order, onClose, onCreated }: { order: OrderWithRelations; onClose: () => void; onCreated: (id: string) => void }) {
   const { employee } = useAuth()
@@ -11,10 +12,20 @@ export function NewBerichtModal({ order, onClose, onCreated }: { order: OrderWit
   const [machines, setMachines] = useState<Machine[] | null>(null)
   const [maschineId, setMaschineId] = useState('')
   const [busy, setBusy] = useState(false)
+  // Bei manchen Kunden steht erst vor Ort fest, an welcher Maschine gearbeitet
+  // wird. Deshalb laesst sie sich hier direkt anlegen.
+  const [showNeueMaschine, setShowNeueMaschine] = useState(false)
+
+  async function ladeMaschinen(auswaehlen?: string) {
+    if (!order.einsatzkunde_id) { setMachines([]); return }
+    const { data } = await supabase.from('machines').select('*').eq('kunde_id', order.einsatzkunde_id).order('bezeichnung')
+    setMachines(data || [])
+    if (auswaehlen) setMaschineId(auswaehlen)
+  }
 
   useEffect(() => {
-    if (!order.einsatzkunde_id) { setMachines([]); return }
-    supabase.from('machines').select('*').eq('kunde_id', order.einsatzkunde_id).order('bezeichnung').then(({ data }) => setMachines(data || []))
+    ladeMaschinen()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order.einsatzkunde_id])
 
   async function handleConfirm() {
@@ -55,7 +66,9 @@ export function NewBerichtModal({ order, onClose, onCreated }: { order: OrderWit
       {machines === null ? (
         <div className="text-sm text-ink-soft">Lädt…</div>
       ) : machines.length === 0 ? (
-        <div className="text-sm text-ink-soft border border-dashed border-line p-4 text-center">Für diesen Kunden sind noch keine Maschinen hinterlegt.</div>
+        <div className="text-sm text-ink-soft border border-dashed border-line p-4 text-center">
+          Für diesen Kunden sind noch keine Maschinen hinterlegt.
+        </div>
       ) : (
         <div className="border border-line px-2.5 bg-white">
           {machines.map((m) => (
@@ -70,10 +83,25 @@ export function NewBerichtModal({ order, onClose, onCreated }: { order: OrderWit
         </div>
       )}
 
+      {order.einsatzkunde_id && (
+        <button className="btn btn-outline btn-sm mt-3" onClick={() => setShowNeueMaschine(true)}>
+          + Maschine ist nicht dabei
+        </button>
+      )}
+
       <ModalActions>
-        <button className="btn btn-amber" disabled={busy || !machines?.length} onClick={handleConfirm}>Weiter</button>
+        <button className="btn btn-amber" disabled={busy || !maschineId} onClick={handleConfirm}>Weiter</button>
         <button className="btn btn-outline" onClick={onClose}>Abbrechen</button>
       </ModalActions>
+
+      {showNeueMaschine && (
+        <MachineFormModal
+          kundeId={order.einsatzkunde_id!}
+          kundeName={order.einsatzkunde?.name}
+          onClose={() => setShowNeueMaschine(false)}
+          onSaved={(id) => { setShowNeueMaschine(false); ladeMaschinen(id) }}
+        />
+      )}
     </Modal>
   )
 }

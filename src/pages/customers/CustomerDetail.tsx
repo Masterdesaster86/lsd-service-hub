@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../lib/AuthContext'
+import { darfStammdatenAendern } from '../../lib/rechte'
 import type { Ansprechpartner, Customer, Machine } from '../../lib/types'
 import { useConfirm } from '../../components/ui/ConfirmProvider'
 import { useToast } from '../../components/ui/Toast'
@@ -18,6 +20,8 @@ export function CustomerDetail() {
   const navigate = useNavigate()
   const confirm = useConfirm()
   const toast = useToast()
+  const { employee } = useAuth()
+  const darfAendern = darfStammdatenAendern(employee)
 
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [ansprechpartner, setAnsprechpartner] = useState<Ansprechpartner[]>([])
@@ -75,10 +79,12 @@ export function CustomerDetail() {
             </div>
           )}
         </div>
-        <div className="flex gap-2">
-          <button className="btn btn-outline btn-sm" onClick={() => setShowEdit(true)}>Bearbeiten</button>
-          <button className="btn btn-danger btn-sm" onClick={handleDelete}>Löschen</button>
-        </div>
+        {darfAendern && (
+          <div className="flex gap-2">
+            <button className="btn btn-outline btn-sm" onClick={() => setShowEdit(true)}>Bearbeiten</button>
+            <button className="btn btn-danger btn-sm" onClick={handleDelete}>Löschen</button>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-2 mb-1">
@@ -95,10 +101,12 @@ export function CustomerDetail() {
                 <div className="font-semibold text-sm">{a.name}</div>
                 <div className="text-[13px] text-ink-soft">{a.abteilung || '–'} · {a.telefon || '–'}</div>
               </div>
-              <div className="flex gap-1.5">
-                <button className="btn btn-outline btn-sm" onClick={() => setEditAp(a)}>Bearbeiten</button>
-                <button className="btn btn-danger btn-sm" onClick={() => handleDeleteAp(a)}>Löschen</button>
-              </div>
+              {darfAendern && (
+                <div className="flex gap-1.5">
+                  <button className="btn btn-outline btn-sm" onClick={() => setEditAp(a)}>Bearbeiten</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => handleDeleteAp(a)}>Löschen</button>
+                </div>
+              )}
             </div>
           ))}
         </div>

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../lib/AuthContext'
+import { darfStammdatenAendern } from '../../lib/rechte'
 import type { Customer, Machine } from '../../lib/types'
 import { useConfirm } from '../../components/ui/ConfirmProvider'
 import { useToast } from '../../components/ui/Toast'
@@ -25,6 +27,8 @@ export function MachineDetail() {
   const [params] = useSearchParams()
   const confirm = useConfirm()
   const toast = useToast()
+  const { employee } = useAuth()
+  const darfAendern = darfStammdatenAendern(employee)
 
   const [machine, setMachine] = useState<Machine | null>(null)
   const [customer, setCustomer] = useState<Customer | null>(null)
@@ -91,10 +95,12 @@ export function MachineDetail() {
             <div><label>Kunden-Maschinennummer</label><div className="val">{machine.kunden_maschinennummer || '–'}</div></div>
             <div><label>Steuerung</label><div className="val">{machine.steuerung || '–'}</div></div>
           </div>
-          <div className="flex gap-2 mt-4">
-            <button className="btn btn-outline btn-sm" onClick={() => setShowEdit(true)}>Bearbeiten</button>
-            <button className="btn btn-danger btn-sm" onClick={handleDelete}>Löschen</button>
-          </div>
+          {darfAendern && (
+            <div className="flex gap-2 mt-4">
+              <button className="btn btn-outline btn-sm" onClick={() => setShowEdit(true)}>Bearbeiten</button>
+              <button className="btn btn-danger btn-sm" onClick={handleDelete}>Löschen</button>
+            </div>
+          )}
         </div>
       )}
       {tab === 'historie' && <MachineHistorieTab maschineId={machine.id} />}
