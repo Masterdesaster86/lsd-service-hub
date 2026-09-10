@@ -102,7 +102,10 @@ export function Plantafel() {
     const tageImMonat = new Date(jahr, monat + 1, 0).getDate()
     return Array.from({ length: tageImMonat }, (_, i) => new Date(jahr, monat, i + 1))
   }, [monthAnchor])
-  const poolOrders = orders.filter((o) => o.techniker.length === 0)
+  // Nicht eingeplant ist beides: ohne Techniker und ohne Termin. Ohne Termin
+  // taucht ein Auftrag in keiner Tageszelle auf — er waere sonst nirgends
+  // sichtbar.
+  const poolOrders = orders.filter((o) => o.techniker.length === 0 || !o.einsatzbeginn)
 
   const bevorstehendeAbwesenheiten = useMemo(() => {
     const heute = new Date(); heute.setHours(0, 0, 0, 0)
@@ -202,7 +205,7 @@ export function Plantafel() {
     load()
   }
 
-  function PlanCard({ order, draggable, fromTech, fromDate, continuation }: { order: OrderWithRelations; draggable: boolean; fromTech?: string; fromDate?: string; continuation?: boolean }) {
+  function PlanCard({ order, draggable, fromTech, fromDate, continuation, zeigeTechniker }: { order: OrderWithRelations; draggable: boolean; fromTech?: string; fromDate?: string; continuation?: boolean; zeigeTechniker?: boolean }) {
     const sperre = sperreFuer(order.id, fromTech || '')
     const ziehbar = draggable && sperre !== 'gesperrt'
     const rand = sperre === 'gesperrt' ? 'border-l-2 border-l-red' : sperre === 'nurTag' ? 'border-l-2 border-l-blau' : ''
@@ -217,6 +220,9 @@ export function Plantafel() {
         <b>#{order.id}</b> {order.einsatzkunde?.name}
         {!continuation && (order.dauer_tage || 1) > 1 && <span className="text-ink-soft"> · {order.dauer_tage} Tage</span>}
         {continuation && <span className="text-ink-soft"> (Fortsetzung)</span>}
+        {zeigeTechniker && order.techniker.length > 0 && (
+          <div className="text-ink-soft mt-0.5">Techniker: {order.techniker.map((t) => t.name).join(', ')} · Termin fehlt</div>
+        )}
         <div className="mt-0.5"><OrderStatusTag status={order.status} /></div>
       </div>
     )
@@ -356,7 +362,7 @@ export function Plantafel() {
               {poolOrders.length === 0 ? (
                 <div className="text-sm text-ink-soft p-3">Alles eingeplant.</div>
               ) : (
-                poolOrders.map((o) => <PlanCard key={o.id} order={o} draggable />)
+                poolOrders.map((o) => <PlanCard key={o.id} order={o} draggable zeigeTechniker />)
               )}
             </div>
           </div>
