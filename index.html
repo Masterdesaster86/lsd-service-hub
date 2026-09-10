@@ -9,9 +9,11 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#1B1F24" />
 
-    <link rel="icon" type="image/png" sizes="32x32" href="https://cyvjcskxqluqmerjxqty.supabase.co/storage/v1/object/public/machine-photos/branding/favicon-32.png" />
-    <link rel="icon" type="image/png" sizes="192x192" href="https://cyvjcskxqluqmerjxqty.supabase.co/storage/v1/object/public/machine-photos/branding/icon-192.png" />
-    <link rel="apple-touch-icon" href="https://cyvjcskxqluqmerjxqty.supabase.co/storage/v1/object/public/machine-photos/branding/apple-touch-icon.png" />
+    <!-- Symbole liegen bewusst in der App selbst statt im Storage: sie sind damit
+         versioniert und werden bei jedem Deploy sauber neu ausgeliefert. -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
 
     <!-- "Zum Home-Bildschirm hinzufügen" auf iPad/iPhone: startet ohne Safari-Leiste, wie eine echte App -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
