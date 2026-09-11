@@ -36,7 +36,7 @@ export function AppShell() {
       </div>
       <div className="flex flex-1 min-h-0">
         <div className="app-seitenleiste w-[190px] shrink-0 bg-graphite-2 flex flex-col overflow-y-auto max-md:w-[64px]">
-          <div className="flex-1 py-2">
+          <div className="flex-1 py-2 flex flex-col">
             {NAV_ITEMS.filter((item) => role && item.roles.includes(role)).map((item) => (
               <NavLink
                 key={item.to}
