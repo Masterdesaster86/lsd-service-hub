@@ -205,11 +205,11 @@ export function OrderFormModal({ order, onClose, onSaved }: Props) {
           ) : kundenMachines.length === 0 ? (
             <div className="text-sm text-ink-soft py-2">Für diesen Kunden sind noch keine Maschinen hinterlegt.</div>
           ) : kundenMachines.map((m) => (
-            <label key={m.id} className="check-row">
-              <input type="checkbox" checked={machineIds.includes(m.id)} onChange={() => toggle(machineIds, setMachineIds, m.id)} />
+            <label key={m.id} className="check-row check-row-multi">
+              <input type="checkbox" className="mt-1" checked={machineIds.includes(m.id)} onChange={() => toggle(machineIds, setMachineIds, m.id)} />
               <span>
-                {m.bezeichnung}{m.hersteller && <span className="check-row-note"> — {m.hersteller}</span>}
-                {m.kunden_maschinennummer && <span className="check-row-note"> · Kunden-Maschinennr. {m.kunden_maschinennummer}</span>}
+                <span className="font-semibold">{m.bezeichnung}</span><br />
+                <span className="check-row-note">Maschinennr. {m.nummer || '–'} · Kunden-Maschinennr. {m.kunden_maschinennummer || '–'}</span>
               </span>
             </label>
           ))}
