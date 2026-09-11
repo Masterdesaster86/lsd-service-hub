@@ -26,6 +26,25 @@ export function AppShell() {
   // innerhalb der App mit einem echten Schließen-Knopf.
   const [zeigeAnleitung, setZeigeAnleitung] = useState(false)
 
+  // Bewusst kein "position: fixed"-Overlay über der App: iOS leitet
+  // Wischgesten in einem eingebetteten PDF innerhalb einer fixierten Ebene
+  // teils nicht weiter — man sieht dann nur die erste Seite und kommt nicht
+  // weiter. Stattdessen ersetzt diese Ansicht die App komplett, mit demselben
+  // Aufbau (flex-col über die volle Höhe), der beim restlichen Inhalt bereits
+  // zuverlässig scrollt.
+  if (zeigeAnleitung && role) {
+    return (
+      <div className="flex flex-col h-full min-h-[640px]">
+        <div className="bg-graphite shrink-0" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
+        <div className="bg-graphite shrink-0 flex items-center justify-between gap-3 px-4 py-3">
+          <span className="text-white text-sm font-semibold">Anleitung</span>
+          <button onClick={() => setZeigeAnleitung(false)} className="btn btn-sm !bg-white !text-graphite !border-white">Schließen</button>
+        </div>
+        <iframe src={anleitungUrl(role)} title="Anleitung" className="flex-1 min-h-0 w-full border-0 bg-white" />
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-full min-h-[640px]">
       {/* Streifen hinter der Statusleiste (Uhrzeit) dunkel halten, damit die
@@ -73,24 +92,6 @@ export function AppShell() {
           <div className="relative"><Outlet /></div>
         </div>
       </div>
-
-      {zeigeAnleitung && role && (
-        <div className="fixed inset-0 bg-black/70 z-[110] flex flex-col">
-          <div
-            className="bg-graphite shrink-0 flex items-center justify-between gap-3 px-4"
-            style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 10px)', paddingBottom: '10px' }}
-          >
-            <span className="text-white text-sm font-semibold">Anleitung</span>
-            {/* Bewusst kein Link "in neuem Tab öffnen" daneben: das wäre wieder
-                eine echte Navigation und würde vom Home-Bildschirm aus in
-                dieselbe Sackgasse führen, die dieses Fenster gerade vermeidet.
-                Herunterladen/Drucken bietet der eingebettete PDF-Betrachter
-                selbst über sein eigenes Symbol oben rechts an. */}
-            <button onClick={() => setZeigeAnleitung(false)} className="btn btn-sm !bg-white !text-graphite !border-white">Schließen</button>
-          </div>
-          <iframe src={anleitungUrl(role)} title="Anleitung" className="flex-1 w-full border-0 bg-white" />
-        </div>
-      )}
     </div>
   )
 }
