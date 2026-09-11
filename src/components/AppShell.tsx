@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { LOGO_URL } from '../lib/branding'
 import { NotificationBell } from './NotificationBell'
+import { PdfViewer } from './PdfViewer'
 
 const NAV_ITEMS = [
   { to: '/auftraege', abbr: 'AU', label: 'Serviceaufträge', roles: ['Administrator', 'Disposition', 'Techniker', 'CEO'] },
@@ -26,12 +27,9 @@ export function AppShell() {
   // innerhalb der App mit einem echten Schließen-Knopf.
   const [zeigeAnleitung, setZeigeAnleitung] = useState(false)
 
-  // Bewusst kein "position: fixed"-Overlay über der App: iOS leitet
-  // Wischgesten in einem eingebetteten PDF innerhalb einer fixierten Ebene
-  // teils nicht weiter — man sieht dann nur die erste Seite und kommt nicht
-  // weiter. Stattdessen ersetzt diese Ansicht die App komplett, mit demselben
-  // Aufbau (flex-col über die volle Höhe), der beim restlichen Inhalt bereits
-  // zuverlässig scrollt.
+  // Diese Ansicht ersetzt die App komplett, mit demselben Aufbau (flex-col
+  // über die volle Höhe), der beim restlichen Inhalt bereits zuverlässig
+  // scrollt — kein "position: fixed"-Overlay.
   if (zeigeAnleitung && role) {
     return (
       <div className="flex flex-col h-full min-h-[640px]">
@@ -40,7 +38,7 @@ export function AppShell() {
           <span className="text-white text-sm font-semibold">Anleitung</span>
           <button onClick={() => setZeigeAnleitung(false)} className="btn btn-sm !bg-white !text-graphite !border-white">Schließen</button>
         </div>
-        <iframe src={anleitungUrl(role)} title="Anleitung" className="flex-1 min-h-0 w-full border-0 bg-white" />
+        <PdfViewer url={anleitungUrl(role)} />
       </div>
     )
   }
