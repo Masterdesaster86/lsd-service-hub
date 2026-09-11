@@ -1,18 +1,32 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { Customer, Machine } from '../../lib/types'
 import { CustomerFormModal } from './CustomerFormModal'
+
+type SortMode = 'name' | 'ort'
+
+const SORT_OPTIONS: { key: SortMode; label: string }[] = [
+  { key: 'name', label: 'Name (A–Z)' },
+  { key: 'ort', label: 'Ort (A–Z)' },
+]
+
+const SORT_SPEICHER_KEY = 'lsd-kunden-sortierung'
 
 export function CustomersList() {
   const navigate = useNavigate()
   const [customers, setCustomers] = useState<Customer[] | null>(null)
   const [machines, setMachines] = useState<Machine[]>([])
   const [showNew, setShowNew] = useState(false)
+  const [sortMode, setSortMode] = useState<SortMode>(() => {
+    const gespeichert = localStorage.getItem(SORT_SPEICHER_KEY)
+    return SORT_OPTIONS.some((o) => o.key === gespeichert) ? (gespeichert as SortMode) : 'name'
+  })
+  useEffect(() => { localStorage.setItem(SORT_SPEICHER_KEY, sortMode) }, [sortMode])
 
   async function load() {
     const [{ data: c }, { data: m }] = await Promise.all([
-      supabase.from('customers').select('*').order('name'),
+      supabase.from('customers').select('*'),
       supabase.from('machines').select('*'),
     ])
     setCustomers(c || [])
@@ -20,6 +34,17 @@ export function CustomersList() {
   }
 
   useEffect(() => { load() }, [])
+
+  const sortierteCustomers = useMemo(() => {
+    if (!customers) return null
+    const liste = [...customers]
+    if (sortMode === 'ort') {
+      liste.sort((a, b) => (a.ort || '').localeCompare(b.ort || '') || a.name.localeCompare(b.name))
+    } else {
+      liste.sort((a, b) => a.name.localeCompare(b.name))
+    }
+    return liste
+  }, [customers, sortMode])
 
   return (
     <div>
@@ -31,11 +56,19 @@ export function CustomersList() {
         <button className="btn btn-amber" onClick={() => setShowNew(true)}>+ Neuer Kunde</button>
       </div>
 
-      {customers === null ? (
+      <div className="flex justify-end mb-3">
+        <div className="max-w-[220px]">
+          <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)}>
+            {SORT_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {sortierteCustomers === null ? (
         <div className="text-sm text-ink-soft">Lädt…</div>
       ) : (
         <div className="flex flex-col gap-2">
-          {customers.map((c) => (
+          {sortierteCustomers.map((c) => (
             <div key={c.id} onClick={() => navigate(`/kunden/${c.id}`)} className="card p-4 cursor-pointer hover:border-amber transition-colors">
               <div className="font-semibold">{c.name}</div>
               <div className="text-[13px] text-ink-soft">{c.strasse}, {c.plz} {c.ort}</div>

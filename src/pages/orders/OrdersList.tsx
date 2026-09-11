@@ -15,6 +15,28 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'erledigt', label: 'Erledigt / Abgerechnet' },
 ]
 
+type SortMode = 'einsatz_auf' | 'einsatz_ab' | 'erstellt_ab'
+
+const SORT_OPTIONS: { key: SortMode; label: string }[] = [
+  { key: 'einsatz_auf', label: 'Auftragsdatum: nächster Termin zuerst' },
+  { key: 'einsatz_ab', label: 'Auftragsdatum: neueste zuerst' },
+  { key: 'erstellt_ab', label: 'Zuletzt angelegt' },
+]
+
+const SORT_SPEICHER_KEY = 'lsd-auftraege-sortierung'
+
+/** Aufträge ohne Einsatzbeginn (noch nicht terminiert) landen unabhängig von
+ * der gewählten Richtung immer ans Ende — "kein Datum" ist weder früh noch
+ * spät, sondern offen. */
+function vergleicheAuftraege(a: OrderWithRelations, b: OrderWithRelations, sort: SortMode): number {
+  if (sort === 'erstellt_ab') return b.created_at.localeCompare(a.created_at)
+  if (!a.einsatzbeginn && !b.einsatzbeginn) return 0
+  if (!a.einsatzbeginn) return 1
+  if (!b.einsatzbeginn) return -1
+  const richtung = sort === 'einsatz_auf' ? 1 : -1
+  return richtung * a.einsatzbeginn.localeCompare(b.einsatzbeginn)
+}
+
 export function OrdersList() {
   const { employee } = useAuth()
   const navigate = useNavigate()
@@ -22,6 +44,13 @@ export function OrdersList() {
   const [tab, setTab] = useState<Tab>('neu')
   const [showNew, setShowNew] = useState(false)
   const [nurMeine, setNurMeine] = useState(false)
+  // Merkt sich die zuletzt gewählte Sortierung geräteweise, damit man sie
+  // nicht bei jedem Öffnen neu einstellen muss.
+  const [sortMode, setSortMode] = useState<SortMode>(() => {
+    const gespeichert = localStorage.getItem(SORT_SPEICHER_KEY)
+    return SORT_OPTIONS.some((o) => o.key === gespeichert) ? (gespeichert as SortMode) : 'einsatz_auf'
+  })
+  useEffect(() => { localStorage.setItem(SORT_SPEICHER_KEY, sortMode) }, [sortMode])
 
   async function load() {
     setOrders(await fetchOrders())
@@ -47,9 +76,11 @@ export function OrdersList() {
   }), [sichtbar])
 
   const filtered = useMemo(() => {
-    if (tab === 'erledigt') return sichtbar.filter((o) => o.status === 'erledigt' || o.status === 'abgerechnet')
-    return sichtbar.filter((o) => o.status === tab)
-  }, [sichtbar, tab])
+    const liste = tab === 'erledigt'
+      ? sichtbar.filter((o) => o.status === 'erledigt' || o.status === 'abgerechnet')
+      : sichtbar.filter((o) => o.status === tab)
+    return [...liste].sort((a, b) => vergleicheAuftraege(a, b, sortMode))
+  }, [sichtbar, tab, sortMode])
 
   const roleNote = employee?.role === 'Techniker'
     ? `Gefiltert auf deine eigenen Aufträge (${employee.name})`
@@ -74,16 +105,23 @@ export function OrdersList() {
         </div>
       )}
 
-      <div className="flex gap-2 mb-4 flex-wrap">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`btn btn-sm ${tab === t.key ? 'btn-dark' : 'btn-outline'}`}
-          >
-            {t.label} ({counts[t.key]})
-          </button>
-        ))}
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+        <div className="flex gap-2 flex-wrap">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`btn btn-sm ${tab === t.key ? 'btn-dark' : 'btn-outline'}`}
+            >
+              {t.label} ({counts[t.key]})
+            </button>
+          ))}
+        </div>
+        <div className="max-w-[260px]">
+          <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)}>
+            {SORT_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+          </select>
+        </div>
       </div>
 
       {orders === null ? (
