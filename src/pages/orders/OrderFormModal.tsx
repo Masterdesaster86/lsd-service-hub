@@ -207,7 +207,10 @@ export function OrderFormModal({ order, onClose, onSaved }: Props) {
           ) : kundenMachines.map((m) => (
             <label key={m.id} className="check-row">
               <input type="checkbox" checked={machineIds.includes(m.id)} onChange={() => toggle(machineIds, setMachineIds, m.id)} />
-              <span>{m.bezeichnung}{m.hersteller && <span className="check-row-note"> — {m.hersteller}</span>}</span>
+              <span>
+                {m.bezeichnung}{m.hersteller && <span className="check-row-note"> — {m.hersteller}</span>}
+                {m.kunden_maschinennummer && <span className="check-row-note"> · Kunden-Maschinennr. {m.kunden_maschinennummer}</span>}
+              </span>
             </label>
           ))}
         </div>
