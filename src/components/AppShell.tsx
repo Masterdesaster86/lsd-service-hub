@@ -14,31 +14,41 @@ const NAV_ITEMS = [
   { to: '/mitarbeiter', abbr: 'MI', label: 'Mitarbeiter', roles: ['Administrator', 'CEO'] },
 ]
 
-// Techniker bekommt die schlankere Anleitung; alle anderen Rollen liegen in
-// ihren Möglichkeiten näher an CEO als an Techniker, deshalb die CEO-Fassung.
-const anleitungUrl = (role?: string) => (role === 'Techniker' ? '/docs/anleitung-techniker.pdf' : '/docs/anleitung-ceo.pdf')
+const ANLEITUNGEN = {
+  techniker: { url: '/docs/anleitung-techniker.pdf', titel: 'Anleitung — Techniker' },
+  ceo: { url: '/docs/anleitung-ceo.pdf', titel: 'Anleitung — CEO' },
+} as const
+type AnleitungKey = keyof typeof ANLEITUNGEN
 
 export function AppShell() {
   const { employee, signOut } = useAuth()
   const role = employee?.role
+  // Techniker braucht nur die eigene, schlankere Anleitung. Alle anderen
+  // Rollen sehen beide: Die CEO-Fassung beschreibt nur die zusätzlichen
+  // Funktionen und verweist für die eigentlichen Technikerabläufe (Bericht
+  // ausfüllen, abschließen, teilen) auf die Techniker-Anleitung — die muss
+  // also greifbar bleiben.
+  const verfuegbareAnleitungen: AnleitungKey[] = role === 'Techniker' ? ['techniker'] : ['techniker', 'ceo']
+
   // Vom Home-Bildschirm gestartet hat die App keine Browser-Oberfläche mehr —
   // ein Link mit target="_blank" öffnete das PDF dann ohne jede Möglichkeit,
   // wieder zurückzukommen. Das PDF läuft deshalb in einem eigenen Fenster
   // innerhalb der App mit einem echten Schließen-Knopf.
-  const [zeigeAnleitung, setZeigeAnleitung] = useState(false)
+  const [zeigeAnleitung, setZeigeAnleitung] = useState<AnleitungKey | null>(null)
 
   // Diese Ansicht ersetzt die App komplett, mit demselben Aufbau (flex-col
   // über die volle Höhe), der beim restlichen Inhalt bereits zuverlässig
   // scrollt — kein "position: fixed"-Overlay.
-  if (zeigeAnleitung && role) {
+  if (zeigeAnleitung) {
+    const anleitung = ANLEITUNGEN[zeigeAnleitung]
     return (
       <div className="flex flex-col h-full min-h-[640px]">
         <div className="bg-graphite shrink-0" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
         <div className="bg-graphite shrink-0 flex items-center justify-between gap-3 px-4 py-3">
-          <span className="text-white text-sm font-semibold">Anleitung</span>
-          <button onClick={() => setZeigeAnleitung(false)} className="btn btn-sm !bg-white !text-graphite !border-white">Schließen</button>
+          <span className="text-white text-sm font-semibold">{anleitung.titel}</span>
+          <button onClick={() => setZeigeAnleitung(null)} className="btn btn-sm !bg-white !text-graphite !border-white">Schließen</button>
         </div>
-        <PdfViewer url={anleitungUrl(role)} />
+        <PdfViewer url={anleitung.url} />
       </div>
     )
   }
@@ -76,13 +86,20 @@ export function AppShell() {
             ))}
           </div>
           {role && (
-            <button
-              onClick={() => setZeigeAnleitung(true)}
-              className="px-4.5 py-3 text-[12.5px] text-[#8B929B] border-0 border-t border-white/10 border-l-[3px] border-l-transparent cursor-pointer hover:text-white max-md:px-2 max-md:py-3 max-md:text-center bg-transparent w-full text-left font-sans"
-            >
-              <span className="max-md:hidden">Anleitung (PDF)</span>
-              <span className="hidden max-md:inline font-mono text-[11px]">PDF</span>
-            </button>
+            <div className="border-t border-white/10 flex flex-col">
+              {verfuegbareAnleitungen.map((key, i) => (
+                <button
+                  key={key}
+                  onClick={() => setZeigeAnleitung(key)}
+                  className={`px-4.5 py-3 text-[12.5px] text-[#8B929B] border-0 border-l-[3px] border-l-transparent cursor-pointer hover:text-white max-md:px-2 max-md:py-3 max-md:text-center bg-transparent w-full text-left font-sans ${i > 0 ? 'border-t border-white/10' : ''}`}
+                >
+                  <span className="max-md:hidden">
+                    {verfuegbareAnleitungen.length > 1 ? `Anleitung ${key === 'techniker' ? 'Techniker' : 'CEO'} (PDF)` : 'Anleitung (PDF)'}
+                  </span>
+                  <span className="hidden max-md:inline font-mono text-[11px]">PDF{verfuegbareAnleitungen.length > 1 ? ` ${key === 'techniker' ? 'T' : 'C'}` : ''}</span>
+                </button>
+              ))}
+            </div>
           )}
         </div>
         <div className="app-inhalt flex-1 min-w-0 overflow-y-auto p-6 relative">
