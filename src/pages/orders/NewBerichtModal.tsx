@@ -76,7 +76,8 @@ export function NewBerichtModal({ order, onClose, onCreated }: { order: OrderWit
               <input type="radio" name="berichtMa" className="mt-1" checked={maschineId === m.id} onChange={() => setMaschineId(m.id)} />
               <span>
                 <span className="font-semibold">{m.bezeichnung}</span><br />
-                <span className="check-row-note">Maschinennr. {m.nummer || '–'} · Kunden-Maschinennr. {m.kunden_maschinennummer || '–'}</span>
+                <span className="check-row-note">Maschinennr. {m.nummer || '–'}</span><br />
+                <span className="check-row-note">Kunden-Maschinennr. {m.kunden_maschinennummer || '–'}</span>
               </span>
             </label>
           ))}
