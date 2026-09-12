@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { to: '/plantafel', abbr: 'PL', label: 'Plantafel', roles: ['Administrator', 'Disposition', 'CEO'] },
   { to: '/verwaltung', abbr: 'VW', label: 'Meine Verwaltung', roles: ['Techniker', 'CEO'] },
   { to: '/mitarbeiter', abbr: 'MI', label: 'Mitarbeiter', roles: ['Administrator', 'CEO'] },
+  { to: '/wissen', abbr: 'WI', label: 'Wissens-Suche', roles: ['CEO'] },
 ]
 
 const ANLEITUNGEN = {

@@ -12,6 +12,7 @@ import { MachineDetail } from './pages/machines/MachineDetail'
 import { Plantafel } from './pages/plantafel/Plantafel'
 import { Verwaltung } from './pages/verwaltung/Verwaltung'
 import { Mitarbeiter } from './pages/mitarbeiter/Mitarbeiter'
+import { WissensSuche } from './pages/wissen/WissensSuche'
 
 function RequireRole({ roles, children }: { roles: string[]; children: React.ReactNode }) {
   const { employee } = useAuth()
@@ -52,6 +53,10 @@ export default function App() {
         <Route
           path="/mitarbeiter"
           element={<RequireRole roles={['Administrator', 'CEO']}><Mitarbeiter /></RequireRole>}
+        />
+        <Route
+          path="/wissen"
+          element={<RequireRole roles={['CEO']}><WissensSuche /></RequireRole>}
         />
         <Route path="*" element={<Navigate to="/auftraege" replace />} />
       </Route>
