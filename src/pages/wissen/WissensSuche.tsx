@@ -7,6 +7,7 @@ type Treffer = {
   ordnerpfad: string
   ausschnitt: string
   aehnlichkeit: number
+  webseitenUrl: string | null
 }
 
 /** Ruft die Serverfunktion auf, die die Frage bei Voyage in einen Vektor
@@ -90,7 +91,18 @@ export function WissensSuche() {
             <div key={i} className="card p-4">
               <div className="flex items-start justify-between gap-3 flex-wrap mb-1.5">
                 <div>
-                  <div className="font-semibold">{t.dateiname}</div>
+                  {t.webseitenUrl ? (
+                    <a
+                      href={t.webseitenUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-semibold text-steel no-underline hover:underline"
+                    >
+                      {t.dateiname}
+                    </a>
+                  ) : (
+                    <div className="font-semibold">{t.dateiname}</div>
+                  )}
                   <div className="text-[12px] text-ink-soft">
                     {t.maschinenmodell}{t.ordnerpfad ? ` · ${t.ordnerpfad}` : ''}
                   </div>
