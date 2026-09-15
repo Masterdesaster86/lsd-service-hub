@@ -27,19 +27,23 @@ export function RueckreiseNachtragModal({ bericht, letzterTag, onClose, onSaved 
     }).select('id').single()
     if (e1 || !nachtrag) { toast('Fehler: ' + e1?.message); setSaving(false); return }
 
+    // Nur das reine Rückreise-Stück eintragen (arbeitsbeginn = arbeitsende,
+    // damit daraus kein zusätzliches Arbeits-Segment entsteht) — Hinreise,
+    // Arbeitszeit, Pause und Spesen stehen ja schon im Originalbericht und
+    // würden sonst bei der Tagesberechnung doppelt gezählt.
     const { error: e2 } = await supabase.from('servicebericht_tage').insert({
       servicebericht_id: nachtrag.id,
       datum: letzterTag.datum,
-      hinreise_von: letzterTag.hinreise_von,
-      km_hin: letzterTag.km_hin,
-      arbeitsbeginn: letzterTag.arbeitsbeginn,
+      hinreise_von: null,
+      km_hin: null,
+      arbeitsbeginn: letzterTag.arbeitsende,
       arbeitsende: letzterTag.arbeitsende,
       rueckreise_bis: ende,
       km_rueck: km ? parseInt(km) : null,
-      pause_von: letzterTag.pause_von,
-      pause_bis: letzterTag.pause_bis,
-      uebernachtung: letzterTag.uebernachtung,
-      hotelkosten: letzterTag.hotelkosten,
+      pause_von: null,
+      pause_bis: null,
+      uebernachtung: false,
+      hotelkosten: null,
     })
     if (e2) { toast('Fehler: ' + e2.message); setSaving(false); return }
 
