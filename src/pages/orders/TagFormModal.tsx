@@ -9,6 +9,9 @@ import type { ServiceberichtTag } from '../../lib/types'
 export function TagFormModal({ berichtId, onClose, onSaved }: { berichtId: string; onClose: () => void; onSaved: () => void }) {
   const toast = useToast()
   const [datum, setDatum] = useState(formatISO(new Date()))
+  // Aus: an diesem Tag schon vor Ort (z.B. zweite/dritte Maschine desselben
+  // Kundenbesuchs) — dann gibt's an diesem Bericht keine eigene Anreise.
+  const [hinreiseAn, setHinreiseAn] = useState(true)
   const [hinreiseVon, setHinreiseVon] = useState('07:00')
   const [kmHin, setKmHin] = useState('')
   const [arbeitsbeginn, setArbeitsbeginn] = useState('09:00')
@@ -26,8 +29,8 @@ export function TagFormModal({ berichtId, onClose, onSaved }: { berichtId: strin
   const draft: ServiceberichtTag = useMemo(() => ({
     id: '', servicebericht_id: berichtId,
     datum,
-    hinreise_von: hinreiseVon || null,
-    km_hin: kmHin ? parseInt(kmHin) : null,
+    hinreise_von: hinreiseAn ? (hinreiseVon || null) : null,
+    km_hin: hinreiseAn && kmHin ? parseInt(kmHin) : null,
     arbeitsbeginn: arbeitsbeginn || null,
     arbeitsende: arbeitsende || null,
     rueckreise_bis: rueBekannt ? rueckreiseBis : null,
@@ -36,7 +39,7 @@ export function TagFormModal({ berichtId, onClose, onSaved }: { berichtId: strin
     pause_bis: pauseAn ? pauseBis : null,
     uebernachtung,
     hotelkosten: uebernachtung && hotelkosten ? parseFloat(hotelkosten) : null,
-  }), [berichtId, datum, hinreiseVon, kmHin, arbeitsbeginn, arbeitsende, rueBekannt, rueckreiseBis, kmRueck, pauseAn, pauseVon, pauseBis, uebernachtung, hotelkosten])
+  }), [berichtId, datum, hinreiseAn, hinreiseVon, kmHin, arbeitsbeginn, arbeitsende, rueBekannt, rueckreiseBis, kmRueck, pauseAn, pauseVon, pauseBis, uebernachtung, hotelkosten])
 
   const d = calcDay(draft)
   const feiertag = istSonnOderFeiertag(datum)
@@ -71,10 +74,17 @@ export function TagFormModal({ berichtId, onClose, onSaved }: { berichtId: strin
 
       <div className="mb-3.5"><label>Datum</label><input type="date" value={datum} onChange={(e) => setDatum(e.target.value)} /></div>
 
-      <div className="grid grid-cols-2 gap-3.5 max-sm:grid-cols-1">
-        <div><label>Hinreise — Beginn</label><TimeSelect value={hinreiseVon} onChange={setHinreiseVon} /></div>
-        <div><label>Kilometer Hinreise</label><input type="number" min={0} value={kmHin} onChange={(e) => setKmHin(e.target.value)} placeholder="z.B. 60" /></div>
-        <div><label>Ankunft / Arbeitsbeginn</label><TimeSelect value={arbeitsbeginn} onChange={setArbeitsbeginn} /></div>
+      <SectionToggle title="Hinreise" checked={hinreiseAn} onChange={setHinreiseAn} checkboxLabel="Eigene Anreise an diesem Tag" />
+      {hinreiseAn ? (
+        <div className="grid grid-cols-2 gap-3.5 max-sm:grid-cols-1">
+          <div><label>Hinreise — Beginn</label><TimeSelect value={hinreiseVon} onChange={setHinreiseVon} /></div>
+          <div><label>Kilometer Hinreise</label><input type="number" min={0} value={kmHin} onChange={(e) => setKmHin(e.target.value)} placeholder="z.B. 60" /></div>
+        </div>
+      ) : (
+        <p className="text-sm text-ink-soft -mt-1">Für den Fall, dass an diesem Tag schon eine andere Maschine bei diesem Kunden erfasst wurde — dann entfällt hier eine eigene Anreise.</p>
+      )}
+      <div className="grid grid-cols-2 gap-3.5 max-sm:grid-cols-1 mt-3.5">
+        <div><label>{hinreiseAn ? 'Ankunft / Arbeitsbeginn' : 'Arbeitsbeginn'}</label><TimeSelect value={arbeitsbeginn} onChange={setArbeitsbeginn} /></div>
         <div><label>Arbeitsende / Rückreise-Beginn</label><TimeSelect value={arbeitsende} onChange={setArbeitsende} /></div>
       </div>
 
