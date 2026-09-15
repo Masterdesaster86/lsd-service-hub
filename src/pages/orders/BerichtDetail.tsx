@@ -77,7 +77,6 @@ export function BerichtDetail() {
   const totals = calcBerichtTotalsMitKontext(tage, tageskontext)
   const spesen = calcBerichtSpesen(tage)
   const letzterTag = tage[tage.length - 1]
-  const fruehereRueckreiseFehlt = tage.length > 1 && tage.slice(0, -1).some((t) => !t.rueckreise_bis)
   const letzteRueckreiseFehlt = tage.length > 0 && bericht.status === 'abgeschlossen' && !letzterTag.rueckreise_bis && !hasNachtrag
   const canDeleteBericht = employee?.role === 'Administrator' || employee?.role === 'Disposition' || employee?.role === 'CEO'
 
@@ -230,9 +229,6 @@ export function BerichtDetail() {
         <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft">Tageserfassung</div>
         {editable && <button className="btn btn-outline btn-sm" onClick={() => setShowTagForm(true)}>+ Tag erfassen</button>}
       </div>
-      {bericht.status === 'offen' && fruehereRueckreiseFehlt && (
-        <div className="border border-red p-2.5 text-sm text-red mb-2.5">Bei einem früheren Tag fehlt noch die Rückreise. Bitte zuerst ergänzen — erst beim letzten Tag darf sie noch offen sein.</div>
-      )}
       {tage.length === 0 ? (
         <div className="text-sm text-ink-soft border border-dashed border-line p-4 text-center mb-4">Noch keine Tage erfasst.</div>
       ) : (
@@ -306,7 +302,7 @@ export function BerichtDetail() {
 
       {editable && (
         <div className="mt-5 flex items-center gap-3 flex-wrap">
-          <button className="btn btn-amber" disabled={!tage.length || fruehereRueckreiseFehlt} onClick={() => setMode('sign')}>Servicebericht abschließen</button>
+          <button className="btn btn-amber" disabled={!tage.length} onClick={() => setMode('sign')}>Servicebericht abschließen</button>
           {letzteRueckreiseFehlt && <span className="text-ink-soft text-xs">— Rückreise des letzten Tages darf dabei noch offen sein.</span>}
         </div>
       )}
