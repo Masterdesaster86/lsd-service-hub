@@ -1,6 +1,7 @@
 // Zentrale, wiederverwendete Supabase-Abfragen mit den üblichen Joins.
 import { supabase } from './supabase'
-import type { OrderWithRelations } from './types'
+import type { OrderWithRelations, ServiceberichtTag } from './types'
+import type { Tageskontext } from './zeit'
 
 const ORDER_SELECT = `
   *,
@@ -35,4 +36,29 @@ export async function fetchOrder(id: string): Promise<OrderWithRelations | null>
   const { data, error } = await supabase.from('orders').select(ORDER_SELECT).eq('id', id).maybeSingle()
   if (error) throw error
   return data ? mapOrder(data as unknown as RawOrder) : null
+}
+
+/**
+ * Lädt für einen Techniker ALLE erfassten Tage — über alle seine
+ * Serviceberichte hinweg, egal zu welchem Auftrag/welcher Maschine —, die
+ * auf einen der übergebenen Kalendertage fallen. Damit lässt sich die
+ * 10h-Überstundenschwelle korrekt über den ganzen echten Arbeitstag
+ * berechnen, auch wenn an einem Tag mehrere Maschinen (= mehrere
+ * Serviceberichte) bearbeitet wurden. Siehe `calcTagMitKontext` in zeit.ts.
+ */
+export async function fetchTageskontext(technikerId: string, daten: string[]): Promise<Tageskontext> {
+  const eindeutigeDaten = [...new Set(daten)]
+  if (eindeutigeDaten.length === 0) return {}
+  const { data, error } = await supabase
+    .from('servicebericht_tage')
+    .select('*, serviceberichte!inner(techniker_id)')
+    .in('datum', eindeutigeDaten)
+    .eq('serviceberichte.techniker_id', technikerId)
+  if (error) throw error
+  const kontext: Tageskontext = {}
+  for (const row of (data || []) as unknown as (ServiceberichtTag & { serviceberichte: unknown })[]) {
+    const { serviceberichte: _weg, ...tag } = row
+    ;(kontext[tag.datum] ||= []).push(tag as ServiceberichtTag)
+  }
+  return kontext
 }

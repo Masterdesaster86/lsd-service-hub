@@ -3,7 +3,7 @@ import type { jsPDF } from 'jspdf'
 import { supabase } from '../../lib/supabase'
 import { SignaturePad, type SignaturePadHandle } from '../../components/ui/SignaturePad'
 import { useToast } from '../../components/ui/Toast'
-import { calcBerichtSpesen, calcBerichtTotals } from '../../lib/zeit'
+import { calcBerichtSpesen, calcBerichtTotalsMitKontext, type Tageskontext } from '../../lib/zeit'
 import { berichtPdfFilename, buildBerichtPdf, sharePdf } from '../../lib/pdf'
 import { adresseInZwischenablage, berichtMailBetreff, berichtMailText, berichtMailtoUrl } from '../../lib/berichtMail'
 import type { Employee, Machine, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from '../../lib/types'
@@ -11,6 +11,7 @@ import type { Employee, Machine, OrderWithRelations, Servicebericht, Serviceberi
 interface Props {
   bericht: Servicebericht
   tage: ServiceberichtTag[]
+  tageskontext: Tageskontext
   ersatzteile: ServiceberichtErsatzteil[]
   machine: Machine | undefined
   techniker: Employee | undefined
@@ -19,14 +20,14 @@ interface Props {
   onDone: () => void
 }
 
-export function SignView({ bericht, tage, ersatzteile, machine, techniker, order, onBack, onDone }: Props) {
+export function SignView({ bericht, tage, tageskontext, ersatzteile, machine, techniker, order, onBack, onDone }: Props) {
   const toast = useToast()
   const sigTechRef = useRef<SignaturePadHandle>(null)
   const sigKundeRef = useRef<SignaturePadHandle>(null)
   const [saving, setSaving] = useState(false)
   const [sharing, setSharing] = useState(false)
   const [completedPdf, setCompletedPdf] = useState<jsPDF | null>(null)
-  const totals = calcBerichtTotals(tage)
+  const totals = calcBerichtTotalsMitKontext(tage, tageskontext)
   const spesen = calcBerichtSpesen(tage)
 
   async function uploadSignature(blob: Blob, who: 'techniker' | 'kunde') {
@@ -57,7 +58,7 @@ export function SignView({ bericht, tage, ersatzteile, machine, techniker, order
 
       const pdf = await buildBerichtPdf({
         bericht: { ...bericht, status: 'abgeschlossen', abgeschlossen_am: abgeschlossenAm },
-        tage, ersatzteile, machine, techniker, order,
+        tage, tageskontext, ersatzteile, machine, techniker, order,
         technikerSignatureDataUrl: techDataUrl,
         kundeSignatureDataUrl: kundeDataUrl,
       })

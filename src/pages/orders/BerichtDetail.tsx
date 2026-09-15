@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../lib/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { fetchOrder } from '../../lib/queries'
+import { fetchOrder, fetchTageskontext } from '../../lib/queries'
 import type { Employee, Machine, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from '../../lib/types'
 import { BerichtStatusTag } from '../../components/ui/StatusTag'
-import { calcBerichtSpesen, calcBerichtTotals, calcDay } from '../../lib/zeit'
+import { calcBerichtSpesen, calcBerichtTotalsMitKontext, calcTagMitKontext, type Tageskontext } from '../../lib/zeit'
 import { hhmm } from '../../lib/format'
 import { berichtPdfFilename, buildBerichtPdf, sharePdf, urlToDataUrl } from '../../lib/pdf'
 import { adresseInZwischenablage, berichtMailBetreff, berichtMailText, berichtMailtoUrl } from '../../lib/berichtMail'
@@ -27,6 +27,7 @@ export function BerichtDetail() {
   const [bericht, setBericht] = useState<Servicebericht | null>(null)
   const [order, setOrder] = useState<OrderWithRelations | null>(null)
   const [tage, setTage] = useState<ServiceberichtTag[]>([])
+  const [tageskontext, setTageskontext] = useState<Tageskontext>({})
   const [ersatzteile, setErsatzteile] = useState<ServiceberichtErsatzteil[]>([])
   const [machine, setMachine] = useState<Machine | null>(null)
   const [techniker, setTechniker] = useState<Employee | null>(null)
@@ -62,6 +63,10 @@ export function BerichtDetail() {
     setMachine(m)
     setTechniker(tech)
     setHasNachtrag((nachtraege || []).length > 0)
+    // Für die korrekte 10h-Schwelle: auch die Zeiten anderer Serviceberichte
+    // desselben Technikers an denselben Kalendertagen laden (z.B. wenn an
+    // einem Tag mehrere Maschinen bearbeitet wurden).
+    setTageskontext(await fetchTageskontext(b.techniker_id, (t || []).map((x) => x.datum)))
   }
 
   useEffect(() => { load() }, [id])
@@ -70,7 +75,7 @@ export function BerichtDetail() {
 
   const isOwner = employee?.id === bericht.techniker_id
   const editable = bericht.status === 'offen' && isOwner
-  const totals = calcBerichtTotals(tage)
+  const totals = calcBerichtTotalsMitKontext(tage, tageskontext)
   const spesen = calcBerichtSpesen(tage)
   const letzterTag = tage[tage.length - 1]
   const fruehereRueckreiseFehlt = tage.length > 1 && tage.slice(0, -1).some((t) => !t.rueckreise_bis)
@@ -82,6 +87,7 @@ export function BerichtDetail() {
       <SignView
         bericht={bericht}
         tage={tage}
+        tageskontext={tageskontext}
         ersatzteile={ersatzteile}
         machine={machine || undefined}
         techniker={techniker || undefined}
@@ -124,7 +130,7 @@ export function BerichtDetail() {
       bericht.kunde_unterschrift_url ? urlToDataUrl(bericht.kunde_unterschrift_url) : Promise.resolve(null),
     ])
     return buildBerichtPdf({
-      bericht, tage, ersatzteile, machine: machine || undefined, techniker: techniker || undefined, order,
+      bericht, tage, tageskontext, ersatzteile, machine: machine || undefined, techniker: techniker || undefined, order,
       technikerSignatureDataUrl: techDataUrl,
       kundeSignatureDataUrl: kundeDataUrl,
     })
@@ -233,7 +239,7 @@ export function BerichtDetail() {
       ) : (
         <div className="flex flex-col gap-1.5 mb-4">
           {tage.map((tag) => {
-            const d = calcDay(tag)
+            const d = calcTagMitKontext(tag, tageskontext[tag.datum] || [tag])
             const feiertag = d.arbeitZuschlag100 > 0 || d.reiseZuschlag100 > 0
             const samstag = !feiertag && (d.arbeitZuschlag50 > 0 || d.reiseZuschlag50 > 0) && d.arbeitNormal === 0 && d.reiseNormal === 0
             const zuschlagText = feiertag

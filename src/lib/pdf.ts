@@ -5,7 +5,7 @@ import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { LOGO_URL, PDF_HINTERGRUND_URL } from './branding'
 import type { Ansprechpartner, Customer, Employee, Machine, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from './types'
-import { calcBerichtTotals, calcDay } from './zeit'
+import { calcBerichtTotalsMitKontext, calcTagMitKontext, type DayTotals, type Tageskontext } from './zeit'
 import { formatDateDE, hhmm } from './format'
 
 const GRAPHITE = '#1B1F24'
@@ -200,6 +200,7 @@ function ensureSpace(doc: jsPDF, y: number, needed: number): number {
 export interface BerichtPdfInput {
   bericht: Servicebericht
   tage: ServiceberichtTag[]
+  tageskontext: Tageskontext
   ersatzteile: ServiceberichtErsatzteil[]
   machine: Machine | undefined
   techniker: Employee | undefined
@@ -209,10 +210,10 @@ export interface BerichtPdfInput {
 }
 
 export async function buildBerichtPdf(input: BerichtPdfInput): Promise<jsPDF> {
-  const { bericht, tage, ersatzteile, machine, techniker, order } = input
+  const { bericht, tage, tageskontext, ersatzteile, machine, techniker, order } = input
   const [logo, hintergrund] = await Promise.all([bildAlsDataUrl(LOGO_URL), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-  const totals = calcBerichtTotals(tage)
+  const totals = calcBerichtTotalsMitKontext(tage, tageskontext)
 
   setupPage(doc, hintergrund)
   let y = drawHeader(doc, logo, 'SERVICEBERICHT', [
@@ -270,7 +271,7 @@ export async function buildBerichtPdf(input: BerichtPdfInput): Promise<jsPDF> {
       headStyles: { fillColor: GRAPHITE, textColor: '#ffffff' },
       head: [['Datum', 'Hinreise ab', 'Arbeit von–bis', 'Rückreise bis', 'Pause', 'Reise', 'Arbeit']],
       body: tage.map((t) => {
-        const d = calcDay(t)
+        const d = calcTagMitKontext(t, tageskontext[t.datum] || [t])
         const reiseTxt = [
           d.reiseNormal ? `${fmt(d.reiseNormal)} h` : null,
           d.reiseZuschlag50 ? `+ ${fmt(d.reiseZuschlag50)} h à 150%` : null,
@@ -407,7 +408,7 @@ export interface NachweisZeile {
   datum: string
   auftrag: string
   maschine: string
-  d: ReturnType<typeof calcDay>
+  d: DayTotals
   verpflegung: number
   hotelkosten: number
 }

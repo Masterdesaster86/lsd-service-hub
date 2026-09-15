@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../lib/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { fetchOrder } from '../../lib/queries'
+import { fetchOrder, fetchTageskontext } from '../../lib/queries'
 import type { OrderWithRelations, Servicebericht, ServiceberichtTag } from '../../lib/types'
 import { OrderStatusTag, BerichtStatusTag } from '../../components/ui/StatusTag'
 import { customerAddress, mapsLink, telHref, formatDateDE } from '../../lib/format'
-import { calcBerichtTotals } from '../../lib/zeit'
+import { calcBerichtTotalsMitKontext, type Tageskontext } from '../../lib/zeit'
 import { OrderFormModal } from './OrderFormModal'
 import { NewBerichtModal } from './NewBerichtModal'
 import { useConfirm } from '../../components/ui/ConfirmProvider'
@@ -26,6 +26,7 @@ export function OrderDetail() {
   const toast = useToast()
   const [order, setOrder] = useState<OrderWithRelations | null>(null)
   const [berichte, setBerichte] = useState<BerichtRow[] | null>(null)
+  const [kontexteProTechniker, setKontexteProTechniker] = useState<Record<string, Tageskontext>>({})
   const [showEdit, setShowEdit] = useState(false)
   const [showNewBericht, setShowNewBericht] = useState(false)
 
@@ -38,7 +39,20 @@ export function OrderDetail() {
       .select('*, tage:servicebericht_tage(*), machines(bezeichnung), employees(name)')
       .eq('auftrag_id', id)
       .order('bericht_nummer')
-    setBerichte((data as BerichtRow[]) || [])
+    const rows = (data as BerichtRow[]) || []
+    setBerichte(rows)
+
+    // Für die korrekte 10h-Schwelle: pro Techniker auch die Zeiten seiner
+    // anderen Serviceberichte an denselben Kalendertagen laden (z.B. wenn an
+    // einem Tag mehrere Maschinen bearbeitet wurden). Getrennt pro Techniker,
+    // damit sich nicht die Arbeitstage verschiedener Personen vermischen.
+    const technikerIds = [...new Set(rows.map((b) => b.techniker_id))]
+    const kontexte = await Promise.all(
+      technikerIds.map((tid) => fetchTageskontext(tid, rows.filter((b) => b.techniker_id === tid).flatMap((b) => b.tage.map((t) => t.datum)))),
+    )
+    const neuKontexteProTechniker: Record<string, Tageskontext> = {}
+    technikerIds.forEach((tid, i) => { neuKontexteProTechniker[tid] = kontexte[i] })
+    setKontexteProTechniker(neuKontexteProTechniker)
   }
 
   useEffect(() => { load() }, [id])
@@ -128,7 +142,7 @@ export function OrderDetail() {
       ) : (
         <div className="flex flex-col gap-2">
           {berichte.map((b) => {
-            const totals = calcBerichtTotals(b.tage)
+            const totals = calcBerichtTotalsMitKontext(b.tage, kontexteProTechniker[b.techniker_id] || {})
             const zuschlag = Math.round((totals.arbeitZuschlag50 + totals.reiseZuschlag50 + totals.arbeitZuschlag100 + totals.reiseZuschlag100) * 100) / 100
             return (
               <div key={b.id} onClick={() => navigate(`/berichte/${b.id}`)} className="card p-4 cursor-pointer hover:border-amber transition-colors flex items-start justify-between gap-4 flex-wrap">

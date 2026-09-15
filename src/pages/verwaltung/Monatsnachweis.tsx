@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import { useToast } from '../../components/ui/Toast'
-import { calcDay, calcTagesspesen } from '../../lib/zeit'
+import { calcTagMitKontext, calcTagesspesen, type DayTotals, type Tageskontext } from '../../lib/zeit'
 import { buildNachweisPdf } from '../../lib/pdf'
 import type { ServiceberichtTag } from '../../lib/types'
 
@@ -20,7 +20,7 @@ interface Zeile {
   datum: string
   auftrag: string
   maschine: string
-  d: ReturnType<typeof calcDay>
+  d: DayTotals
   verpflegung: number
   hotelkosten: number
 }
@@ -42,6 +42,15 @@ export function Monatsnachweis({ monatWert, onBack }: { monatWert: string; onBac
       .eq('techniker_id', employee.id)
       .then(({ data }) => {
         const berichte = (data as unknown as BerichtWithTage[]) || []
+
+        // Alle Tage dieses Technikers (über alle seine Serviceberichte hinweg,
+        // egal welcher Auftrag/welche Maschine) nach Kalendertag gruppieren.
+        // So lässt sich die 10h-Schwelle korrekt einmal pro echtem Arbeitstag
+        // anwenden, auch wenn an einem Tag mehrere Maschinen bearbeitet
+        // wurden — statt (falsch) für jeden Servicebericht neu bei 0 zu starten.
+        const kontext: Tageskontext = {}
+        berichte.forEach((b) => b.tage.forEach((tag) => { (kontext[tag.datum] ||= []).push(tag) }))
+
         const rows: Zeile[] = []
         berichte.forEach((b) => {
           const spesen = calcTagesspesen(b.tage)
@@ -52,7 +61,7 @@ export function Monatsnachweis({ monatWert, onBack }: { monatWert: string; onBac
               datum: tag.datum,
               auftrag: b.auftrag_id,
               maschine: b.machines?.bezeichnung || b.maschine_id,
-              d: calcDay(tag),
+              d: calcTagMitKontext(tag, kontext[tag.datum] || [tag]),
               verpflegung: spesen[i].verpflegung,
               hotelkosten: spesen[i].hotelkosten,
             })
