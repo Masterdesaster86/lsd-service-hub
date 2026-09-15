@@ -6,24 +6,30 @@ import { useToast } from '../../components/ui/Toast'
 import { calcDay, istSamstag, istSonnOderFeiertag, formatISO } from '../../lib/zeit'
 import type { ServiceberichtTag } from '../../lib/types'
 
-export function TagFormModal({ berichtId, onClose, onSaved }: { berichtId: string; onClose: () => void; onSaved: () => void }) {
+/**
+ * Legt einen neuen Tag an ODER bearbeitet einen bestehenden, noch offenen
+ * Tag komplett — z.B. wenn morgens erstmal nur die Anreise eingetragen wird
+ * und abends der Rest (Arbeitsende, Pause, Rückreise) ergänzt werden soll.
+ */
+export function TagFormModal({ berichtId, tag, onClose, onSaved }: { berichtId: string; tag?: ServiceberichtTag; onClose: () => void; onSaved: () => void }) {
+  const bearbeiten = !!tag
   const toast = useToast()
-  const [datum, setDatum] = useState(formatISO(new Date()))
+  const [datum, setDatum] = useState(tag?.datum || formatISO(new Date()))
   // Aus: an diesem Tag schon vor Ort (z.B. zweite/dritte Maschine desselben
   // Kundenbesuchs) — dann gibt's an diesem Bericht keine eigene Anreise.
-  const [hinreiseAn, setHinreiseAn] = useState(true)
-  const [hinreiseVon, setHinreiseVon] = useState('07:00')
-  const [kmHin, setKmHin] = useState('')
-  const [arbeitsbeginn, setArbeitsbeginn] = useState('09:00')
-  const [arbeitsende, setArbeitsende] = useState('17:00')
-  const [rueBekannt, setRueBekannt] = useState(true)
-  const [rueckreiseBis, setRueckreiseBis] = useState('19:00')
-  const [kmRueck, setKmRueck] = useState('')
-  const [pauseAn, setPauseAn] = useState(false)
-  const [pauseVon, setPauseVon] = useState('12:00')
-  const [pauseBis, setPauseBis] = useState('12:30')
-  const [uebernachtung, setUebernachtung] = useState(false)
-  const [hotelkosten, setHotelkosten] = useState('')
+  const [hinreiseAn, setHinreiseAn] = useState(tag ? !!tag.hinreise_von : true)
+  const [hinreiseVon, setHinreiseVon] = useState(tag?.hinreise_von || '07:00')
+  const [kmHin, setKmHin] = useState(tag?.km_hin != null ? String(tag.km_hin) : '')
+  const [arbeitsbeginn, setArbeitsbeginn] = useState(tag?.arbeitsbeginn || '09:00')
+  const [arbeitsende, setArbeitsende] = useState(tag?.arbeitsende || '17:00')
+  const [rueBekannt, setRueBekannt] = useState(tag ? !!tag.rueckreise_bis : true)
+  const [rueckreiseBis, setRueckreiseBis] = useState(tag?.rueckreise_bis || '19:00')
+  const [kmRueck, setKmRueck] = useState(tag?.km_rueck != null ? String(tag.km_rueck) : '')
+  const [pauseAn, setPauseAn] = useState(tag ? !!tag.pause_von : false)
+  const [pauseVon, setPauseVon] = useState(tag?.pause_von || '12:00')
+  const [pauseBis, setPauseBis] = useState(tag?.pause_bis || '12:30')
+  const [uebernachtung, setUebernachtung] = useState(tag?.uebernachtung || false)
+  const [hotelkosten, setHotelkosten] = useState(tag?.hotelkosten != null ? String(tag.hotelkosten) : '')
   const [saving, setSaving] = useState(false)
 
   const draft: ServiceberichtTag = useMemo(() => ({
@@ -47,8 +53,7 @@ export function TagFormModal({ berichtId, onClose, onSaved }: { berichtId: strin
 
   async function handleSave() {
     setSaving(true)
-    const { error } = await supabase.from('servicebericht_tage').insert({
-      servicebericht_id: berichtId,
+    const payload = {
       datum: draft.datum,
       hinreise_von: draft.hinreise_von,
       km_hin: draft.km_hin,
@@ -60,16 +65,19 @@ export function TagFormModal({ berichtId, onClose, onSaved }: { berichtId: strin
       pause_bis: draft.pause_bis,
       uebernachtung: draft.uebernachtung,
       hotelkosten: draft.hotelkosten,
-    })
+    }
+    const { error } = bearbeiten
+      ? await supabase.from('servicebericht_tage').update(payload).eq('id', tag!.id)
+      : await supabase.from('servicebericht_tage').insert({ servicebericht_id: berichtId, ...payload })
     setSaving(false)
     if (error) { toast('Fehler: ' + error.message); return }
-    toast('Tag gespeichert.')
+    toast(bearbeiten ? 'Tag aktualisiert.' : 'Tag gespeichert.')
     onSaved()
   }
 
   return (
     <Modal onClose={onClose} width={600}>
-      <ModalTitle>Tag erfassen</ModalTitle>
+      <ModalTitle>{bearbeiten ? 'Tag bearbeiten' : 'Tag erfassen'}</ModalTitle>
       <p className="text-sm text-ink-soft -mt-3 mb-4">Zeiten im 15-Minuten-Raster</p>
 
       <div className="mb-3.5"><label>Datum</label><input type="date" value={datum} onChange={(e) => setDatum(e.target.value)} /></div>

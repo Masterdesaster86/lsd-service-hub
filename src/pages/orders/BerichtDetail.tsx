@@ -13,7 +13,6 @@ import { useConfirm } from '../../components/ui/ConfirmProvider'
 import { useToast } from '../../components/ui/Toast'
 import { TagFormModal } from './TagFormModal'
 import { ErsatzteilModal } from './ErsatzteilModal'
-import { RueckreiseModal } from './RueckreiseModal'
 import { RueckreiseNachtragModal } from './RueckreiseNachtragModal'
 import { SignView } from './SignView'
 
@@ -36,7 +35,7 @@ export function BerichtDetail() {
   const [mode, setMode] = useState<'view' | 'sign'>('view')
   const [showTagForm, setShowTagForm] = useState(false)
   const [showTeilForm, setShowTeilForm] = useState(false)
-  const [rueckreiseTag, setRueckreiseTag] = useState<ServiceberichtTag | null>(null)
+  const [editTag, setEditTag] = useState<ServiceberichtTag | null>(null)
   const [showRueckreiseNachtrag, setShowRueckreiseNachtrag] = useState(false)
   const [downloadingPdf, setDownloadingPdf] = useState(false)
   const [sharingPdf, setSharingPdf] = useState(false)
@@ -261,7 +260,7 @@ export function BerichtDetail() {
                 <div className="text-ink-soft text-xs">{zuschlagText}</div>
                 {editable && (
                   <div className="flex gap-1.5">
-                    <button className="btn btn-outline btn-sm" onClick={() => setRueckreiseTag(tag)}>{tag.rueckreise_bis ? 'Rückreise ändern' : 'Rückreise nachtragen'}</button>
+                    <button className="btn btn-outline btn-sm" onClick={() => setEditTag(tag)}>Bearbeiten</button>
                     <button className="btn btn-danger btn-sm" onClick={() => deleteTag(tag.id)}>Löschen</button>
                   </div>
                 )}
@@ -347,8 +346,8 @@ export function BerichtDetail() {
       )}
 
       {showTagForm && <TagFormModal berichtId={bericht.id} onClose={() => setShowTagForm(false)} onSaved={() => { setShowTagForm(false); load() }} />}
+      {editTag && <TagFormModal berichtId={bericht.id} tag={editTag} onClose={() => setEditTag(null)} onSaved={() => { setEditTag(null); load() }} />}
       {showTeilForm && <ErsatzteilModal berichtId={bericht.id} onClose={() => setShowTeilForm(false)} onSaved={() => { setShowTeilForm(false); load() }} />}
-      {rueckreiseTag && <RueckreiseModal tag={rueckreiseTag} onClose={() => setRueckreiseTag(null)} onSaved={() => { setRueckreiseTag(null); load() }} />}
       {showRueckreiseNachtrag && letzterTag && (
         <RueckreiseNachtragModal bericht={bericht} letzterTag={letzterTag} onClose={() => setShowRueckreiseNachtrag(false)} onSaved={() => { setShowRueckreiseNachtrag(false); load() }} />
       )}
