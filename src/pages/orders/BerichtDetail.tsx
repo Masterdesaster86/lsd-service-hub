@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { fetchOrder, fetchTageskontext } from '../../lib/queries'
 import type { Employee, Machine, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from '../../lib/types'
 import { BerichtStatusTag } from '../../components/ui/StatusTag'
-import { calcBerichtSpesen, calcBerichtTotalsMitKontext, calcTagMitKontext, type Tageskontext } from '../../lib/zeit'
+import { calcBerichtSpesen, calcBerichtTotalsMitKontext, calcTagMitKontext, istSamstag, istSonnOderFeiertag, type Tageskontext } from '../../lib/zeit'
 import { hhmm } from '../../lib/format'
 import { berichtPdfFilename, buildBerichtPdf, sharePdf, urlToDataUrl } from '../../lib/pdf'
 import { adresseInZwischenablage, berichtMailBetreff, berichtMailText, berichtMailtoUrl } from '../../lib/berichtMail'
@@ -235,8 +235,12 @@ export function BerichtDetail() {
         <div className="flex flex-col gap-1.5 mb-4">
           {tage.map((tag) => {
             const d = calcTagMitKontext(tag, tageskontext[tag.datum] || [tag])
-            const feiertag = d.arbeitZuschlag100 > 0 || d.reiseZuschlag100 > 0
-            const samstag = !feiertag && (d.arbeitZuschlag50 > 0 || d.reiseZuschlag50 > 0) && d.arbeitNormal === 0 && d.reiseNormal === 0
+            // Anhand des echten Datums bestimmen, nicht daran, ob zufällig
+            // 0h normal rauskommt — das passiert bei einem ganz normalen
+            // Werktag genauso, sobald die 10h-Schwelle schon durch einen
+            // früheren Bericht desselben Tages aufgebraucht ist.
+            const feiertag = istSonnOderFeiertag(tag.datum)
+            const samstag = !feiertag && istSamstag(tag.datum)
             const zuschlagText = feiertag
               ? `${d.arbeitZuschlag100 ? `${d.arbeitZuschlag100}h Arbeit à 200%` : ''}${d.reiseZuschlag100 ? ` · ${d.reiseZuschlag100}h Reise à 200%` : ''}`
               : samstag
