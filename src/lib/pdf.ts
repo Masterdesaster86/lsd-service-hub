@@ -413,7 +413,12 @@ export async function buildMessprotokollPdf(input: MessprotokollPdfInput): Promi
   ])
   y = divider(doc, y)
 
+  // Nur tatsächlich ausgefüllte Prüfpunkte ins PDF — nicht bearbeitete
+  // Abschnitte (z.B. weil bei diesem Einsatz nur ein Teil der Geometrie
+  // geprüft wurde) fallen dadurch ganz weg, statt mit lauter "–" aufzufallen.
   typDef.gruppen.forEach((gruppe) => {
+    const ausgefuellt = gruppe.punkte.filter((p) => (werte[p.key] || '').trim())
+    if (ausgefuellt.length === 0) return
     y = ensureSpace(doc, y, 24)
     y = sectionTitle(doc, gruppe.titel, y)
     autoTable(doc, {
@@ -423,11 +428,19 @@ export async function buildMessprotokollPdf(input: MessprotokollPdfInput): Promi
       headStyles: { fillColor: GRAPHITE, textColor: '#ffffff' },
       columnStyles: { 0: { cellWidth: 12 }, 2: { cellWidth: 32 }, 3: { cellWidth: 38 }, 4: { cellWidth: 26 } },
       head: [['Nr.', 'Prüfpunkt', 'Prüfmittel', 'Zulässige Abweichung', 'Gemessen']],
-      body: gruppe.punkte.map((p) => [p.nr, p.bezeichnung, p.pruefmittel, p.toleranz, werte[p.key] || '–']),
+      body: ausgefuellt.map((p) => [p.nr, p.bezeichnung, p.pruefmittel, p.toleranz, werte[p.key]]),
     })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     y = (doc as any).lastAutoTable.finalY + 8
   })
+
+  const nichtsAusgefuellt = typDef.gruppen.every((g) => g.punkte.every((p) => !(werte[p.key] || '').trim()))
+  if (nichtsAusgefuellt) {
+    doc.setFontSize(9.5)
+    doc.setTextColor(INK_SOFT)
+    doc.text('Keine Messwerte erfasst.', MARGIN, y)
+    doc.setTextColor(INK)
+  }
 
   drawFooterAndPageNumbers(doc)
   return doc
