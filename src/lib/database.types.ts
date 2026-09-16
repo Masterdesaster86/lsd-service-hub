@@ -7,6 +7,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -324,6 +326,80 @@ export type Database = {
             columns: ["kunde_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messprotokolle: {
+        Row: {
+          abgeschlossen_am: string | null
+          abnehmer: string | null
+          auftrag_id: string
+          erstellt_am: string
+          id: string
+          maschine_id: string
+          pp_nummer: string | null
+          servicebericht_id: string | null
+          status: string
+          techniker_id: string
+          typ: string
+          werte: Json
+        }
+        Insert: {
+          abgeschlossen_am?: string | null
+          abnehmer?: string | null
+          auftrag_id: string
+          erstellt_am?: string
+          id?: string
+          maschine_id: string
+          pp_nummer?: string | null
+          servicebericht_id?: string | null
+          status?: string
+          techniker_id: string
+          typ: string
+          werte?: Json
+        }
+        Update: {
+          abgeschlossen_am?: string | null
+          abnehmer?: string | null
+          auftrag_id?: string
+          erstellt_am?: string
+          id?: string
+          maschine_id?: string
+          pp_nummer?: string | null
+          servicebericht_id?: string | null
+          status?: string
+          techniker_id?: string
+          typ?: string
+          werte?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messprotokolle_auftrag_id_fkey"
+            columns: ["auftrag_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messprotokolle_maschine_id_fkey"
+            columns: ["maschine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messprotokolle_servicebericht_id_fkey"
+            columns: ["servicebericht_id"]
+            isOneToOne: false
+            referencedRelation: "serviceberichte"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messprotokolle_techniker_id_fkey"
+            columns: ["techniker_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
         ]
@@ -673,6 +749,113 @@ export type Database = {
           },
         ]
       }
+      wissen_chunks: {
+        Row: {
+          chunk_index: number
+          created_at: string
+          dokument_id: string
+          embedding: string | null
+          id: string
+          inhalt: string
+        }
+        Insert: {
+          chunk_index: number
+          created_at?: string
+          dokument_id: string
+          embedding?: string | null
+          id?: string
+          inhalt: string
+        }
+        Update: {
+          chunk_index?: number
+          created_at?: string
+          dokument_id?: string
+          embedding?: string | null
+          id?: string
+          inhalt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wissen_chunks_dokument_id_fkey"
+            columns: ["dokument_id"]
+            isOneToOne: false
+            referencedRelation: "wissen_dokumente"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wissen_dokumente: {
+        Row: {
+          dateiname: string
+          groesse_bytes: number | null
+          hinzugefuegt_am: string
+          id: string
+          maschinenmodell: string
+          ordnerpfad: string
+          sharepoint_uri: string
+          status: string
+          webseiten_url: string | null
+        }
+        Insert: {
+          dateiname: string
+          groesse_bytes?: number | null
+          hinzugefuegt_am?: string
+          id?: string
+          maschinenmodell: string
+          ordnerpfad?: string
+          sharepoint_uri: string
+          status?: string
+          webseiten_url?: string | null
+        }
+        Update: {
+          dateiname?: string
+          groesse_bytes?: number | null
+          hinzugefuegt_am?: string
+          id?: string
+          maschinenmodell?: string
+          ordnerpfad?: string
+          sharepoint_uri?: string
+          status?: string
+          webseiten_url?: string | null
+        }
+        Relationships: []
+      }
+      wissen_rohtext: {
+        Row: {
+          dateiname: string
+          groesse_bytes: number | null
+          id: string
+          maschinenmodell: string
+          naechster_chunk: number
+          ordnerpfad: string
+          rohtext: string
+          sharepoint_uri: string
+          verarbeitet: boolean
+        }
+        Insert: {
+          dateiname: string
+          groesse_bytes?: number | null
+          id?: string
+          maschinenmodell: string
+          naechster_chunk?: number
+          ordnerpfad?: string
+          rohtext: string
+          sharepoint_uri: string
+          verarbeitet?: boolean
+        }
+        Update: {
+          dateiname?: string
+          groesse_bytes?: number | null
+          id?: string
+          maschinenmodell?: string
+          naechster_chunk?: number
+          ordnerpfad?: string
+          rohtext?: string
+          sharepoint_uri?: string
+          verarbeitet?: boolean
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -682,6 +865,7 @@ export type Database = {
         Args: { p_bericht_id: string }
         Returns: boolean
       }
+      bytea_to_text: { Args: { data: string }; Returns: string }
       compute_order_status: { Args: { p_order_id: string }; Returns: string }
       current_employee: {
         Args: never
@@ -693,23 +877,321 @@ export type Database = {
           name: string
           role: string
         }
+        SetofOptions: {
+          from: "*"
+          to: "employees"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      http: {
+        Args: { request: Database["public"]["CompositeTypes"]["http_request"] }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+        SetofOptions: {
+          from: "http_request"
+          to: "http_response"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      http_delete:
+        | {
+            Args: { uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: { content: string; content_type: string; uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+      http_get:
+        | {
+            Args: { uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: { data: Json; uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+      http_head: {
+        Args: { uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+        SetofOptions: {
+          from: "*"
+          to: "http_response"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      http_header: {
+        Args: { field: string; value: string }
+        Returns: Database["public"]["CompositeTypes"]["http_header"]
+        SetofOptions: {
+          from: "*"
+          to: "http_header"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      http_list_curlopt: {
+        Args: never
+        Returns: {
+          curlopt: string
+          value: string
+        }[]
+      }
+      http_patch: {
+        Args: { content: string; content_type: string; uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+        SetofOptions: {
+          from: "*"
+          to: "http_response"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      http_post:
+        | {
+            Args: { content: string; content_type: string; uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: { data: Json; uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+      http_put: {
+        Args: { content: string; content_type: string; uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+        SetofOptions: {
+          from: "*"
+          to: "http_response"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      http_reset_curlopt: { Args: never; Returns: boolean }
+      http_set_curlopt: {
+        Args: { curlopt: string; value: string }
+        Returns: boolean
       }
       naechste_berichtnummer: { Args: never; Returns: string }
+      text_to_bytea: { Args: { data: string }; Returns: string }
+      urlencode:
+        | { Args: { data: Json }; Returns: string }
+        | {
+            Args: { string: string }
+            Returns: string
+          }
+      wissen_chunke: {
+        Args: {
+          chunk_groesse?: number
+          ueberlappung?: number
+          volltext: string
+        }
+        Returns: {
+          chunk_index: number
+          inhalt: string
+        }[]
+      }
+      wissen_hole_voyage_key: { Args: never; Returns: string }
+      wissen_suche: {
+        Args: { anzahl?: number; suchvektor: string }
+        Returns: {
+          aehnlichkeit: number
+          chunk_id: string
+          dateiname: string
+          dokument_id: string
+          inhalt: string
+          maschinenmodell: string
+          ordnerpfad: string
+          sharepoint_uri: string
+          webseiten_url: string
+        }[]
+      }
+      wissen_verarbeite_naechsten_batch: {
+        Args: { batch_groesse?: number }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
     }
     CompositeTypes: {
-      [_ in never]: never
+      http_header: {
+        field: string | null
+        value: string | null
+      }
+      http_request: {
+        method: unknown
+        uri: string | null
+        headers: Database["public"]["CompositeTypes"]["http_header"][] | null
+        content_type: string | null
+        content: string | null
+      }
+      http_response: {
+        status: number | null
+        content_type: string | null
+        headers: Database["public"]["CompositeTypes"]["http_header"][] | null
+        content: string | null
+      }
     }
   }
 }
 
-type DefaultSchema = Database["public"]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-export type Tables<T extends keyof DefaultSchema["Tables"]> =
-  DefaultSchema["Tables"][T]["Row"]
-export type TablesInsert<T extends keyof DefaultSchema["Tables"]> =
-  DefaultSchema["Tables"][T]["Insert"]
-export type TablesUpdate<T extends keyof DefaultSchema["Tables"]> =
-  DefaultSchema["Tables"][T]["Update"]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

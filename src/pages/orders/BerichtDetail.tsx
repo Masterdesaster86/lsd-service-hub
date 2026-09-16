@@ -13,6 +13,7 @@ import { useConfirm } from '../../components/ui/ConfirmProvider'
 import { useToast } from '../../components/ui/Toast'
 import { TagFormModal } from './TagFormModal'
 import { ErsatzteilModal } from './ErsatzteilModal'
+import { NeuesMessprotokollModal } from '../messprotokoll/NeuesMessprotokollModal'
 import { RueckreiseNachtragModal } from './RueckreiseNachtragModal'
 import { SignView } from './SignView'
 
@@ -35,6 +36,7 @@ export function BerichtDetail() {
   const [mode, setMode] = useState<'view' | 'sign'>('view')
   const [showTagForm, setShowTagForm] = useState(false)
   const [showTeilForm, setShowTeilForm] = useState(false)
+  const [showMessprotokollForm, setShowMessprotokollForm] = useState(false)
   const [editTag, setEditTag] = useState<ServiceberichtTag | null>(null)
   const [showRueckreiseNachtrag, setShowRueckreiseNachtrag] = useState(false)
   const [downloadingPdf, setDownloadingPdf] = useState(false)
@@ -270,6 +272,11 @@ export function BerichtDetail() {
         </div>
       )}
 
+      <div className="flex items-center gap-2 mb-4">
+        <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft">Messprotokoll</div>
+        {isOwner && <button className="btn btn-outline btn-sm" onClick={() => setShowMessprotokollForm(true)}>+ Messprotokoll</button>}
+      </div>
+
       <div className="flex items-center gap-2 mb-1">
         <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft">Ersatzteile</div>
         {editable && <button className="btn btn-outline btn-sm" onClick={() => setShowTeilForm(true)}>+ Ersatzteil</button>}
@@ -347,6 +354,15 @@ export function BerichtDetail() {
 
       {showTagForm && <TagFormModal berichtId={bericht.id} onClose={() => setShowTagForm(false)} onSaved={() => { setShowTagForm(false); load() }} />}
       {editTag && <TagFormModal berichtId={bericht.id} tag={editTag} onClose={() => setEditTag(null)} onSaved={() => { setEditTag(null); load() }} />}
+      {showMessprotokollForm && (
+        <NeuesMessprotokollModal
+          auftragId={order.id}
+          maschineId={bericht.maschine_id}
+          berichtId={bericht.id}
+          onClose={() => setShowMessprotokollForm(false)}
+          onCreated={(id) => navigate(`/messprotokolle/${id}`)}
+        />
+      )}
       {showTeilForm && <ErsatzteilModal berichtId={bericht.id} onClose={() => setShowTeilForm(false)} onSaved={() => { setShowTeilForm(false); load() }} />}
       {showRueckreiseNachtrag && letzterTag && (
         <RueckreiseNachtragModal bericht={bericht} letzterTag={letzterTag} onClose={() => setShowRueckreiseNachtrag(false)} onSaved={() => { setShowRueckreiseNachtrag(false); load() }} />

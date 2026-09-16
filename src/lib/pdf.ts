@@ -4,9 +4,10 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { LOGO_URL, PDF_HINTERGRUND_URL } from './branding'
-import type { Ansprechpartner, Customer, Employee, Machine, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from './types'
+import type { Ansprechpartner, Customer, Employee, Machine, Messprotokoll, Order, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from './types'
 import { calcBerichtTotalsMitKontext, calcTagMitKontext, type DayTotals, type Tageskontext } from './zeit'
 import { formatDateDE, hhmm } from './format'
+import { MESSPROTOKOLL_TYPEN, type MessprotokollTyp } from './messprotokoll'
 
 const GRAPHITE = '#1B1F24'
 // Firmenfarben, direkt aus dem Logo entnommen
@@ -365,6 +366,71 @@ function fmt(n: number): string {
 
 export function berichtPdfFilename(bericht: Servicebericht): string {
   return `${bericht.bericht_nummer}.pdf`
+}
+
+export function messprotokollPdfFilename(protokoll: Messprotokoll): string {
+  const kurz = protokoll.id.slice(0, 8)
+  return `Messprotokoll-${protokoll.auftrag_id}-${kurz}.pdf`
+}
+
+export interface MessprotokollPdfInput {
+  protokoll: Messprotokoll
+  order: Order | null
+  machine: Machine | null
+  kunde: Customer | null
+  techniker: Employee | null
+  abnehmer: string
+  ppNummer: string
+  werte: Record<string, string>
+}
+
+export async function buildMessprotokollPdf(input: MessprotokollPdfInput): Promise<jsPDF> {
+  const { protokoll, machine, kunde, techniker, abnehmer, ppNummer, werte } = input
+  const typDef = MESSPROTOKOLL_TYPEN[protokoll.typ as MessprotokollTyp]
+  const [logo, hintergrund] = await Promise.all([bildAlsDataUrl(LOGO_URL), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+
+  setupPage(doc, hintergrund)
+  let y = drawHeader(doc, logo, 'MESSPROTOKOLL', [
+    ['Auftragsnummer', `#${protokoll.auftrag_id}`],
+    ['PP-Nr.', ppNummer || '–'],
+  ])
+
+  y = fieldRow(doc, y, [
+    ['Typ', typDef.label],
+    ['Maschine', machine?.bezeichnung || protokoll.maschine_id],
+    ['Maschinennummer', machine?.nummer || '–'],
+  ])
+  y = fieldRow(doc, y, [
+    ['Kunde', kunde?.name || '–'],
+    ['Techniker', techniker?.name || '–'],
+    ['Abnehmer', abnehmer || '–'],
+  ])
+  y = fieldRow(doc, y, [
+    ['Erstellt am', formatDateDE(protokoll.erstellt_am?.slice(0, 10))],
+    ['Abgeschlossen am', protokoll.abgeschlossen_am ? formatDateDE(protokoll.abgeschlossen_am.slice(0, 10)) : '–'],
+    ['', ''],
+  ])
+  y = divider(doc, y)
+
+  typDef.gruppen.forEach((gruppe) => {
+    y = ensureSpace(doc, y, 24)
+    y = sectionTitle(doc, gruppe.titel, y)
+    autoTable(doc, {
+      startY: y,
+      margin: { left: MARGIN, right: MARGIN },
+      styles: { fontSize: 8, textColor: INK, lineColor: LINE, cellPadding: 2 },
+      headStyles: { fillColor: GRAPHITE, textColor: '#ffffff' },
+      columnStyles: { 0: { cellWidth: 12 }, 2: { cellWidth: 32 }, 3: { cellWidth: 38 }, 4: { cellWidth: 26 } },
+      head: [['Nr.', 'Prüfpunkt', 'Prüfmittel', 'Zulässige Abweichung', 'Gemessen']],
+      body: gruppe.punkte.map((p) => [p.nr, p.bezeichnung, p.pruefmittel, p.toleranz, werte[p.key] || '–']),
+    })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    y = (doc as any).lastAutoTable.finalY + 8
+  })
+
+  drawFooterAndPageNumbers(doc)
+  return doc
 }
 
 export function pdfToFile(doc: jsPDF, filename: string): File {
