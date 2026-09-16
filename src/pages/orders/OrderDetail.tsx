@@ -14,7 +14,7 @@ import { useToast } from '../../components/ui/Toast'
 
 interface BerichtRow extends Servicebericht {
   tage: ServiceberichtTag[]
-  machines: { bezeichnung: string } | null
+  machines: { bezeichnung: string; nummer: string | null; kunden_maschinennummer: string | null } | null
   employees: { name: string } | null
 }
 
@@ -36,7 +36,7 @@ export function OrderDetail() {
     setOrder(o)
     const { data } = await supabase
       .from('serviceberichte')
-      .select('*, tage:servicebericht_tage(*), machines(bezeichnung), employees(name)')
+      .select('*, tage:servicebericht_tage(*), machines(bezeichnung, nummer, kunden_maschinennummer), employees(name)')
       .eq('auftrag_id', id)
       .order('bericht_nummer')
     const rows = (data as BerichtRow[]) || []
@@ -149,6 +149,7 @@ export function OrderDetail() {
                 <div>
                   <div className="font-mono text-xs text-ink-soft">{b.bericht_nummer}</div>
                   <div className="font-semibold">{b.machines?.bezeichnung || '–'} · {b.employees?.name || '–'}{b.ist_nachtrag && <span className="text-ink-soft font-normal text-xs"> (Nachtrag)</span>}</div>
+                  <div className="text-[13px] text-ink-soft">Maschinennr. {b.machines?.nummer || '–'} · Kunden-Maschinennr. {b.machines?.kunden_maschinennummer || '–'}</div>
                   <div className="text-[13px] text-ink-soft">{b.tage.length} Tag(e) erfasst · Gesamt {totals.gesamt} h (davon {zuschlag} h Zuschlag)</div>
                 </div>
                 <BerichtStatusTag status={b.status} abgerechnet={b.abgerechnet} />
