@@ -57,12 +57,16 @@ jobs:
           # Passwort laeuft ueber LFTP_PASSWORD, damit Sonderzeichen nicht stoeren.
           SFTP_USER="$(printf '%s' "$SFTP_USER" | tr -d '[:space:]')"
           SFTP_HOST="$(printf '%s' "$SFTP_HOST" | tr -d '[:space:]')"
-          export LFTP_PASSWORD="$(printf '%s' "$SFTP_PASSWORD" | tr -d '\r\n')"
-          echo "Benutzer: ${#SFTP_USER} Zeichen, Host: $SFTP_HOST"
-          lftp -u "$SFTP_USER" -p 22 "sftp://$SFTP_HOST" -e "
-            set sftp:auto-confirm yes;
-            set net:max-retries 2;
-            set net:timeout 30;
-            mirror -R --parallel=4 --verbose dist/ /;
-            bye
-          "
+          PW="$(printf '%s' "$SFTP_PASSWORD" | tr -d '\r\n' | sed 's/[\\"]/\\&/g')"
+          SKRIPT="$RUNNER_TEMP/lftp-deploy.txt"
+          {
+            echo "set sftp:auto-confirm yes"
+            echo "set net:max-retries 2"
+            echo "set net:timeout 30"
+            echo "open -p 22 sftp://$SFTP_HOST"
+            echo "user \"$SFTP_USER\" \"$PW\""
+            echo "mirror -R --parallel=4 --verbose dist/ /"
+            echo "bye"
+          } > "$SKRIPT"
+          lftp -f "$SKRIPT"
+          rm -f "$SKRIPT"
