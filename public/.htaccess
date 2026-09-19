@@ -1,0 +1,29 @@
+# Apache-Konfiguration fuer das Hosting bei IONOS (Gegenstueck zur vercel.json).
+
+# Moderne Dateitypen, die Apache sonst evtl. falsch ausliefert. Besonders
+# wichtig: der pdf.js-Worker (.mjs) muss als JavaScript kommen, sonst
+# verweigert ihn der Browser (Firefox ist da streng).
+AddType text/javascript .mjs
+AddType application/manifest+json .webmanifest
+
+# index.html nie zwischenspeichern: Nach jedem Update soll sofort die neue
+# Version geladen werden (sonst hing Firefox zwischenzeitlich auf einem alten
+# Stand, dessen Dateinamen es nicht mehr gibt). Die Dateien unter /assets
+# haben ohnehin einen Hash im Namen und aendern sich nie.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|webmanifest)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>
+
+# Single-Page-App: Jeder Pfad, den es als Datei nicht gibt (z.B.
+# /auftraege/10102), landet in der index.html, das Routing uebernimmt dann
+# die App im Browser.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>

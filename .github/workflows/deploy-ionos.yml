@@ -1,0 +1,63 @@
+name: Deploy zu IONOS
+
+# Baut die App und laedt sie per SFTP ins Webspace-Verzeichnis (/public).
+# Laeuft bei jedem Push auf main und kann von Hand gestartet werden.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-ionos
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SFTP_HOST: ${{ secrets.IONOS_SFTP_HOST }}
+      SFTP_USER: ${{ secrets.IONOS_SFTP_USER }}
+      SFTP_PASSWORD: ${{ secrets.IONOS_SFTP_PASSWORD }}
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+    steps:
+      - name: Pruefen, ob alle Secrets hinterlegt sind
+        id: secrets
+        run: |
+          if [ -z "$SFTP_HOST" ] || [ -z "$SFTP_USER" ] || [ -z "$SFTP_PASSWORD" ] || [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "Es fehlen GitHub-Secrets - Deploy wird uebersprungen."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.secrets.outputs.ok == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.secrets.outputs.ok == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Abhaengigkeiten installieren
+        if: steps.secrets.outputs.ok == 'true'
+        run: npm ci
+
+      - name: Bauen
+        if: steps.secrets.outputs.ok == 'true'
+        run: npm run build
+
+      - name: Per SFTP hochladen
+        if: steps.secrets.outputs.ok == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq lftp
+          lftp -e "
+            set sftp:auto-confirm yes;
+            set net:max-retries 3;
+            set net:timeout 30;
+            open -p 22 -u \"$SFTP_USER\",\"$SFTP_PASSWORD\" sftp://$SFTP_HOST;
+            mirror -R --parallel=4 --verbose dist/ /;
+            bye
+          "
