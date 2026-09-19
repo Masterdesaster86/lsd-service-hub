@@ -53,11 +53,16 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq lftp
-          lftp -e "
+          # Leerzeichen/Zeilenumbrueche aus Benutzer und Host entfernen; das
+          # Passwort laeuft ueber LFTP_PASSWORD, damit Sonderzeichen nicht stoeren.
+          SFTP_USER="$(printf '%s' "$SFTP_USER" | tr -d '[:space:]')"
+          SFTP_HOST="$(printf '%s' "$SFTP_HOST" | tr -d '[:space:]')"
+          export LFTP_PASSWORD="$(printf '%s' "$SFTP_PASSWORD" | tr -d '\r\n')"
+          echo "Benutzer: ${#SFTP_USER} Zeichen, Host: $SFTP_HOST"
+          lftp -u "$SFTP_USER" -p 22 "sftp://$SFTP_HOST" -e "
             set sftp:auto-confirm yes;
-            set net:max-retries 3;
+            set net:max-retries 2;
             set net:timeout 30;
-            open -p 22 -u \"$SFTP_USER\",\"$SFTP_PASSWORD\" sftp://$SFTP_HOST;
             mirror -R --parallel=4 --verbose dist/ /;
             bye
           "
