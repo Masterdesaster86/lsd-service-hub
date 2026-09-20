@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../components/ui/Toast'
 import type { MachineBild } from '../../lib/types'
+import { nurHttpsUrl } from '../../lib/format'
 
 export function MachineBilderTab({ maschineId }: { maschineId: string }) {
   const toast = useToast()
@@ -11,7 +12,7 @@ export function MachineBilderTab({ maschineId }: { maschineId: string }) {
 
   async function load() {
     const { data } = await supabase.from('machine_bilder').select('*').eq('maschine_id', maschineId).order('created_at', { ascending: false })
-    setBilder(data || [])
+    setBilder((data || []).filter((b) => nurHttpsUrl(b.url)))
   }
 
   useEffect(() => { load() }, [maschineId])

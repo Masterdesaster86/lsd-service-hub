@@ -9,6 +9,18 @@ export function mapsLink(address: string): string {
   return `https://maps.apple.com/?q=${encodeURIComponent(address)}`
 }
 
+// Links aus der Datenbank nur übernehmen, wenn sie ein echtes https-Ziel sind.
+// So kann niemand ein "javascript:"-Ziel hinterlegen, das beim Anklicken Code
+// im Namen der App ausführt.
+export function nurHttpsUrl(url: string | null | undefined): string | undefined {
+  if (!url) return undefined
+  try {
+    return new URL(url).protocol === 'https:' ? url : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export function telHref(tel: string | null | undefined): string {
   return `tel:${(tel || '').replace(/[^+\d]/g, '')}`
 }

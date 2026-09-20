@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { nurHttpsUrl } from '../../lib/format'
 
 type Treffer = {
   dateiname: string
@@ -91,9 +92,9 @@ export function WissensSuche() {
             <div key={i} className="card p-4">
               <div className="flex items-start justify-between gap-3 flex-wrap mb-1.5">
                 <div>
-                  {t.webseitenUrl ? (
+                  {nurHttpsUrl(t.webseitenUrl) ? (
                     <a
-                      href={t.webseitenUrl}
+                      href={nurHttpsUrl(t.webseitenUrl)}
                       target="_blank"
                       rel="noreferrer"
                       className="font-semibold text-steel no-underline hover:underline"

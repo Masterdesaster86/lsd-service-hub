@@ -16,6 +16,26 @@ AddType application/manifest+json .webmanifest
   </FilesMatch>
 </IfModule>
 
+# Sicherheits-Header. Bewusst ohne Content-Security-Policy: die muss erst
+# gegen PDF-Anzeige, Login und Storage getestet werden.
+<IfModule mod_headers.c>
+  # Browser sollen diese Adresse ab jetzt nur noch verschluesselt aufrufen.
+  Header always set Strict-Transport-Security "max-age=15552000"
+  Header always set X-Content-Type-Options "nosniff"
+  # Die App darf nicht in fremden Seiten eingebettet werden (Clickjacking).
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Unverschluesselte Aufrufe (http://) auf https:// umleiten. Hinter dem
+# IONOS-Proxy zeigt teils nur X-Forwarded-Proto den echten Zugriff an.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
 # Single-Page-App: Jeder Pfad, den es als Datei nicht gibt (z.B.
 # /auftraege/10102), landet in der index.html, das Routing uebernimmt dann
 # die App im Browser.
