@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../lib/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { fetchOrder, fetchTageskontext } from '../../lib/queries'
-import type { Employee, Machine, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from '../../lib/types'
+import type { Employee, Machine, Messprotokoll, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from '../../lib/types'
+import { MessprotokollListe } from '../messprotokoll/MessprotokollListe'
 import { BerichtStatusTag } from '../../components/ui/StatusTag'
 import { calcBerichtSpesen, calcBerichtTotalsMitKontext, calcTagMitKontext, istSamstag, istSonnOderFeiertag, type Tageskontext } from '../../lib/zeit'
 import { hhmm } from '../../lib/format'
@@ -32,6 +33,7 @@ export function BerichtDetail() {
   const [machine, setMachine] = useState<Machine | null>(null)
   const [techniker, setTechniker] = useState<Employee | null>(null)
   const [hasNachtrag, setHasNachtrag] = useState(false)
+  const [messprotokolle, setMessprotokolle] = useState<Messprotokoll[]>([])
 
   const [mode, setMode] = useState<'view' | 'sign'>('view')
   const [showTagForm, setShowTagForm] = useState(false)
@@ -50,14 +52,16 @@ export function BerichtDetail() {
     const { data: b } = await supabase.from('serviceberichte').select('*').eq('id', id).maybeSingle()
     if (!b) { setBericht(null); return }
     setBericht(b)
-    const [o, { data: t }, { data: e }, { data: m }, { data: tech }, { data: nachtraege }] = await Promise.all([
+    const [o, { data: t }, { data: e }, { data: m }, { data: tech }, { data: nachtraege }, { data: mp }] = await Promise.all([
       fetchOrder(b.auftrag_id),
       supabase.from('servicebericht_tage').select('*').eq('servicebericht_id', b.id).order('datum'),
       supabase.from('servicebericht_ersatzteile').select('*').eq('servicebericht_id', b.id),
       supabase.from('machines').select('*').eq('id', b.maschine_id).maybeSingle(),
       supabase.from('employees').select('*').eq('id', b.techniker_id).maybeSingle(),
       supabase.from('serviceberichte').select('id').eq('nachtrag_zu', b.id),
+      supabase.from('messprotokolle').select('*').eq('servicebericht_id', b.id).order('erstellt_am'),
     ])
+    setMessprotokolle(mp || [])
     setOrder(o)
     setTage(t || [])
     setErsatzteile(e || [])
@@ -272,10 +276,13 @@ export function BerichtDetail() {
         </div>
       )}
 
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-1.5">
         <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft">Messprotokoll</div>
         {isOwner && <button className="btn btn-outline btn-sm" onClick={() => setShowMessprotokollForm(true)}>+ Messprotokoll</button>}
       </div>
+      {messprotokolle.length === 0
+        ? <div className="text-sm text-ink-soft mb-4">Noch kein Messprotokoll zu diesem Bericht.</div>
+        : <MessprotokollListe protokolle={messprotokolle} />}
 
       <div className="flex items-center gap-2 mb-1">
         <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft">Ersatzteile</div>

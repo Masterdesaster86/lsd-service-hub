@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../lib/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { fetchOrder, fetchTageskontext } from '../../lib/queries'
-import type { OrderWithRelations, Servicebericht, ServiceberichtTag } from '../../lib/types'
+import type { Messprotokoll, OrderWithRelations, Servicebericht, ServiceberichtTag } from '../../lib/types'
+import { MessprotokollListe } from '../messprotokoll/MessprotokollListe'
 import { OrderStatusTag, BerichtStatusTag } from '../../components/ui/StatusTag'
 import { customerAddress, mapsLink, telHref, formatDateDE } from '../../lib/format'
 import { calcBerichtTotalsMitKontext, type Tageskontext } from '../../lib/zeit'
@@ -27,6 +28,7 @@ export function OrderDetail() {
   const [order, setOrder] = useState<OrderWithRelations | null>(null)
   const [berichte, setBerichte] = useState<BerichtRow[] | null>(null)
   const [kontexteProTechniker, setKontexteProTechniker] = useState<Record<string, Tageskontext>>({})
+  const [messprotokolle, setMessprotokolle] = useState<Messprotokoll[]>([])
   const [showEdit, setShowEdit] = useState(false)
   const [showNewBericht, setShowNewBericht] = useState(false)
 
@@ -41,6 +43,8 @@ export function OrderDetail() {
       .order('bericht_nummer')
     const rows = (data as BerichtRow[]) || []
     setBerichte(rows)
+    const { data: mp } = await supabase.from('messprotokolle').select('*').eq('auftrag_id', id).order('erstellt_am')
+    setMessprotokolle(mp || [])
 
     // Für die korrekte 10h-Schwelle: pro Techniker auch die Zeiten seiner
     // anderen Serviceberichte an denselben Kalendertagen laden (z.B. wenn an
@@ -157,6 +161,16 @@ export function OrderDetail() {
             )
           })}
         </div>
+      )}
+
+      {messprotokolle.length > 0 && (
+        <>
+          <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft mt-6 mb-2">Messprotokolle</div>
+          <MessprotokollListe
+            protokolle={messprotokolle}
+            maschinen={Object.fromEntries(order.machines.map((m) => [m.id, m.bezeichnung]))}
+          />
+        </>
       )}
 
       {showEdit && <OrderFormModal order={order} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); load() }} />}
