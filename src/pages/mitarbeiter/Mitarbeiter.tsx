@@ -46,7 +46,7 @@ export function Mitarbeiter() {
           <h1>Mitarbeiter</h1>
           <p className="text-sm text-ink-soft mt-1">Benutzerkonten und Rollen verwalten.</p>
         </div>
-        <button className="btn btn-amber" onClick={() => setShowNew(true)}>+ Neuer Mitarbeiter</button>
+        <button className="btn btn-amber max-sm:w-full" onClick={() => setShowNew(true)}>+ Neuer Mitarbeiter</button>
       </div>
 
       {employees === null ? (
@@ -54,16 +54,18 @@ export function Mitarbeiter() {
       ) : (
         <div className="flex flex-col gap-2">
           {employees.map((e) => (
-            <div key={e.id} className="card p-4 flex items-center justify-between gap-3 flex-wrap">
-              <div>
-                <div className={`font-semibold ${e.aktiv ? '' : 'text-ink-soft'}`}>{e.name} {!e.aktiv && <span className="font-normal text-xs">(deaktiviert)</span>}</div>
-                <div className="text-[13px] text-ink-soft">{e.email || '–'}</div>
-                {!e.auth_user_id && (
-                  <div className="text-[13px] text-ink-soft mt-0.5">Noch kein Login — beim Bearbeiten ein Passwort vergeben.</div>
-                )}
+            <div key={e.id} className="card p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className={`font-semibold text-[16px] ${e.aktiv ? '' : 'text-ink-soft'}`}>{e.name} {!e.aktiv && <span className="font-normal text-xs">(deaktiviert)</span>}</div>
+                  <div className="text-[13.5px] text-ink-soft break-all">{e.email || '–'}</div>
+                </div>
+                <span className={`tag shrink-0 ${ROLE_TAG[e.role] || 'tag-neu'}`}>{e.role}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className={`tag ${ROLE_TAG[e.role] || 'tag-neu'}`}>{e.role}</span>
+              {!e.auth_user_id && (
+                <div className="text-[13px] text-ink-soft mt-1.5">Noch kein Login — beim Bearbeiten ein Passwort vergeben.</div>
+              )}
+              <div className="grid grid-cols-2 gap-2 mt-3 sm:max-w-md">
                 <button className="btn btn-outline btn-sm" onClick={() => setEditing(e)}>Bearbeiten</button>
                 <button className={`btn btn-sm ${e.aktiv ? 'btn-danger' : 'btn-outline'}`} onClick={() => toggleAktiv(e)}>{e.aktiv ? 'Deaktivieren' : 'Aktivieren'}</button>
               </div>
