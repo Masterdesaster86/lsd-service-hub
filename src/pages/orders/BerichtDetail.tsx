@@ -5,8 +5,10 @@ import { supabase } from '../../lib/supabase'
 import { fetchOrder, fetchTageskontext } from '../../lib/queries'
 import type { Employee, Machine, Messprotokoll, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from '../../lib/types'
 import { MessprotokollListe } from '../messprotokoll/MessprotokollListe'
+import { Icon } from '../../components/ui/Icon'
+import { Typenschild } from '../../components/ui/Typenschild'
 import { BerichtStatusTag } from '../../components/ui/StatusTag'
-import { calcBerichtSpesen, calcBerichtTotalsMitKontext, calcTagMitKontext, istSamstag, istSonnOderFeiertag, type Tageskontext } from '../../lib/zeit'
+import { WOCHENTAGE, calcBerichtSpesen, calcBerichtTotalsMitKontext, calcTagMitKontext, istSamstag, istSonnOderFeiertag, type Tageskontext } from '../../lib/zeit'
 import { hhmm } from '../../lib/format'
 import { berichtPdfFilename, buildBerichtPdf, sharePdf, urlToDataUrl } from '../../lib/pdf'
 import { adresseInZwischenablage, berichtMailBetreff, berichtMailText, berichtMailtoUrl } from '../../lib/berichtMail'
@@ -201,44 +203,44 @@ export function BerichtDetail() {
     load()
   }
 
+  const h = (n: number) => `${(Math.round(n * 100) / 100).toLocaleString('de-DE')} h`
+  const euro = (n: number) => `${n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
+
   return (
     <div>
-      <button className="btn btn-outline btn-sm mb-4" onClick={() => navigate(`/auftraege/${order.id}`)}>← Zurück zu Auftrag #{order.id}</button>
+      <button className="btn btn-outline btn-sm mb-4" onClick={() => navigate(`/auftraege/${order.id}`)}><Icon name="zurueck" size={18} /> Auftrag #{order.id}</button>
 
-      <div className="flex items-start justify-between gap-4 flex-wrap mb-4 card p-4">
-        <div>
-          <div className="text-lg font-semibold text-amber">{machine?.bezeichnung || bericht.maschine_id}</div>
-          <div className="font-semibold">Auftrag #{order.id} · {techniker?.name || '–'}</div>
-          <div className="font-mono text-xs text-ink-soft">{bericht.bericht_nummer}</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <BerichtStatusTag status={bericht.status} abgerechnet={bericht.abgerechnet} />
-          {canDeleteBericht && <button className="btn btn-danger btn-sm" onClick={handleDeleteBericht}>Löschen</button>}
-        </div>
+      <p className="eyebrow">Servicebericht</p>
+      <div className="flex items-start justify-between gap-3">
+        <h1>{bericht.bericht_nummer}</h1>
+        <BerichtStatusTag status={bericht.status} abgerechnet={bericht.abgerechnet} />
       </div>
+      <div className="font-semibold text-[17px] leading-snug mt-1.5">{machine?.bezeichnung || bericht.maschine_id}</div>
+      <div className="text-ink-soft text-[14px] mb-5">{order.einsatzkunde?.name || '–'} · {techniker?.name || '–'}</div>
 
-      <div className="grid grid-cols-2 gap-3.5 mb-3.5 max-sm:grid-cols-1">
+      <div className="grid grid-cols-2 gap-3 mb-3.5">
         <div>
           <label>Betriebsstunden</label>
-          <input type="number" disabled={!editable} defaultValue={bericht.betriebsstunden ?? ''} onBlur={(e) => updateField('betriebsstunden', e.target.value ? parseInt(e.target.value) : null)} />
+          <input type="number" inputMode="numeric" className="font-mono" disabled={!editable} defaultValue={bericht.betriebsstunden ?? ''} onBlur={(e) => updateField('betriebsstunden', e.target.value ? parseInt(e.target.value) : null)} />
         </div>
         <div>
           <label>Spindelstunden</label>
-          <input type="number" disabled={!editable} defaultValue={bericht.spindelstunden ?? ''} onBlur={(e) => updateField('spindelstunden', e.target.value ? parseInt(e.target.value) : null)} />
+          <input type="number" inputMode="numeric" className="font-mono" disabled={!editable} defaultValue={bericht.spindelstunden ?? ''} onBlur={(e) => updateField('spindelstunden', e.target.value ? parseInt(e.target.value) : null)} />
         </div>
       </div>
-      <div className="mb-3.5"><label>Fehlerbeschreibung</label><textarea rows={2} disabled={!editable} defaultValue={bericht.fehlerbeschreibung || ''} onBlur={(e) => updateField('fehlerbeschreibung', e.target.value)} /></div>
-      <div className="mb-3.5"><label>Durchgeführte Arbeiten</label><textarea rows={2} disabled={!editable} defaultValue={bericht.durchgefuehrte_arbeiten || ''} onBlur={(e) => updateField('durchgefuehrte_arbeiten', e.target.value)} /></div>
+      <div className="mb-3.5"><label>Fehlerbeschreibung</label><textarea rows={3} disabled={!editable} defaultValue={bericht.fehlerbeschreibung || ''} onBlur={(e) => updateField('fehlerbeschreibung', e.target.value)} /></div>
+      <div className="mb-3.5"><label>Durchgeführte Arbeiten</label><textarea rows={4} disabled={!editable} defaultValue={bericht.durchgefuehrte_arbeiten || ''} onBlur={(e) => updateField('durchgefuehrte_arbeiten', e.target.value)} /></div>
       <div className="mb-3.5"><label>Empfehlung</label><textarea rows={2} disabled={!editable} defaultValue={bericht.empfehlung || ''} onBlur={(e) => updateField('empfehlung', e.target.value)} /></div>
 
-      <div className="flex items-center gap-2 mt-5 mb-1">
+      {/* ------------------------------------------------ Tageserfassung */}
+      <div className="flex items-center justify-between gap-2 mt-7 mb-2">
         <div className="abschnitt">Tageserfassung</div>
-        {editable && <button className="btn btn-outline btn-sm" onClick={() => setShowTagForm(true)}>+ Tag erfassen</button>}
+        <span className="font-mono text-[13px] font-semibold">{h(totals.gesamt)}</span>
       </div>
       {tage.length === 0 ? (
-        <div className="text-sm text-ink-soft border border-dashed border-line p-4 text-center mb-4">Noch keine Tage erfasst.</div>
+        <div className="text-sm text-ink-soft border border-dashed border-line p-4 text-center mb-2">Noch keine Tage erfasst.</div>
       ) : (
-        <div className="flex flex-col gap-1.5 mb-4">
+        <div className="flex flex-col gap-2 mb-2">
           {tage.map((tag) => {
             const d = calcTagMitKontext(tag, tageskontext[tag.datum] || [tag])
             // Anhand des echten Datums bestimmen, nicht daran, ob zufällig
@@ -248,26 +250,44 @@ export function BerichtDetail() {
             const feiertag = istSonnOderFeiertag(tag.datum)
             const samstag = !feiertag && istSamstag(tag.datum)
             const zuschlagText = feiertag
-              ? `${d.arbeitZuschlag100 ? `${d.arbeitZuschlag100}h Arbeit à 200%` : ''}${d.reiseZuschlag100 ? ` · ${d.reiseZuschlag100}h Reise à 200%` : ''}`
+              ? `${d.arbeitZuschlag100 ? `${h(d.arbeitZuschlag100)} Arbeit à 200%` : ''}${d.reiseZuschlag100 ? ` · ${h(d.reiseZuschlag100)} Reise à 200%` : ''}`
               : samstag
-              ? `${d.arbeitZuschlag50 ? `${d.arbeitZuschlag50}h Arbeit à 150%` : ''}${d.reiseZuschlag50 ? ` · ${d.reiseZuschlag50}h Reise à 150%` : ''}`
-              : `${d.arbeitNormal}h Arbeit${d.arbeitZuschlag50 ? ` + ${d.arbeitZuschlag50}h à 150%` : ''} · ${d.reiseNormal}h Reise${d.reiseZuschlag50 ? ` + ${d.reiseZuschlag50}h à 150%` : ''}`
-            const datumDE = tag.datum.split('-').reverse().join('.')
+              ? `${d.arbeitZuschlag50 ? `${h(d.arbeitZuschlag50)} Arbeit à 150%` : ''}${d.reiseZuschlag50 ? ` · ${h(d.reiseZuschlag50)} Reise à 150%` : ''}`
+              : `${h(d.arbeitNormal)} Arbeit${d.arbeitZuschlag50 ? ` + ${h(d.arbeitZuschlag50)} à 150%` : ''} · ${h(d.reiseNormal)} Reise${d.reiseZuschlag50 ? ` + ${h(d.reiseZuschlag50)} à 150%` : ''}`
+            const datum = new Date(`${tag.datum}T00:00:00`)
+            const datumDE = `${WOCHENTAGE[datum.getDay()]}, ${tag.datum.split('-').reverse().join('.')}`
             return (
-              <div key={tag.id} className="card p-3 flex items-center justify-between gap-3 flex-wrap text-sm">
-                <div>
-                  <span className="font-semibold">{datumDE}</span>
-                  {feiertag && <span className="tag tag-unterwegs ml-1.5">Sonn-/Feiertag</span>}
-                  {samstag && <span className="tag tag-arbeit ml-1.5">Samstag</span>}
-                  {' '}· Hinreise ab {hhmm(tag.hinreise_von) || '–'}{tag.km_hin ? ` (${tag.km_hin} km)` : ''} · Arbeit {hhmm(tag.arbeitsbeginn) || '–'}–{hhmm(tag.arbeitsende) || '–'} · zurück bis {hhmm(tag.rueckreise_bis) || '– noch offen –'}{tag.km_rueck ? ` (${tag.km_rueck} km)` : ''}
-                  {tag.pause_von && ` · Pause ${hhmm(tag.pause_von)}–${hhmm(tag.pause_bis)}`}
-                  {tag.uebernachtung && ` · 🏨 Übernachtung${tag.hotelkosten ? ` (${tag.hotelkosten.toFixed(2)} €)` : ''}`}
+              <div key={tag.id} className="card p-3.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-mono font-semibold text-[14px]">{datumDE}</span>
+                    {feiertag && <span className="tag tag-voll">Sonn-/Feiertag</span>}
+                    {samstag && <span className="tag tag-voll">Samstag</span>}
+                    {bericht.ist_nachtrag && <span className="tag tag-gestrichelt">Nachtrag</span>}
+                  </div>
+                  <span className="font-mono font-semibold text-[15px]">{h(d.gesamt)}</span>
                 </div>
-                <div className="text-ink-soft text-xs">{zuschlagText}</div>
+                <div className="grid grid-cols-[1fr_1.45fr_1fr] gap-px bg-line border border-line mt-2.5">
+                  {([
+                    ['Hinreise', hhmm(tag.hinreise_von) || '–', tag.km_hin ? `${tag.km_hin} km` : ''],
+                    ['Arbeit', `${hhmm(tag.arbeitsbeginn) || '–'}–${hhmm(tag.arbeitsende) || '–'}`, tag.pause_von ? `Pause ${hhmm(tag.pause_von)}–${hhmm(tag.pause_bis)}` : ''],
+                    ['Rückreise', hhmm(tag.rueckreise_bis) || 'offen', tag.km_rueck ? `${tag.km_rueck} km` : ''],
+                  ] as const).map(([label, wert, zusatz]) => (
+                    <div key={label} className="bg-white px-2 py-2 min-w-0">
+                      <div className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-ink-soft">{label}</div>
+                      <div className={`font-mono text-[14px] font-semibold ${wert === 'offen' ? 'text-ink-soft font-normal' : ''}`}>{wert}</div>
+                      {zusatz && <div className="font-mono text-[11.5px] text-ink-soft">{zusatz}</div>}
+                    </div>
+                  ))}
+                </div>
+                <div className="text-[13px] text-ink-soft mt-2">
+                  {zuschlagText}
+                  {tag.uebernachtung && <> · Übernachtung{tag.hotelkosten ? ` (${euro(tag.hotelkosten)})` : ''}</>}
+                </div>
                 {editable && (
-                  <div className="flex gap-1.5">
-                    <button className="btn btn-outline btn-sm" onClick={() => setEditTag(tag)}>Bearbeiten</button>
-                    <button className="btn btn-danger btn-sm" onClick={() => deleteTag(tag.id)}>Löschen</button>
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                    <button className="btn btn-outline btn-sm" onClick={() => setEditTag(tag)}><Icon name="bearbeiten" size={16} /> Bearbeiten</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => deleteTag(tag.id)}><Icon name="loeschen" size={16} /> Löschen</button>
                   </div>
                 )}
               </div>
@@ -275,88 +295,103 @@ export function BerichtDetail() {
           })}
         </div>
       )}
+      {editable && (
+        <button className="btn btn-outline w-full mb-6" onClick={() => setShowTagForm(true)}><Icon name="hinzufuegen" size={20} /> Tag erfassen</button>
+      )}
 
-      <div className="flex items-center gap-2 mb-1.5">
+      {/* ------------------------------------------------ Messprotokoll */}
+      <div className="flex items-center justify-between gap-2 mt-6 mb-2">
         <div className="abschnitt">Messprotokoll</div>
-        {isOwner && <button className="btn btn-outline btn-sm" onClick={() => setShowMessprotokollForm(true)}>+ Messprotokoll</button>}
+        {isOwner && <button className="btn btn-outline btn-sm" onClick={() => setShowMessprotokollForm(true)}><Icon name="hinzufuegen" size={16} /> Messprotokoll</button>}
       </div>
       {messprotokolle.length === 0
         ? <div className="text-sm text-ink-soft mb-4">Noch kein Messprotokoll zu diesem Bericht.</div>
         : <MessprotokollListe protokolle={messprotokolle} />}
 
-      <div className="flex items-center gap-2 mb-1">
+      {/* ------------------------------------------------ Ersatzteile */}
+      <div className="flex items-center justify-between gap-2 mt-6 mb-2">
         <div className="abschnitt">Ersatzteile</div>
-        {editable && <button className="btn btn-outline btn-sm" onClick={() => setShowTeilForm(true)}>+ Ersatzteil</button>}
+        {editable && <button className="btn btn-outline btn-sm" onClick={() => setShowTeilForm(true)}><Icon name="hinzufuegen" size={16} /> Ersatzteil</button>}
       </div>
       {ersatzteile.length === 0 ? (
         <div className="text-sm text-ink-soft border border-dashed border-line p-4 text-center mb-4">Keine Ersatzteile erfasst.</div>
       ) : (
-        <div className="flex flex-col gap-1.5 mb-4">
+        <div className="bg-white border border-line mb-4">
           {ersatzteile.map((t) => (
-            <div key={t.id} className="card p-3 flex items-center justify-between gap-3 text-sm">
-              <div><span className="font-semibold">{t.id_nummer}</span> · {t.bezeichnung} · {t.menge} Stk</div>
-              {editable && <button className="btn btn-danger btn-sm" onClick={() => deleteTeil(t.id)}>Löschen</button>}
+            <div key={t.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5 border-b border-line last:border-b-0">
+              <div className="min-w-0">
+                <div className="font-medium">{t.bezeichnung}</div>
+                <div className="font-mono text-[12.5px] text-ink-soft">{t.id_nummer || '–'}</div>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="font-mono font-semibold">{t.menge} Stk</span>
+                {editable && (
+                  <button className="btn btn-outline btn-sm !px-0 w-10" aria-label="Ersatzteil löschen" onClick={() => deleteTeil(t.id)}><Icon name="loeschen" size={16} /></button>
+                )}
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      <div className="border border-line bg-paper-2 p-3 grid grid-cols-2 gap-2 text-sm mt-4">
-        <div><b>{totals.arbeitNormal} h</b> Arbeit normal</div>
-        <div><b>{totals.arbeitZuschlag50} h</b> Arbeit +50%</div>
-        {totals.arbeitZuschlag100 > 0 && <div><b>{totals.arbeitZuschlag100} h</b> Arbeit +100% (Sonn-/Feiertag)</div>}
-        <div><b>{totals.reiseNormal} h</b> Reise normal</div>
-        <div><b>{totals.reiseZuschlag50} h</b> Reise +50%</div>
-        {totals.reiseZuschlag100 > 0 && <div><b>{totals.reiseZuschlag100} h</b> Reise +100% (Sonn-/Feiertag)</div>}
-        <div><b>{totals.gesamt} h</b> Gesamt</div>
-      </div>
-      {tage.length > 0 && (
-        <div className="border border-line bg-paper-2 p-3 grid grid-cols-3 gap-2 text-sm mt-2">
-          <div><b>{spesen.verpflegungGesamt.toFixed(2)} €</b> Verpflegungsmehraufwand</div>
-          <div><b>{spesen.hotelGesamt.toFixed(2)} €</b> Hotelkosten</div>
-          <div><b>{spesen.gesamt.toFixed(2)} €</b> Spesen gesamt</div>
-        </div>
-      )}
+      {/* ------------------------------------------------ Summen */}
+      <div className="abschnitt mt-6 mb-2">Summen</div>
+      <Typenschild
+        zeilen={[
+          ['Arbeit normal', <span className="font-mono">{h(totals.arbeitNormal)}</span>],
+          ['Arbeit +50 %', <span className="font-mono">{h(totals.arbeitZuschlag50)}</span>],
+          totals.arbeitZuschlag100 > 0 && ['Arbeit +100 %', <span className="font-mono">{h(totals.arbeitZuschlag100)}</span>],
+          ['Reise normal', <span className="font-mono">{h(totals.reiseNormal)}</span>],
+          ['Reise +50 %', <span className="font-mono">{h(totals.reiseZuschlag50)}</span>],
+          totals.reiseZuschlag100 > 0 && ['Reise +100 %', <span className="font-mono">{h(totals.reiseZuschlag100)}</span>],
+          ['Gesamt', <span className="font-mono font-bold">{h(totals.gesamt)}</span>],
+          tage.length > 0 && ['Verpflegung', <span className="font-mono">{euro(spesen.verpflegungGesamt)}</span>],
+          tage.length > 0 && ['Hotelkosten', <span className="font-mono">{euro(spesen.hotelGesamt)}</span>],
+          tage.length > 0 && ['Spesen gesamt', <span className="font-mono font-bold">{euro(spesen.gesamt)}</span>],
+        ]}
+      />
 
+      {/* ------------------------------------------------ Aktionen */}
       {editable && (
-        <div className="mt-5 flex items-center gap-3 flex-wrap">
-          <button className="btn btn-amber" disabled={!tage.length} onClick={() => setMode('sign')}>Servicebericht abschließen</button>
-          {letzteRueckreiseFehlt && <span className="text-ink-soft text-xs">— Rückreise des letzten Tages darf dabei noch offen sein.</span>}
+        <div className="mt-6">
+          <button className="btn btn-amber w-full" disabled={!tage.length} onClick={() => setMode('sign')}><Icon name="unterschrift" size={20} /> Servicebericht abschließen</button>
+          {letzteRueckreiseFehlt && <p className="text-ink-soft text-[13px] mt-2 mb-0">Die Rückreise des letzten Tages darf dabei noch offen sein.</p>}
         </div>
       )}
       {bericht.status === 'abgeschlossen' && (
-        <div className="border border-green p-3 text-sm mt-4 flex items-center justify-between gap-3 flex-wrap">
-          <span>
-            ✓ Abgeschlossen am {bericht.abgeschlossen_am ? new Date(bericht.abgeschlossen_am).toLocaleString('de-DE') : '–'} · Techniker und Kunde haben unterschrieben.
-            {order.ansprechpartner?.email && <><br /><span className="text-ink-soft">✉️ Ansprechpartner: {order.ansprechpartner.email}</span></>}
-          </span>
-          <div className="flex gap-2 flex-wrap">
-            {canShareFiles && <button className="btn btn-amber btn-sm" disabled={sharingPdf} onClick={handleSharePdf}>{sharingPdf ? 'Öffne Teilen…' : '📤 Teilen / E-Mail'}</button>}
+        <div className="bg-white border border-line p-3.5 mt-6">
+          <div className="flex items-center gap-2 font-semibold"><Icon name="erledigt" size={20} /> Abgeschlossen am {bericht.abgeschlossen_am ? new Date(bericht.abgeschlossen_am).toLocaleString('de-DE') : '–'}</div>
+          <div className="text-[13.5px] text-ink-soft mt-1">Techniker und Kunde haben unterschrieben.{order.ansprechpartner?.email && <> Ansprechpartner: {order.ansprechpartner.email}</>}</div>
+          <div className="grid gap-2 sm:grid-cols-2 mt-3">
+            {canShareFiles && <button className="btn btn-amber" disabled={sharingPdf} onClick={handleSharePdf}><Icon name="teilen" size={20} /> {sharingPdf ? 'Öffne Teilen…' : 'Teilen / E-Mail'}</button>}
+            <button className="btn btn-outline" disabled={downloadingPdf} onClick={handleDownloadPdf}><Icon name="pdf" size={20} /> {downloadingPdf ? 'Erzeuge PDF…' : 'PDF herunterladen'}</button>
             {order.ansprechpartner?.email && (
               <a
-                className="btn btn-outline btn-sm"
+                className="btn btn-outline"
                 href={berichtMailtoUrl(order, bericht)}
                 onClick={handleDownloadPdf}
                 title="Öffnet die E-Mail mit Empfänger, Betreff und Text und lädt das PDF herunter — anhängen musst du es selbst."
               >
-                ✉️ E-Mail mit Empfänger
+                E-Mail mit Empfänger
               </a>
             )}
-            <button className="btn btn-outline btn-sm" disabled={downloadingPdf} onClick={handleDownloadPdf}>{downloadingPdf ? 'Erzeuge PDF…' : 'PDF herunterladen'}</button>
           </div>
         </div>
       )}
       {bericht.status === 'abgeschlossen' && letzteRueckreiseFehlt && isOwner && (
-        <div className="border border-amber p-3 text-sm mt-3 flex items-center gap-2 flex-wrap">
-          Die Rückreise des letzten Tages ({letzterTag.datum.split('-').reverse().join('.')}) fehlt noch.
-          <button className="btn btn-amber btn-sm" onClick={() => setShowRueckreiseNachtrag(true)}>Rückreise eintragen</button>
+        <div className="border-2 border-ink bg-white p-3.5 mt-3">
+          <div className="text-[14.5px] mb-2.5">Die Rückreise des letzten Tages ({letzterTag.datum.split('-').reverse().join('.')}) fehlt noch.</div>
+          <button className="btn btn-amber w-full" onClick={() => setShowRueckreiseNachtrag(true)}>Rückreise eintragen</button>
         </div>
       )}
       {bericht.status === 'abgeschlossen' && hasNachtrag && (
-        <div className="border border-line bg-paper-2 p-3 text-sm mt-3">✓ Die Rückreise wurde bereits über einen Nachtrags-Bericht erfasst.</div>
+        <div className="border border-line bg-white p-3 text-[14px] mt-3 flex items-center gap-2"><Icon name="erledigt" size={18} /> Die Rückreise wurde bereits über einen Nachtrags-Bericht erfasst.</div>
       )}
       {bericht.status === 'abgeschlossen' && !bericht.abgerechnet && employee?.role !== 'Techniker' && (
-        <div className="mt-3"><button className="btn btn-outline btn-sm" onClick={markAbgerechnet}>Als abgerechnet markieren</button></div>
+        <div className="mt-3"><button className="btn btn-outline w-full" onClick={markAbgerechnet}>Als abgerechnet markieren</button></div>
+      )}
+      {canDeleteBericht && (
+        <div className="mt-6"><button className="btn btn-danger w-full" onClick={handleDeleteBericht}><Icon name="loeschen" size={18} /> Servicebericht löschen</button></div>
       )}
 
       {showTagForm && <TagFormModal berichtId={bericht.id} onClose={() => setShowTagForm(false)} onSaved={() => { setShowTagForm(false); load() }} />}

@@ -78,7 +78,7 @@ export function TagFormModal({ berichtId, tag, onClose, onSaved }: { berichtId: 
   return (
     <Modal onClose={onClose} width={600}>
       <ModalTitle>{bearbeiten ? 'Tag bearbeiten' : 'Tag erfassen'}</ModalTitle>
-      <p className="text-sm text-ink-soft -mt-3 mb-4">Zeiten im 15-Minuten-Raster</p>
+      <p className="text-sm text-ink-soft -mt-1 mb-4">Zeiten im 15-Minuten-Raster</p>
 
       <div className="mb-3.5"><label>Datum</label><input type="date" value={datum} onChange={(e) => setDatum(e.target.value)} /></div>
 
@@ -119,7 +119,7 @@ export function TagFormModal({ berichtId, tag, onClose, onSaved }: { berichtId: 
         <div><label>Hotelkosten (€)</label><input type="number" min={0} step="0.01" value={hotelkosten} onChange={(e) => setHotelkosten(e.target.value)} placeholder="z.B. 89.00" /></div>
       )}
 
-      <div className="mt-4 border border-line bg-paper-2 p-3 grid grid-cols-2 gap-2 text-sm">
+      <div className="mt-5 border border-line bg-white p-3.5 grid grid-cols-2 gap-x-3 gap-y-2 text-[14px]">
         {feiertag ? (
           <>
             <Calc label="Arbeit +100% (Sonn-/Feiertag)" value={d.arbeitZuschlag100} />
@@ -144,8 +144,8 @@ export function TagFormModal({ berichtId, tag, onClose, onSaved }: { berichtId: 
       </div>
 
       <ModalActions>
-        <button className="btn btn-amber" disabled={saving} onClick={handleSave}>Speichern</button>
-        <button className="btn btn-outline" onClick={onClose}>Abbrechen</button>
+        <button className="btn btn-outline flex-1" onClick={onClose}>Abbrechen</button>
+        <button className="btn btn-amber flex-[2]" disabled={saving} onClick={handleSave}>{bearbeiten ? 'Speichern' : 'Tag übernehmen'}</button>
       </ModalActions>
     </Modal>
   )
@@ -163,5 +163,10 @@ function SectionToggle({ title, checked, onChange, checkboxLabel }: { title: str
 }
 
 function Calc({ label, value }: { label: string; value: number }) {
-  return <div><b>{value} h</b> {label}</div>
+  return (
+    <div>
+      <div className="font-mono text-[11px] uppercase tracking-[0.06em] text-ink-soft">{label}</div>
+      <div className="font-mono font-semibold text-[16px]">{(Math.round(value * 100) / 100).toLocaleString('de-DE')} h</div>
+    </div>
+  )
 }

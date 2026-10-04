@@ -3,6 +3,7 @@
 import type { SVGProps } from 'react'
 
 const PFADE = {
+  suche: "M21 34a13 13 0 1 1 0-26 13 13 0 0 1 0 26z M30.5 30.5L41 41",
   auftraege: "M10 8h28v32H10z M18 5h12v6H18z M16 19h16M16 25h16M16 31h10",
   kunden: "M10 42V12h18v30 M28 42V22h10v20 M6 42h36 M16 19h6M16 26h6M16 33h6",
   maschinen: "M14 6h20v14H14z M20 20v7h8v-7M24 27v6 M8 36h32v6H8z",

@@ -346,3 +346,8 @@ label {
   flex: none;
 }
 }
+
+/* Kennzeichen an Tagen: Zuschlagstage schwarz gefüllt, Nachträge gestrichelt — ohne Status-Quadrat. */
+.tag.tag-voll { background: var(--color-ink); border-color: var(--color-ink); color: var(--color-paper); }
+.tag.tag-gestrichelt { border: 1.5px dashed var(--color-ink); background: transparent; }
+.tag.tag-voll::before, .tag.tag-gestrichelt::before { display: none; }

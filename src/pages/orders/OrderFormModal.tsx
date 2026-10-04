@@ -147,7 +147,7 @@ export function OrderFormModal({ order, onClose, onSaved }: Props) {
   return (
     <Modal onClose={onClose} width={640}>
       <ModalTitle>{editing ? `Auftrag #${order!.id} bearbeiten` : 'Neuer Serviceauftrag'}</ModalTitle>
-      {!editing && <p className="text-sm text-ink-soft -mt-3 mb-4">Auftragsnummer kommt aus easybill und wird nach dem Anlegen gesperrt.</p>}
+      {!editing && <p className="text-sm text-ink-soft -mt-1 mb-4">Auftragsnummer kommt aus easybill und wird nach dem Anlegen gesperrt.</p>}
 
       <div className="grid grid-cols-2 gap-3.5 max-sm:grid-cols-1">
         {!editing && (

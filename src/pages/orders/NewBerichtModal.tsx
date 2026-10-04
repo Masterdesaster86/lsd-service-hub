@@ -61,7 +61,7 @@ export function NewBerichtModal({ order, onClose, onCreated }: { order: OrderWit
   return (
     <Modal onClose={onClose}>
       <ModalTitle>Servicebericht anlegen — Auftrag #{order.id}</ModalTitle>
-      <p className="text-sm text-ink-soft -mt-3 mb-4">Für welche Maschine? Gibt es für dich schon einen offenen Bericht zu dieser Maschine, wird der wieder geöffnet.</p>
+      <p className="text-sm text-ink-soft -mt-1 mb-4">Für welche Maschine? Gibt es für dich schon einen offenen Bericht zu dieser Maschine, wird der wieder geöffnet.</p>
 
       {machines === null ? (
         <div className="text-sm text-ink-soft">Lädt…</div>

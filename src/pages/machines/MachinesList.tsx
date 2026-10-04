@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { Customer, Machine } from '../../lib/types'
+import { Suchfeld, passtZurSuche } from '../../components/ui/Suchfeld'
 
 type SortMode = 'bezeichnung' | 'kunde'
 
@@ -16,6 +17,7 @@ export function MachinesList() {
   const navigate = useNavigate()
   const [machines, setMachines] = useState<Machine[] | null>(null)
   const [customers, setCustomers] = useState<Record<string, Customer>>({})
+  const [suche, setSuche] = useState('')
   const [sortMode, setSortMode] = useState<SortMode>(() => {
     const gespeichert = localStorage.getItem(SORT_SPEICHER_KEY)
     return SORT_OPTIONS.some((o) => o.key === gespeichert) ? (gespeichert as SortMode) : 'bezeichnung'
@@ -47,29 +49,38 @@ export function MachinesList() {
     return liste
   }, [machines, customers, sortMode])
 
+  const gefiltert = (sortierteMachines || []).filter((m) =>
+    passtZurSuche(suche, m.bezeichnung, m.nummer, m.kunden_maschinennummer, m.hersteller, m.steuerung, customers[m.kunde_id]?.name, customers[m.kunde_id]?.ort),
+  )
+
   return (
     <div>
-      <div className="flex items-end justify-between gap-3 flex-wrap mb-4">
-        <div>
-          <h1>Maschinen</h1>
-          <p className="text-sm text-ink-soft mt-1">Maschinenstamm aller Kunden</p>
-        </div>
-        <div className="max-w-[220px]">
-          <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)}>
-            {SORT_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-          </select>
-        </div>
+      <div className="mb-4">
+        <p className="eyebrow">Maschinenstamm</p>
+        <h1>Maschinen</h1>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-2 mb-3">
+        <div className="flex-1"><Suchfeld wert={suche} onChange={setSuche} platzhalter="Typ, Nummer oder Kunde" /></div>
+        <select className="sm:max-w-[220px]" value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} aria-label="Sortierung">
+          {SORT_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+        </select>
       </div>
 
       {sortierteMachines === null ? (
         <div className="text-sm text-ink-soft">Lädt…</div>
+      ) : gefiltert.length === 0 ? (
+        <div className="text-sm text-ink-soft border border-dashed border-line p-6 text-center">Keine Maschine gefunden.</div>
       ) : (
         <div className="flex flex-col gap-2">
-          {sortierteMachines.map((m) => (
-            <div key={m.id} onClick={() => navigate(`/maschinen/${m.id}`)} className="card p-4 cursor-pointer hover:border-amber transition-colors flex items-center gap-4 flex-wrap">
-              <div className="font-semibold min-w-[160px]">{m.bezeichnung}</div>
-              <div className="text-[13px] text-ink-soft">{m.hersteller} · Nr. {m.nummer}</div>
-              <div className="text-[13px] text-ink-soft">Kunde: {customers[m.kunde_id]?.name || '–'}</div>
+          {gefiltert.map((m) => (
+            <div key={m.id} onClick={() => navigate(`/maschinen/${m.id}`)} className="card p-4 cursor-pointer hover:border-ink transition-colors">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="font-mono font-semibold text-[16px]">{m.bezeichnung}</span>
+                <span className="font-mono text-[12.5px] text-ink-soft">{m.steuerung || ''}</span>
+              </div>
+              <div className="font-mono text-[12.5px] text-ink-soft mt-1">{m.hersteller || '–'} · Nr. {m.nummer || '–'}</div>
+              <div className="text-[14px] mt-1.5">{customers[m.kunde_id]?.name || '–'}</div>
             </div>
           ))}
         </div>

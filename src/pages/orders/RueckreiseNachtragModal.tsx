@@ -61,7 +61,7 @@ export function RueckreiseNachtragModal({ bericht, letzterTag, onClose, onSaved 
   return (
     <Modal onClose={onClose}>
       <ModalTitle>Rückreise eintragen</ModalTitle>
-      <p className="text-sm text-ink-soft -mt-3 mb-4">
+      <p className="text-sm text-ink-soft -mt-1 mb-4">
         {letzterTag.datum.split('-').reverse().join('.')} — der Bericht ist bereits abgeschlossen. Die Rückreise wird deshalb in einem zusätzlichen Nachtrags-Bericht gespeichert, der Originalbericht bleibt unverändert.
       </p>
       <div className="mb-3.5"><label>Rückreise-Beginn</label><div className="val">{hhmm(letzterTag.arbeitsende) || '–'} Uhr</div></div>

@@ -120,7 +120,7 @@ function ArbeitAbschliessenModal({ arbeit, onClose, onSaved }: { arbeit: ArbeitR
   return (
     <Modal onClose={onClose}>
       <ModalTitle>Arbeit abschließen</ModalTitle>
-      <p className="text-sm text-ink-soft -mt-3 mb-4">{arbeit.text}</p>
+      <p className="text-sm text-ink-soft -mt-1 mb-4">{arbeit.text}</p>
       <label>Was wurde gemacht?</label>
       <textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} placeholder="z.B. Kabel getauscht, Fehler tritt nicht mehr auf." />
       <ModalActions>

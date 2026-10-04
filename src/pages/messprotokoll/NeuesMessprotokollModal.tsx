@@ -29,7 +29,7 @@ export function NeuesMessprotokollModal({
   return (
     <Modal onClose={onClose}>
       <ModalTitle>Messprotokoll anlegen</ModalTitle>
-      <p className="text-sm text-ink-soft -mt-3 mb-4">Für welche Maschinenart?</p>
+      <p className="text-sm text-ink-soft -mt-1 mb-4">Für welche Maschinenart?</p>
       <div className="flex flex-col gap-2">
         {(Object.entries(MESSPROTOKOLL_TYPEN) as [MessprotokollTyp, (typeof MESSPROTOKOLL_TYPEN)[MessprotokollTyp]][]).map(([key, def]) => (
           <label key={key} className="check-row check-row-multi">
