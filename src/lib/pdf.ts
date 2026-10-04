@@ -7,7 +7,7 @@ import { LOGO_URL, PDF_HINTERGRUND_URL } from './branding'
 import type { Ansprechpartner, Customer, Employee, Machine, Messprotokoll, Order, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from './types'
 import { calcBerichtTotalsMitKontext, calcTagMitKontext, type DayTotals, type Tageskontext } from './zeit'
 import { formatDateDE, hhmm } from './format'
-import { MESSPROTOKOLL_TYPEN, type MessprotokollTyp } from './messprotokoll'
+import { ERGEBNIS_KEY, MESSPROTOKOLL_TYPEN, bemerkungKey, bewerte, messwertZahl, mm, type MessprotokollTyp } from './messprotokoll'
 
 const GRAPHITE = '#1B1F24'
 // Firmenfarben, direkt aus dem Logo entnommen
@@ -428,11 +428,30 @@ export async function buildMessprotokollPdf(input: MessprotokollPdfInput): Promi
       headStyles: { fillColor: GRAPHITE, textColor: '#ffffff' },
       columnStyles: { 0: { cellWidth: 12 }, 2: { cellWidth: 32 }, 3: { cellWidth: 38 }, 4: { cellWidth: 26 } },
       head: [['Nr.', 'Prüfpunkt', 'Prüfmittel', 'Zulässige Abweichung', 'Gemessen']],
-      body: ausgefuellt.map((p) => [p.nr, p.bezeichnung, p.pruefmittel, p.toleranz, werte[p.key]]),
+      body: ausgefuellt.map((p) => {
+        // Reine Zahl bekommt die Einheit dazu; die Bewertung steht nur da, wo
+        // die App sie eindeutig gegen die Toleranz prüfen konnte.
+        const n = messwertZahl(werte[p.key])
+        const wert = n !== null && /^[\s\d.,-]+$/.test(werte[p.key]) ? `${mm(n)} mm` : werte[p.key]
+        const b = bewerte(p, werte[p.key])
+        const bemerkung = (werte[bemerkungKey(p.key)] || '').trim()
+        const zeilen = [wert]
+        if (b === 'io') zeilen.push('in Ordnung')
+        if (b === 'nio') zeilen.push('über Toleranz')
+        if (bemerkung) zeilen.push(bemerkung)
+        return [p.nr, p.bezeichnung, p.pruefmittel, p.toleranz, zeilen.join('\n')]
+      }),
     })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     y = (doc as any).lastAutoTable.finalY + 8
   })
+
+  const ergebnis = (werte[ERGEBNIS_KEY] || '').trim()
+  if (ergebnis) {
+    y = ensureSpace(doc, y, 26)
+    y = sectionTitle(doc, 'Ergebnis / Bemerkung', y)
+    y = textBox(doc, y, ergebnis, 12)
+  }
 
   const nichtsAusgefuellt = typDef.gruppen.every((g) => g.punkte.every((p) => !(werte[p.key] || '').trim()))
   if (nichtsAusgefuellt) {

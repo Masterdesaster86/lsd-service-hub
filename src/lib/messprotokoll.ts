@@ -138,3 +138,44 @@ export const MESSPROTOKOLL_TYPEN: Record<MessprotokollTyp, MessprotokollTypDefin
 export function alleMesspunkte(typ: MessprotokollTyp): (Messpunkt & { gruppe: string })[] {
   return MESSPROTOKOLL_TYPEN[typ].gruppen.flatMap((g) => g.punkte.map((p) => ({ ...p, gruppe: g.titel })))
 }
+
+// --- Bewertung der Messwerte ---------------------------------------------
+
+/** Unter diesem Schlüssel steht in `werte` die Bemerkung zu einem Prüfpunkt. */
+export const bemerkungKey = (key: string) => `${key}__bemerkung`
+/** Ergebnis / Bemerkung zum ganzen Protokoll, ebenfalls in `werte`. */
+export const ERGEBNIS_KEY = '_ergebnis'
+
+/**
+ * Zulässige Abweichung als Zahl in mm — nur wenn die Angabe eindeutig ist
+ * ("0,01 mm", "0,02 mm/500 mm", "0,02 mm bei Ø 300 mm"). Gestaffelte Angaben
+ * ("… bis Ø 500 mm / … bis Ø 1000 mm", HSK-Sonderfälle) und Maße ohne
+ * Toleranz geben null: dort prüft der Techniker selbst, die App bewertet nicht.
+ */
+export function grenzwertMm(toleranz: string): number | null {
+  const m = toleranz.match(/^\s*(\d+(?:,\d+)?)\s*mm(?:\s*\/\s*\d+\s*mm|\s+bei\s+Ø\s*\d+\s*mm)?\s*$/)
+  return m ? parseFloat(m[1].replace(',', '.')) : null
+}
+
+/** Eingegebenen Messwert als Zahl lesen ("0,015", "0.015 mm"); sonst null. */
+export function messwertZahl(wert: string | undefined): number | null {
+  const s = (wert || '').replace(/mm/i, '').replace(',', '.').trim()
+  if (!s) return null
+  const n = Number(s)
+  return Number.isFinite(n) ? n : null
+}
+
+export type Bewertung = 'offen' | 'io' | 'nio' | 'erfasst'
+
+/** offen = nichts eingetragen, io/nio = gegen die Toleranz geprüft,
+ * erfasst = Wert steht da, aber ohne automatische Prüfung. */
+export function bewerte(p: Messpunkt, wert: string | undefined): Bewertung {
+  if (!(wert || '').trim()) return 'offen'
+  const g = grenzwertMm(p.toleranz)
+  const n = messwertZahl(wert)
+  if (g === null || n === null) return 'erfasst'
+  return Math.abs(n) <= g + 1e-9 ? 'io' : 'nio'
+}
+
+/** Zahl deutsch formatiert, ohne überflüssige Nullen. */
+export const mm = (n: number) => n.toLocaleString('de-DE', { maximumFractionDigits: 4 })
