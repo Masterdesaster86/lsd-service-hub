@@ -20,9 +20,9 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { to: '/auftraege', label: 'Serviceaufträge', kurz: 'Aufträge', icon: 'auftraege', roles: ['Administrator', 'Disposition', 'Techniker', 'CEO'], hauptpunkt: true },
   { to: '/kunden', label: 'Kunden', kurz: 'Kunden', icon: 'kunden', roles: ['Administrator', 'Disposition', 'Techniker', 'CEO'], hauptpunkt: true },
-  { to: '/maschinen', label: 'Maschinen', kurz: 'Maschinen', icon: 'maschinen', roles: ['Administrator', 'Disposition', 'Techniker', 'CEO'], hauptpunkt: true },
-  { to: '/plantafel', label: 'Plantafel', kurz: 'Plantafel', icon: 'plantafel', roles: ['Administrator', 'Disposition', 'CEO'], hauptpunkt: true },
-  { to: '/verwaltung', label: 'Meine Verwaltung', kurz: 'Verwaltung', icon: 'verwaltung', roles: ['Techniker', 'CEO'], hauptpunkt: false },
+  { to: '/maschinen', label: 'Maschinen', kurz: 'Maschinen', icon: 'maschinen', roles: ['Administrator', 'Disposition', 'Techniker', 'CEO'], hauptpunkt: false },
+  { to: '/plantafel', label: 'Plantafel', kurz: 'Plantafel', icon: 'plantafel', roles: ['Administrator', 'Disposition', 'CEO'], hauptpunkt: false },
+  { to: '/verwaltung', label: 'Meine Verwaltung', kurz: 'Verwaltung', icon: 'verwaltung', roles: ['Techniker', 'CEO'], hauptpunkt: true },
   { to: '/mitarbeiter', label: 'Mitarbeiter', kurz: 'Mitarbeiter', icon: 'mitarbeiter', roles: ['Administrator', 'CEO'], hauptpunkt: false },
   { to: '/wissen', label: 'Wissens-Suche', kurz: 'Wissen', icon: 'wissen', roles: ['CEO'], hauptpunkt: false },
 ]
@@ -57,7 +57,7 @@ export function AppShell() {
   if (zeigeAnleitung) {
     const anleitung = ANLEITUNGEN[zeigeAnleitung]
     return (
-      <div className="flex flex-col h-full min-h-[640px]">
+      <div className="flex flex-col h-full min-h-[640px]" style={{ height: '100dvh' }}>
         <div className="bg-graphite shrink-0" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
         <div className="bg-graphite shrink-0 flex items-center justify-between gap-3 px-4 py-3">
           <span className="text-white text-sm font-semibold">{anleitung.titel}</span>
@@ -69,13 +69,17 @@ export function AppShell() {
   }
 
   const sichtbar = NAV_ITEMS.filter((item) => role && item.roles.includes(role))
-  const hauptpunkte = sichtbar.filter((i) => i.hauptpunkt)
-  const mehrPunkte = sichtbar.filter((i) => !i.hauptpunkt)
+  // Unten direkt: Aufträge, Kunden, Meine Verwaltung. Wer keine eigene Verwaltung
+  // hat (Administrator, Disposition), bekommt dort stattdessen die Plantafel.
+  const ohneVerwaltung = !sichtbar.some((i) => i.to === '/verwaltung')
+  const istHauptpunkt = (i: NavItem) => i.hauptpunkt || (ohneVerwaltung && i.to === '/plantafel')
+  const hauptpunkte = sichtbar.filter(istHauptpunkt)
+  const mehrPunkte = sichtbar.filter((i) => !istHauptpunkt(i))
   // „Mehr“ ist aktiv, wenn gerade eine der dort liegenden Seiten offen ist.
   const mehrAktiv = mehrPunkte.some((i) => location.pathname.startsWith(i.to))
 
   return (
-    <div className="flex flex-col h-full min-h-[640px]">
+    <div className="flex flex-col h-full min-h-[640px]" style={{ height: '100dvh' }}>
       {/* Streifen hinter der Statusleiste (Uhrzeit) dunkel halten, damit die
           weiße Systemschrift dort lesbar bleibt. Am Desktop 0 Pixel hoch. */}
       <div className="bg-graphite shrink-0" style={{ height: 'env(safe-area-inset-top, 0px)' }} />

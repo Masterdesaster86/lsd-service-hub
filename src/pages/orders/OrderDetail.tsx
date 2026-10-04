@@ -9,6 +9,8 @@ import { OrderStatusTag, BerichtStatusTag } from '../../components/ui/StatusTag'
 import { customerAddress, mapsLink, telHref, formatDateDE } from '../../lib/format'
 import { calcBerichtTotalsMitKontext, type Tageskontext } from '../../lib/zeit'
 import { OrderFormModal } from './OrderFormModal'
+import { Icon } from '../../components/ui/Icon'
+import { Typenschild } from '../../components/ui/Typenschild'
 import { NewBerichtModal } from './NewBerichtModal'
 import { useConfirm } from '../../components/ui/ConfirmProvider'
 import { useToast } from '../../components/ui/Toast'
@@ -81,59 +83,77 @@ export function OrderDetail() {
     navigate('/auftraege')
   }
 
+  const adresse = customerAddress(order.einsatzkunde)
+  const ap = order.ansprechpartner
+
   return (
     <div>
-      <button className="btn btn-outline btn-sm mb-4" onClick={() => navigate('/auftraege')}>← Zurück zur Übersicht</button>
+      <button className="btn btn-outline btn-sm mb-4" onClick={() => navigate('/auftraege')}><Icon name="zurueck" size={18} /> Aufträge</button>
 
-      <div className="flex items-start justify-between gap-4 flex-wrap mb-4 card p-4">
-        <div>
-          <div className="font-mono text-lg font-semibold">#{order.id}</div>
-          <div className="font-semibold">{order.einsatzkunde?.name || '–'}</div>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <OrderStatusTag status={order.status} />
+      <p className="eyebrow">Serviceauftrag</p>
+      <div className="flex items-start justify-between gap-3">
+        <h1>#{order.id}</h1>
+        <OrderStatusTag status={order.status} />
+      </div>
+      <div className="font-semibold text-[18px] leading-snug mt-1.5">{order.einsatzkunde?.name || '–'}</div>
+
+      <div className="grid grid-cols-2 gap-2 mt-4 mb-5 sm:max-w-md">
+        <a href={mapsLink(adresse)} target="_blank" rel="noreferrer" className="btn btn-outline"><Icon name="standort" size={20} /> Route</a>
+        {ap?.telefon
+          ? <a href={telHref(ap.telefon)} className="btn btn-outline"><Icon name="anrufen" size={20} /> Anrufen</a>
+          : <span className="btn btn-outline opacity-40 pointer-events-none"><Icon name="anrufen" size={20} /> Anrufen</span>}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2 items-start mb-6">
+        <Typenschild
+          titel="Auftrag"
+          zeilen={[
+            ['Auftraggeber', order.auftraggeber?.name || '–'],
+            ['Einsatzkunde', order.einsatzkunde?.name || '–'],
+            ['Adresse', <a href={mapsLink(adresse)} target="_blank" rel="noreferrer" className="text-steel">{adresse}</a>],
+            ap && ['Ansprechpartner', (
+              <span className="flex flex-col">
+                <span>{ap.name}</span>
+                {ap.telefon && <a href={telHref(ap.telefon)} className="text-steel no-underline font-mono text-[14px]">{ap.telefon}</a>}
+                {ap.email && <a href={`mailto:${ap.email}`} className="text-steel no-underline text-[14px] break-all">{ap.email}</a>}
+              </span>
+            )],
+            ['Techniker', order.techniker.length ? order.techniker.map((t) => t.name).join(', ') : '–'],
+            ['Einsatzbeginn', formatDateDE(order.einsatzbeginn)],
+            ['Dauer', `${order.dauer_tage || 1} ${(order.dauer_tage || 1) === 1 ? 'Tag' : 'Tage'}`],
+            order.bestellnummer && ['Bestellnummer', <span className="font-mono">{order.bestellnummer}</span>],
+            order.kundenreferenznr && ['Kundenreferenz', <span className="font-mono">{order.kundenreferenznr}</span>],
+            order.auftragsnr_kunde && ['Auftragsnr. Kunde', <span className="font-mono">{order.auftragsnr_kunde}</span>],
+          ]}
+        />
+        <div className="flex flex-col gap-4">
+          {order.machines.length === 0 ? (
+            <Typenschild titel="Maschine" zeilen={[['Maschine', '– noch keine ausgewählt –']]} />
+          ) : order.machines.map((m) => (
+            <Typenschild
+              key={m.id}
+              titel="Maschine"
+              zeilen={[
+                ['Typ', <span className="font-mono">{m.bezeichnung}</span>],
+                ['Maschinennr.', <span className="font-mono">{m.nummer || '–'}</span>],
+                ['Kunden-Nr.', <span className="font-mono">{m.kunden_maschinennummer || '–'}</span>],
+              ]}
+            />
+          ))}
+          <div className="bg-white border border-line px-3.5 py-3">
+            <div className="abschnitt mb-1.5">Meldetext</div>
+            <div className="text-[15px] whitespace-pre-line">{order.meldetext || '–'}</div>
+          </div>
           {!isTechniker && (
-            <>
-              <button className="btn btn-outline btn-sm" onClick={() => setShowEdit(true)}>Bearbeiten</button>
-              <button className="btn btn-danger btn-sm" onClick={handleDelete}>Löschen</button>
-            </>
+            <div className="grid grid-cols-2 gap-2">
+              <button className="btn btn-outline" onClick={() => setShowEdit(true)}><Icon name="bearbeiten" size={18} /> Bearbeiten</button>
+              <button className="btn btn-danger" onClick={handleDelete}><Icon name="loeschen" size={18} /> Löschen</button>
+            </div>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-6 gap-y-3 mb-6 max-sm:grid-cols-1">
-        <Field label="Auftraggeber" value={order.auftraggeber?.name || '–'} />
-        <Field label="Einsatzkunde" value={order.einsatzkunde?.name || '–'} />
-        <Field label="Adresse">
-          <a href={mapsLink(customerAddress(order.einsatzkunde))} target="_blank" rel="noreferrer" className="text-steel">📍 {customerAddress(order.einsatzkunde)}</a>
-        </Field>
-        <Field label="Techniker" value={order.techniker.length ? order.techniker.map((t) => t.name).join(', ') : '—'} />
-        <Field label="Einsatzbeginn (geplant)" value={formatDateDE(order.einsatzbeginn)} />
-        <Field label="Dauer" value={`${order.dauer_tage || 1} Tag(e)`} />
-        <div className="col-span-2">
-          <label>Maschinen</label>
-          {order.machines.length ? (
-            <div className="flex flex-col gap-1">
-              {order.machines.map((m) => (
-                <div key={m.id}>{m.bezeichnung} <span className="text-ink-soft text-[12.5px]">— Maschinennr. {m.nummer || '–'} · Kunden-Maschinennr. {m.kunden_maschinennummer || '–'}</span></div>
-              ))}
-            </div>
-          ) : <div className="val">– noch keine ausgewählt –</div>}
-        </div>
-        {order.ansprechpartner && (
-          <Field label="Ansprechpartner">
-            {order.ansprechpartner.name}
-            {order.ansprechpartner.telefon && <> · <a href={telHref(order.ansprechpartner.telefon)} className="text-steel no-underline">📞 {order.ansprechpartner.telefon}</a></>}
-            {order.ansprechpartner.email && <> · <a href={`mailto:${order.ansprechpartner.email}`} className="text-steel no-underline">✉️ {order.ansprechpartner.email}</a></>}
-          </Field>
-        )}
-        {order.bestellnummer && <Field label="Bestellnummer" value={order.bestellnummer} />}
-        {order.kundenreferenznr && <Field label="Kundenreferenznr." value={order.kundenreferenznr} />}
-        {order.auftragsnr_kunde && <Field label="Auftragsnr. Kunde" value={order.auftragsnr_kunde} />}
-        <div className="col-span-2"><label>Meldetext</label><div className="val">{order.meldetext || '–'}</div></div>
-      </div>
-
-      <div className="flex items-center gap-2 mb-1">
+      <div className="flex items-center justify-between gap-2 mb-1">
         <div className="abschnitt">Serviceberichte</div>
         {istEingeplant && <button className="btn btn-amber btn-sm" onClick={() => setShowNewBericht(true)}>+ Servicebericht</button>}
       </div>
@@ -149,14 +169,20 @@ export function OrderDetail() {
             const totals = calcBerichtTotalsMitKontext(b.tage, kontexteProTechniker[b.techniker_id] || {})
             const zuschlag = Math.round((totals.arbeitZuschlag50 + totals.reiseZuschlag50 + totals.arbeitZuschlag100 + totals.reiseZuschlag100) * 100) / 100
             return (
-              <div key={b.id} onClick={() => navigate(`/berichte/${b.id}`)} className="card p-4 cursor-pointer hover:border-amber transition-colors flex items-start justify-between gap-4 flex-wrap">
-                <div>
-                  <div className="font-mono text-xs text-ink-soft">{b.bericht_nummer}</div>
-                  <div className="font-semibold">{b.machines?.bezeichnung || '–'} · {b.employees?.name || '–'}{b.ist_nachtrag && <span className="text-ink-soft font-normal text-xs"> (Nachtrag)</span>}</div>
-                  <div className="text-[13px] text-ink-soft">Maschinennr. {b.machines?.nummer || '–'} · Kunden-Maschinennr. {b.machines?.kunden_maschinennummer || '–'}</div>
-                  <div className="text-[13px] text-ink-soft">{b.tage.length} Tag(e) erfasst · Gesamt {totals.gesamt} h (davon {zuschlag} h Zuschlag)</div>
+              <div key={b.id} onClick={() => navigate(`/berichte/${b.id}`)} className="card p-4 cursor-pointer hover:border-ink transition-colors">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-mono text-[13.5px] font-semibold">
+                    {b.bericht_nummer}
+                    {b.ist_nachtrag && <span className="ml-2 px-1.5 py-0.5 border border-dashed border-ink font-mono text-[11px] uppercase tracking-[0.08em]">Nachtrag</span>}
+                  </span>
+                  <BerichtStatusTag status={b.status} abgerechnet={b.abgerechnet} />
                 </div>
-                <BerichtStatusTag status={b.status} abgerechnet={b.abgerechnet} />
+                <div className="font-semibold text-[16.5px] leading-snug mt-1.5">{b.machines?.bezeichnung || '–'} · {b.employees?.name || '–'}</div>
+                <div className="font-mono text-[12.5px] text-ink-soft mt-1">Nr. {b.machines?.nummer || '–'} · Kunden-Nr. {b.machines?.kunden_maschinennummer || '–'}</div>
+                <div className="text-[14px] mt-1.5">
+                  {b.tage.length} {b.tage.length === 1 ? 'Tag' : 'Tage'} · <b>{totals.gesamt.toLocaleString('de-DE')} h</b> gesamt
+                  {zuschlag > 0 && <span className="text-ink-soft"> · davon {zuschlag.toLocaleString('de-DE')} h Zuschlag</span>}
+                </div>
               </div>
             )
           })}
@@ -181,15 +207,6 @@ export function OrderDetail() {
           onCreated={(berichtId) => { setShowNewBericht(false); navigate(`/berichte/${berichtId}`) }}
         />
       )}
-    </div>
-  )
-}
-
-function Field({ label, value, children }: { label: string; value?: string; children?: React.ReactNode }) {
-  return (
-    <div>
-      <label>{label}</label>
-      <div className="val">{children ?? value}</div>
     </div>
   )
 }

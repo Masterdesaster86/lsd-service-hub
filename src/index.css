@@ -41,6 +41,12 @@ html, body, #root {
   height: 100%;
 }
 
+/* Weiß wie die untere Leiste: Falls die App im Vollbild (Home-Bildschirm)
+   nicht ganz bis zur Unterkante reicht, entsteht dort kein grauer Streifen. */
+html {
+  background: #fff;
+}
+
 body {
   margin: 0;
   background: var(--color-paper);
