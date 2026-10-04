@@ -1,0 +1,352 @@
+import { Fragment, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import type { Abwesenheit, OrderWithRelations } from '../../lib/types'
+import { OrderStatusTag } from '../../components/ui/StatusTag'
+import { useToast } from '../../components/ui/Toast'
+import { useAuth } from '../../lib/AuthContext'
+import { WOCHENTAGE, addDays, formatDMY, parseISO } from '../../lib/zeit'
+import { AbwesenheitFormModal } from './AbwesenheitFormModal'
+import { SPERR_TEXT, mondayOfWeek, orderCoversDate, usePlantafelDaten, zeitraum, type DragData } from './usePlantafel'
+
+const MONATSNAMEN = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
+
+function abwesenheitUeberschneidetMonat(a: Abwesenheit, jahr: number, monat: number): boolean {
+  const von = parseISO(a.von), bis = parseISO(a.bis)
+  if (!von || !bis) return false
+  const monatsStart = new Date(jahr, monat, 1), monatsEnde = new Date(jahr, monat + 1, 0)
+  return von <= monatsEnde && bis >= monatsStart
+}
+
+type ViewMode = 'woche' | 'monat' | 'jahr'
+
+/** Plantafel als Raster (Techniker × Tage) für große Bildschirme. */
+export function PlantafelDesktop() {
+  const navigate = useNavigate()
+  const toast = useToast()
+  const { employee } = useAuth()
+  const {
+    technicians, orders, abwesenheiten, antraege, employeesById,
+    poolOrders, bevorstehendeAbwesenheiten,
+    load, abwesenheitFuer, sperreFuer, verschiebe, genehmigen, ablehnen, abwesenheitLoeschen,
+  } = usePlantafelDaten()
+
+  const darfAbwesenheitenPflegen = employee?.role === 'CEO' || employee?.role === 'Disposition' || employee?.role === 'Administrator'
+  const [abwesenheitForm, setAbwesenheitForm] = useState<{ open: boolean; eintrag?: Abwesenheit }>({ open: false })
+  const [viewMode, setViewMode] = useState<ViewMode>('woche')
+  const [weekStart, setWeekStart] = useState(() => mondayOfWeek(new Date()))
+  const [monthAnchor, setMonthAnchor] = useState(() => { const d = new Date(); d.setDate(1); return d })
+  const [drag, setDrag] = useState<DragData | null>(null)
+  // Zweiter Weg zum Umplanen: Karte antippen, dann Zielfeld antippen. Ziehen
+  // funktioniert nicht in jedem Browser und auf Tablets gar nicht.
+  const [auswahl, setAuswahl] = useState<DragData | null>(null)
+
+  const weekDates = useMemo(() => [0, 1, 2, 3, 4, 5, 6].map((i) => addDays(weekStart, i)), [weekStart])
+  const monthDates = useMemo(() => {
+    const jahr = monthAnchor.getFullYear(), monat = monthAnchor.getMonth()
+    const tageImMonat = new Date(jahr, monat + 1, 0).getDate()
+    return Array.from({ length: tageImMonat }, (_, i) => new Date(jahr, monat, i + 1))
+  }, [monthAnchor])
+
+  async function applyDrop(techId: string, dateStr: string) {
+    if (!drag) return
+    const quelle = drag
+    setDrag(null)
+    await verschiebe(quelle, techId, dateStr)
+  }
+
+  /** Klick auf ein Zielfeld, wenn vorher eine Karte zum Verschieben
+   *  ausgewählt wurde. Gibt true zurück, wenn der Klick verbraucht wurde. */
+  function zielGewaehlt(techId: string, dateStr: string): boolean {
+    if (!auswahl) return false
+    const quelle = auswahl
+    setAuswahl(null)
+    verschiebe(quelle, techId, dateStr)
+    return true
+  }
+
+  function PlanCard({ order, draggable, fromTech, fromDate, continuation, zeigeTechniker }: { order: OrderWithRelations; draggable: boolean; fromTech?: string; fromDate?: string; continuation?: boolean; zeigeTechniker?: boolean }) {
+    const sperre = sperreFuer(order.id, fromTech || '')
+    const ziehbar = draggable && sperre !== 'gesperrt'
+    const rand = sperre === 'gesperrt' ? 'border-l-2 border-l-red' : sperre === 'nurTag' ? 'border-l-2 border-l-blau' : ''
+    const ausgewaehlt = auswahl?.orderId === order.id && auswahl.fromTech === (fromTech || '')
+    return (
+      <div
+        draggable={ziehbar}
+        onDragStart={(e) => {
+          if (!ziehbar) return
+          // Ohne Nutzdaten bricht Firefox den Zug sofort ab und Safari startet
+          // ihn gar nicht erst — Chrome ist da als einziger nachsichtig.
+          e.dataTransfer.setData('text/plain', order.id)
+          e.dataTransfer.effectAllowed = 'move'
+          setDrag({ orderId: order.id, fromTech: fromTech || '', fromDate: fromDate || '' })
+        }}
+        onClick={(e) => { e.stopPropagation(); navigate(`/auftraege/${order.id}`) }}
+        className={`text-xs bg-white border border-line p-1.5 mb-1 cursor-pointer ${rand} ${ziehbar ? 'cursor-grab' : ''} ${continuation ? 'opacity-60 italic' : ''} ${ausgewaehlt ? 'outline-2 outline-blau' : ''}`}
+        title={continuation ? `Fortsetzung von Auftrag #${order.id}` : sperre !== 'frei' ? SPERR_TEXT[sperre] : undefined}
+      >
+        <b>#{order.id}</b> {order.einsatzkunde?.name}
+        {!continuation && (order.dauer_tage || 1) > 1 && <span className="text-ink-soft"> · {order.dauer_tage} Tage</span>}
+        {continuation && <span className="text-ink-soft"> (Fortsetzung)</span>}
+        {zeigeTechniker && order.techniker.length > 0 && (
+          <div className="text-ink-soft mt-0.5">Techniker: {order.techniker.map((t) => t.name).join(', ')} · Termin fehlt</div>
+        )}
+        <div className="mt-0.5 flex items-center justify-between gap-1">
+          <OrderStatusTag status={order.status} />
+          {ziehbar && (
+            <button
+              className="text-[10px] font-semibold text-blau underline underline-offset-2 shrink-0"
+              onClick={(e) => {
+                e.stopPropagation()
+                setAuswahl(ausgewaehlt ? null : { orderId: order.id, fromTech: fromTech || '', fromDate: fromDate || '' })
+              }}
+            >
+              {ausgewaehlt ? 'Abbrechen' : 'Verschieben'}
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 flex-wrap mb-1">
+        <h1 className="text-xl font-semibold m-0">Plantafel</h1>
+        <div className="flex gap-1.5">
+          {(['woche', 'monat', 'jahr'] as ViewMode[]).map((v) => (
+            <button key={v} className={`btn btn-sm ${viewMode === v ? 'btn-dark' : 'btn-outline'}`} onClick={() => setViewMode(v)}>
+              {v === 'woche' ? 'Woche' : v === 'monat' ? 'Monat' : 'Jahr'}
+            </button>
+          ))}
+        </div>
+        {viewMode === 'woche' && (
+          <>
+            <button className="btn btn-outline btn-sm" onClick={() => setWeekStart(addDays(weekStart, -7))}>← Vorherige Woche</button>
+            <span className="text-sm text-ink-soft">{formatDMY(weekDates[0])} – {formatDMY(weekDates[6])}</span>
+            <button className="btn btn-outline btn-sm" onClick={() => setWeekStart(addDays(weekStart, 7))}>Nächste Woche →</button>
+          </>
+        )}
+        {viewMode === 'monat' && (
+          <>
+            <button className="btn btn-outline btn-sm" onClick={() => setMonthAnchor(new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() - 1, 1))}>← Vorheriger Monat</button>
+            <span className="text-sm text-ink-soft">{monthAnchor.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}</span>
+            <button className="btn btn-outline btn-sm" onClick={() => setMonthAnchor(new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + 1, 1))}>Nächster Monat →</button>
+          </>
+        )}
+        {viewMode === 'jahr' && (
+          <>
+            <button className="btn btn-outline btn-sm" onClick={() => setMonthAnchor(new Date(monthAnchor.getFullYear() - 1, monthAnchor.getMonth(), 1))}>← Vorheriges Jahr</button>
+            <span className="text-sm text-ink-soft">{monthAnchor.getFullYear()}</span>
+            <button className="btn btn-outline btn-sm" onClick={() => setMonthAnchor(new Date(monthAnchor.getFullYear() + 1, monthAnchor.getMonth(), 1))}>Nächstes Jahr →</button>
+          </>
+        )}
+      </div>
+
+      {antraege.length > 0 && (
+        <>
+          <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft mt-4 mb-1.5">Offene Urlaubsanträge ({antraege.length})</div>
+          <div className="flex flex-col gap-1.5 mb-4">
+            {antraege.map((a) => (
+              <div key={a.id} className="card p-3 flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <div className="font-semibold text-sm">{employeesById[a.techniker_id]?.name || '–'} · {zeitraum(a.von, a.bis)}</div>
+                  <div className="text-[13px] text-ink-soft">{a.bemerkung || '–'} · beantragt am {new Date(a.beantragt_am).toLocaleDateString('de-DE')}</div>
+                </div>
+                <div className="flex gap-1.5">
+                  <button className="btn btn-amber btn-sm" onClick={() => genehmigen(a)}>Genehmigen</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => ablehnen(a)}>Ablehnen</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      <div className="flex items-center gap-2 flex-wrap mt-4 mb-1.5">
+        <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft">Geplante Urlaube &amp; Krankheitstage ({bevorstehendeAbwesenheiten.length})</div>
+        {darfAbwesenheitenPflegen && (
+          <button className="btn btn-outline btn-sm" onClick={() => setAbwesenheitForm({ open: true })}>+ Abwesenheit</button>
+        )}
+      </div>
+      {bevorstehendeAbwesenheiten.length === 0 ? (
+        <div className="text-sm text-ink-soft border border-dashed border-line p-4 text-center mb-4">Keine laufenden oder bevorstehenden Abwesenheiten.</div>
+      ) : (
+        <div className="flex flex-col gap-1.5 mb-4">
+          {bevorstehendeAbwesenheiten.map((a) => (
+            <div key={a.id} className="card p-3 flex items-center justify-between gap-3 flex-wrap">
+              <div className="font-semibold text-sm">{employeesById[a.techniker_id]?.name || '–'}</div>
+              <div className="text-[13px] text-ink-soft">{zeitraum(a.von, a.bis)}</div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className={`tag ${a.art === 'Urlaub' ? 'tag-geplant' : a.art === 'Krank' ? 'tag-unterwegs' : 'tag-arbeit'}`}>{a.art}</span>
+                {darfAbwesenheitenPflegen && (
+                  <>
+                    <button className="btn btn-outline btn-sm" onClick={() => setAbwesenheitForm({ open: true, eintrag: a })}>Bearbeiten</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => abwesenheitLoeschen(a)}>Löschen</button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {viewMode === 'woche' && (
+        <>
+          {auswahl ? (
+            <div className="flex items-center gap-3 flex-wrap bg-blau/10 border border-blau p-2.5 mb-3">
+              <span className="text-sm">
+                <b>Auftrag #{auswahl.orderId}</b> wird verschoben — jetzt das Zielfeld anklicken
+                {auswahl.fromTech ? ' oder den Bereich „Nicht eingeplant“.' : '.'}
+              </span>
+              <button className="btn btn-outline btn-sm ml-auto" onClick={() => setAuswahl(null)}>Abbrechen</button>
+            </div>
+          ) : (
+            <p className="text-sm text-ink-soft mb-3">Aufträge auf einen Techniker und Tag ziehen — oder auf der Karte „Verschieben“ anklicken und dann das Zielfeld wählen. Das geht auch am Tablet.</p>
+          )}
+          <div className="flex gap-4 items-start max-lg:flex-col">
+            <div className="flex-1 overflow-x-auto border border-line bg-graphite">
+              <div className="grid" style={{ gridTemplateColumns: `140px repeat(7, minmax(120px, 1fr))` }}>
+                <div className="p-2" />
+                {weekDates.map((d) => (
+                  <div key={d.toISOString()} className="p-2 text-white text-center border-l border-white/10">
+                    <div className="text-xs text-white/60">{WOCHENTAGE[d.getDay()]}</div>
+                    <div className="text-sm font-semibold">{formatDMY(d)}</div>
+                  </div>
+                ))}
+                {technicians.map((tech) => (
+                  <Fragment key={tech.id}>
+                    <div className="p-2 text-white text-sm font-semibold bg-graphite-2 flex items-center">{tech.name}</div>
+                    {weekDates.map((d) => {
+                      const dateStr = formatDMY(d)
+                      const abw = abwesenheitFuer(tech.id, d)
+                      const dayOrders = orders.filter((o) => o.techniker.some((t) => t.id === tech.id) && orderCoversDate(o, d))
+                      return (
+                        <div
+                          key={tech.id + dateStr}
+                          onDragOver={(e) => { if (!abw) { e.preventDefault(); e.dataTransfer.dropEffect = 'move' } }}
+                          onDrop={(e) => { e.preventDefault(); if (abw) { toast('Techniker ist an diesem Tag abwesend.'); setDrag(null); return } applyDrop(tech.id, dateStr) }}
+                          onClick={() => {
+                            if (!auswahl) return
+                            if (abw) { toast('Techniker ist an diesem Tag abwesend.'); setAuswahl(null); return }
+                            zielGewaehlt(tech.id, dateStr)
+                          }}
+                          className={`p-1.5 min-h-[70px] border-l border-t border-line ${auswahl && !abw ? 'bg-blau/10 cursor-pointer' : 'bg-paper'}`}
+                        >
+                          {abw ? (
+                            <div className="text-xs text-ink-soft italic text-center mt-4">{abw.art}</div>
+                          ) : (
+                            dayOrders.map((o) => {
+                              const isStart = o.einsatzbeginn && formatDMY(parseISO(o.einsatzbeginn)!) === dateStr
+                              return <PlanCard key={o.id} order={o} draggable={!!isStart} fromTech={tech.id} fromDate={dateStr} continuation={!isStart} />
+                            })
+                          )}
+                        </div>
+                      )
+                    })}
+                  </Fragment>
+                ))}
+              </div>
+            </div>
+
+            <div
+              onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+              onDrop={(e) => { e.preventDefault(); applyDrop('', '') }}
+              onClick={() => { if (auswahl) zielGewaehlt('', '') }}
+              className={`w-full lg:w-64 shrink-0 border p-3 ${auswahl ? 'border-blau bg-blau/10 cursor-pointer' : 'border-line bg-white'}`}
+            >
+              <h3 className="text-sm font-semibold mt-0 mb-2">Nicht eingeplant ({poolOrders.length})</h3>
+              {poolOrders.length === 0 ? (
+                <div className="text-sm text-ink-soft p-3">Alles eingeplant.</div>
+              ) : (
+                poolOrders.map((o) => <PlanCard key={o.id} order={o} draggable zeigeTechniker />)
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 flex-wrap text-[13px] text-ink-soft mt-2 mb-4">
+            <span className="flex items-center gap-1.5"><span className="inline-block w-0.5 h-3.5 bg-blau" />Bericht angefangen — nur der Tag lässt sich verschieben</span>
+            <span className="flex items-center gap-1.5"><span className="inline-block w-0.5 h-3.5 bg-red" />Bericht abgeschlossen — nicht mehr verschiebbar</span>
+          </div>
+        </>
+      )}
+
+      {viewMode === 'monat' && (
+        <div className="overflow-x-auto border border-line bg-graphite">
+          <div className="grid" style={{ gridTemplateColumns: `140px repeat(${monthDates.length}, 34px)` }}>
+            <div className="p-2" />
+            {monthDates.map((d) => (
+              <div key={d.toISOString()} className="p-1 text-white text-center border-l border-white/10">
+                <div className="text-[10px] text-white/60">{WOCHENTAGE[d.getDay()]}</div>
+                <div className="text-xs font-semibold">{d.getDate()}</div>
+              </div>
+            ))}
+            {technicians.map((tech) => (
+              <Fragment key={tech.id}>
+                <div className="p-2 text-white text-sm font-semibold bg-graphite-2 flex items-center">{tech.name}</div>
+                {monthDates.map((d) => {
+                  const abw = abwesenheitFuer(tech.id, d)
+                  const dayOrders = orders.filter((o) => o.techniker.some((t) => t.id === tech.id) && orderCoversDate(o, d))
+                  const order = dayOrders[0]
+                  return (
+                    <div
+                      key={tech.id + d.toISOString()}
+                      onClick={() => order && navigate(`/auftraege/${order.id}`)}
+                      title={abw ? abw.art : order ? `#${order.id} ${order.einsatzkunde?.name || ''}` : undefined}
+                      className={`h-9 border-l border-t border-line flex items-center justify-center text-[10px] font-semibold ${
+                        abw ? 'bg-ink-soft/40 text-white' : order ? 'bg-amber/80 text-ink cursor-pointer hover:bg-amber' : 'bg-paper'
+                      }`}
+                    >
+                      {abw ? abw.art.slice(0, 1) : order ? '●' : ''}
+                    </div>
+                  )
+                })}
+              </Fragment>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {viewMode === 'jahr' && (
+        <div className="overflow-x-auto border border-line bg-white">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="bg-graphite text-white">
+                <th className="p-2 text-left font-semibold min-w-[140px]">Techniker</th>
+                {MONATSNAMEN.map((m) => <th key={m} className="p-2 text-center font-semibold min-w-[44px]">{m}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {technicians.map((tech) => (
+                <tr key={tech.id} className="border-t border-line">
+                  <td className="p-2 font-semibold">{tech.name}</td>
+                  {MONATSNAMEN.map((_, monat) => {
+                    const tage = abwesenheiten.filter((a) => a.techniker_id === tech.id && abwesenheitUeberschneidetMonat(a, monthAnchor.getFullYear(), monat))
+                    const urlaub = tage.filter((a) => a.art === 'Urlaub').length
+                    const krank = tage.filter((a) => a.art === 'Krank').length
+                    return (
+                      <td key={monat} className="p-1 text-center text-[11px]">
+                        {urlaub > 0 && <div className="text-steel font-semibold">{urlaub}U</div>}
+                        {krank > 0 && <div className="text-red font-semibold">{krank}K</div>}
+                        {urlaub === 0 && krank === 0 && <span className="text-ink-soft">–</span>}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="text-xs text-ink-soft p-2 m-0">U = Urlaubstage, K = Krankheitstage (Anzahl der Abwesenheits-Einträge, die den jeweiligen Monat überschneiden).</p>
+        </div>
+      )}
+
+      {abwesenheitForm.open && (
+        <AbwesenheitFormModal
+          abwesenheit={abwesenheitForm.eintrag}
+          mitarbeiter={Object.values(employeesById).filter((e) => e.aktiv).sort((a, b) => a.name.localeCompare(b.name))}
+          onClose={() => setAbwesenheitForm({ open: false })}
+          onSaved={() => { setAbwesenheitForm({ open: false }); load() }}
+        />
+      )}
+    </div>
+  )
+}
