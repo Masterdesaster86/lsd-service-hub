@@ -5,6 +5,7 @@ import { LOGO_URL } from '../lib/branding'
 import { NotificationBell } from './NotificationBell'
 import { PdfViewer } from './PdfViewer'
 import { Icon, type IconName } from './ui/Icon'
+import { DesignSchalter } from './ui/DesignSchalter'
 
 interface NavItem {
   to: string
@@ -124,6 +125,9 @@ export function AppShell() {
               ))}
             </div>
           )}
+          <div className="border-t border-white/10 p-3">
+            <DesignSchalter dunkel />
+          </div>
         </div>
         <div className="app-inhalt flex-1 min-w-0 overflow-y-auto p-6 max-md:p-4 max-md:pb-6 relative">
           <Outlet />
@@ -205,7 +209,8 @@ export function AppShell() {
                   {verfuegbareAnleitungen.length > 1 ? `Anleitung ${key === 'techniker' ? 'Techniker' : 'CEO'} (PDF)` : 'Anleitung (PDF)'}
                 </button>
               ))}
-              <div className="p-4">
+              <div className="p-4 flex flex-col gap-4">
+                <DesignSchalter />
                 <button onClick={signOut} className="btn btn-outline w-full">Abmelden</button>
               </div>
             </div>
