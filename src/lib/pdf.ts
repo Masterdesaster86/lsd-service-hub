@@ -344,8 +344,16 @@ export async function buildBerichtPdf(input: BerichtPdfInput): Promise<jsPDF> {
   doc.setDrawColor(LINE)
   doc.rect(MARGIN, y, sigW, sigH)
   doc.rect(MARGIN + sigW + 10, y, sigW, sigH)
-  if (input.technikerSignatureDataUrl) doc.addImage(input.technikerSignatureDataUrl, 'PNG', MARGIN + 1, y + 1, sigW - 2, sigH - 2)
-  if (input.kundeSignatureDataUrl) doc.addImage(input.kundeSignatureDataUrl, 'PNG', MARGIN + sigW + 11, y + 1, sigW - 2, sigH - 2)
+  // Unterschrift unverzerrt ins Feld setzen (eingepasst und zentriert).
+  const unterschriftEinsetzen = (dataUrl: string, x: number) => {
+    const { width, height } = doc.getImageProperties(dataUrl)
+    const maxW = sigW - 2, maxH = sigH - 2
+    const f = Math.min(maxW / width, maxH / height)
+    const w = width * f, h = height * f
+    doc.addImage(dataUrl, 'PNG', x + 1 + (maxW - w) / 2, y + 1 + (maxH - h) / 2, w, h)
+  }
+  if (input.technikerSignatureDataUrl) unterschriftEinsetzen(input.technikerSignatureDataUrl, MARGIN)
+  if (input.kundeSignatureDataUrl) unterschriftEinsetzen(input.kundeSignatureDataUrl, MARGIN + sigW + 10)
   doc.setFontSize(8)
   doc.setTextColor(INK_SOFT)
   doc.text(`Unterschrift Techniker (${techniker?.name || '–'})`, MARGIN, y + sigH + 4)
