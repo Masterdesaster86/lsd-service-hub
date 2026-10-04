@@ -50,7 +50,7 @@ export function CustomersList() {
     <div>
       <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
         <div>
-          <h1 className="text-xl font-semibold m-0">Kunden</h1>
+          <h1>Kunden</h1>
           <p className="text-sm text-ink-soft mt-1">Firmenstamm mit Ansprechpartnern und Maschinen</p>
         </div>
         <button className="btn btn-amber" onClick={() => setShowNew(true)}>+ Neuer Kunde</button>

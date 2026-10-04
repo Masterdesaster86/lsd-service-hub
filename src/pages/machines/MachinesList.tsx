@@ -51,7 +51,7 @@ export function MachinesList() {
     <div>
       <div className="flex items-end justify-between gap-3 flex-wrap mb-4">
         <div>
-          <h1 className="text-xl font-semibold m-0">Maschinen</h1>
+          <h1>Maschinen</h1>
           <p className="text-sm text-ink-soft mt-1">Maschinenstamm aller Kunden</p>
         </div>
         <div className="max-w-[220px]">

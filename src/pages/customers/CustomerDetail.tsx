@@ -67,7 +67,7 @@ export function CustomerDetail() {
 
   return (
     <div>
-      <button className="text-sm text-steel bg-transparent border-none cursor-pointer p-0 mb-4" onClick={() => navigate('/kunden')}>← Zurück zur Kundenliste</button>
+      <button className="btn btn-outline btn-sm mb-4" onClick={() => navigate('/kunden')}>← Zurück zur Kundenliste</button>
 
       <div className="flex items-start justify-between gap-4 flex-wrap mb-6 card p-4">
         <div>
@@ -88,7 +88,7 @@ export function CustomerDetail() {
       </div>
 
       <div className="flex items-center gap-2 mb-1">
-        <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft">Ansprechpartner</div>
+        <div className="abschnitt">Ansprechpartner</div>
         <button className="btn btn-outline btn-sm" onClick={() => setShowNewAp(true)}>+ Ansprechpartner</button>
       </div>
       {ansprechpartner.length === 0 ? (
@@ -113,7 +113,7 @@ export function CustomerDetail() {
       )}
 
       <div className="flex items-center gap-2 mb-1">
-        <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft">Maschinen</div>
+        <div className="abschnitt">Maschinen</div>
         <button className="btn btn-outline btn-sm" onClick={() => setShowNewMachine(true)}>+ Maschine</button>
       </div>
       {machines.length === 0 ? (

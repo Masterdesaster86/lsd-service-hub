@@ -82,11 +82,6 @@ a:focus-visible, button:focus-visible {
   background: var(--color-line);
 }
 
-.card {
-  background: #fff;
-  border: 1px solid var(--color-line);
-}
-
 /* Wenn die App vom Home-Bildschirm im Vollbild startet, liegt der Inhalt unter
    Statusleiste, Notch und Home-Indikator. Diese Klassen halten den nötigen
    Abstand frei; am Desktop sind die Werte 0. */
@@ -98,77 +93,6 @@ a:focus-visible, button:focus-visible {
 }
 .app-seitenleiste { padding-left: env(safe-area-inset-left, 0px); }
 .app-inhalt { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); }
-
-/* Buttons: Mono-Schrift, Großbuchstaben. Die Hauptaktion hat die abgeschrägte
-   Ecke oben rechts (Fase wie auf der Webseite). */
-.btn {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  padding: 0 18px;
-  min-height: 46px;
-  border: 1.5px solid transparent;
-  border-radius: 0;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  line-height: 1.2;
-  white-space: nowrap;
-  transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
-}
-.btn:hover:not(:disabled) { transform: translateY(-1px); }
-.btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-.btn-amber {
-  background: var(--color-amber);
-  color: #fff;
-  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
-}
-.btn-amber:hover:not(:disabled) {
-  background: var(--color-amber-dark);
-}
-.btn-outline {
-  background: transparent;
-  border-color: var(--color-ink);
-  color: var(--color-ink);
-}
-.btn-outline:hover:not(:disabled) {
-  background: var(--color-paper-2);
-}
-.btn-danger {
-  background: var(--color-ink);
-  border-color: var(--color-ink);
-  color: var(--color-paper);
-}
-.btn-danger:hover:not(:disabled) {
-  background: var(--color-graphite-2);
-}
-.btn-dark {
-  background: var(--color-graphite);
-  border-color: var(--color-graphite);
-  color: #fff;
-}
-.btn-dark:hover:not(:disabled) {
-  background: var(--color-graphite-2);
-}
-.btn-sm {
-  padding: 0 12px;
-  min-height: 38px;
-  font-size: 12px;
-}
-.btn-amber.btn-sm {
-  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
-}
-@media (prefers-reduced-motion: reduce) {
-  .btn { transition: none; }
-  .btn:hover:not(:disabled) { transform: none; }
-}
 
 /* Eingabefelder: hoch genug für den Daumen, kräftiger Rahmen für Tageslicht. */
 input, select, textarea {
@@ -252,6 +176,94 @@ label {
   cursor: pointer;
 }
 
+/* Dialog fährt am Handy von unten herein. */
+@keyframes sheet-hoch {
+  from { transform: translateY(32px); opacity: 0; }
+}
+.modal-blatt { animation: sheet-hoch 0.2s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .modal-blatt { animation: none; }
+}
+
+/* Bausteine liegen in der components-Ebene: Tailwind-Utilities (z. B. hidden,
+   max-md:hidden, w-full) dürfen sie überstimmen. */
+@layer components {
+.card {
+  background: #fff;
+  border: 1px solid var(--color-line);
+}
+
+/* Buttons: Mono-Schrift, Großbuchstaben. Die Hauptaktion hat die abgeschrägte
+   Ecke oben rechts (Fase wie auf der Webseite). */
+.btn {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0 18px;
+  min-height: 46px;
+  border: 1.5px solid transparent;
+  border-radius: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+.btn:hover:not(:disabled) { transform: translateY(-1px); }
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn-amber {
+  background: var(--color-amber);
+  color: #fff;
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+}
+.btn-amber:hover:not(:disabled) {
+  background: var(--color-amber-dark);
+}
+.btn-outline {
+  background: transparent;
+  border-color: var(--color-ink);
+  color: var(--color-ink);
+}
+.btn-outline:hover:not(:disabled) {
+  background: var(--color-paper-2);
+}
+.btn-danger {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+  color: var(--color-paper);
+}
+.btn-danger:hover:not(:disabled) {
+  background: var(--color-graphite-2);
+}
+.btn-dark {
+  background: var(--color-graphite);
+  border-color: var(--color-graphite);
+  color: #fff;
+}
+.btn-dark:hover:not(:disabled) {
+  background: var(--color-graphite-2);
+}
+.btn-sm {
+  padding: 0 12px;
+  min-height: 38px;
+  font-size: 12px;
+}
+.btn-amber.btn-sm {
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn { transition: none; }
+  .btn:hover:not(:disabled) { transform: none; }
+}
+
 /* Status-Etiketten: Der Status steht im Quadrat vor dem Text, nie nur in der
    Farbe. "Abgeschlossen" ist schwarz gefüllt. */
 .tag {
@@ -298,11 +310,33 @@ label {
   color: var(--color-ink);
 }
 
-/* Dialog fährt am Handy von unten herein. */
-@keyframes sheet-hoch {
-  from { transform: translateY(32px); opacity: 0; }
+/* Abschnittsüberschrift innerhalb einer Seite (Mono, versal, gesperrt). */
+.abschnitt {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
 }
-.modal-blatt { animation: sheet-hoch 0.2s ease; }
-@media (prefers-reduced-motion: reduce) {
-  .modal-blatt { animation: none; }
+
+/* Eyebrow über dem Seitentitel: kurzer Strich, Mono, Akzentfarbe. */
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  margin: 0 0 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-amber);
+}
+.eyebrow::before {
+  content: "";
+  width: 22px;
+  height: 2px;
+  background: currentColor;
+  flex: none;
+}
 }

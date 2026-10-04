@@ -203,7 +203,7 @@ export function BerichtDetail() {
 
   return (
     <div>
-      <button className="text-sm text-steel bg-transparent border-none cursor-pointer p-0 mb-4" onClick={() => navigate(`/auftraege/${order.id}`)}>← Zurück zu Auftrag #{order.id}</button>
+      <button className="btn btn-outline btn-sm mb-4" onClick={() => navigate(`/auftraege/${order.id}`)}>← Zurück zu Auftrag #{order.id}</button>
 
       <div className="flex items-start justify-between gap-4 flex-wrap mb-4 card p-4">
         <div>
@@ -232,7 +232,7 @@ export function BerichtDetail() {
       <div className="mb-3.5"><label>Empfehlung</label><textarea rows={2} disabled={!editable} defaultValue={bericht.empfehlung || ''} onBlur={(e) => updateField('empfehlung', e.target.value)} /></div>
 
       <div className="flex items-center gap-2 mt-5 mb-1">
-        <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft">Tageserfassung</div>
+        <div className="abschnitt">Tageserfassung</div>
         {editable && <button className="btn btn-outline btn-sm" onClick={() => setShowTagForm(true)}>+ Tag erfassen</button>}
       </div>
       {tage.length === 0 ? (
@@ -277,7 +277,7 @@ export function BerichtDetail() {
       )}
 
       <div className="flex items-center gap-2 mb-1.5">
-        <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft">Messprotokoll</div>
+        <div className="abschnitt">Messprotokoll</div>
         {isOwner && <button className="btn btn-outline btn-sm" onClick={() => setShowMessprotokollForm(true)}>+ Messprotokoll</button>}
       </div>
       {messprotokolle.length === 0
@@ -285,7 +285,7 @@ export function BerichtDetail() {
         : <MessprotokollListe protokolle={messprotokolle} />}
 
       <div className="flex items-center gap-2 mb-1">
-        <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft">Ersatzteile</div>
+        <div className="abschnitt">Ersatzteile</div>
         {editable && <button className="btn btn-outline btn-sm" onClick={() => setShowTeilForm(true)}>+ Ersatzteil</button>}
       </div>
       {ersatzteile.length === 0 ? (

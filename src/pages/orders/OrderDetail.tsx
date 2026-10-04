@@ -83,7 +83,7 @@ export function OrderDetail() {
 
   return (
     <div>
-      <button className="text-sm text-steel bg-transparent border-none cursor-pointer p-0 mb-4" onClick={() => navigate('/auftraege')}>← Zurück zur Übersicht</button>
+      <button className="btn btn-outline btn-sm mb-4" onClick={() => navigate('/auftraege')}>← Zurück zur Übersicht</button>
 
       <div className="flex items-start justify-between gap-4 flex-wrap mb-4 card p-4">
         <div>
@@ -134,7 +134,7 @@ export function OrderDetail() {
       </div>
 
       <div className="flex items-center gap-2 mb-1">
-        <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft">Serviceberichte</div>
+        <div className="abschnitt">Serviceberichte</div>
         {istEingeplant && <button className="btn btn-amber btn-sm" onClick={() => setShowNewBericht(true)}>+ Servicebericht</button>}
       </div>
       <p className="text-sm text-ink-soft mb-2.5">{isTechniker ? 'Nur deine eigenen Berichte für diesen Auftrag.' : 'Alle Berichte aller Techniker für diesen Auftrag.'}</p>
@@ -165,7 +165,7 @@ export function OrderDetail() {
 
       {messprotokolle.length > 0 && (
         <>
-          <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft mt-6 mb-2">Messprotokolle</div>
+          <div className="abschnitt mt-6 mb-2">Messprotokolle</div>
           <MessprotokollListe
             protokolle={messprotokolle}
             maschinen={Object.fromEntries(order.machines.map((m) => [m.id, m.bezeichnung]))}

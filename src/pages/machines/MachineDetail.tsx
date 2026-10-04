@@ -66,7 +66,7 @@ export function MachineDetail() {
 
   return (
     <div>
-      <button className="text-sm text-steel bg-transparent border-none cursor-pointer p-0 mb-4" onClick={() => navigate(backTo)}>{backLabel}</button>
+      <button className="btn btn-outline btn-sm mb-4" onClick={() => navigate(backTo)}>{backLabel}</button>
 
       <div className="card p-4 mb-4">
         <div className="text-lg font-semibold text-amber">{machine.bezeichnung}</div>

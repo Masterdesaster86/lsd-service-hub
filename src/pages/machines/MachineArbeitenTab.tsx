@@ -50,7 +50,7 @@ export function MachineArbeitenTab({ maschineId }: { maschineId: string }) {
       <textarea rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="z.B. Encoder-Kabel im Auge behalten, beim nächsten Termin prüfen ..." />
       <button className="btn btn-outline btn-sm mt-2" disabled={saving} onClick={handleAdd}>Eintragen</button>
 
-      <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft mt-6 mb-1.5">Offen ({offen.length})</div>
+      <div className="abschnitt mt-6 mb-1.5">Offen ({offen.length})</div>
       {rows === null ? <div className="text-sm text-ink-soft">Lädt…</div> : offen.length === 0 ? (
         <div className="text-sm text-ink-soft border border-dashed border-line p-4 text-center">Keine offenen Arbeiten.</div>
       ) : (
@@ -67,7 +67,7 @@ export function MachineArbeitenTab({ maschineId }: { maschineId: string }) {
         </div>
       )}
 
-      <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft mt-6 mb-1.5">Abgeschlossen ({erledigt.length})</div>
+      <div className="abschnitt mt-6 mb-1.5">Abgeschlossen ({erledigt.length})</div>
       {erledigt.length === 0 ? (
         <div className="text-sm text-ink-soft border border-dashed border-line p-4 text-center">Noch keine abgeschlossenen Arbeiten.</div>
       ) : (

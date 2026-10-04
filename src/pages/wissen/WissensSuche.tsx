@@ -53,7 +53,7 @@ export function WissensSuche() {
   return (
     <div>
       <div className="mb-4">
-        <h1 className="text-xl font-semibold m-0">Wissens-Suche</h1>
+        <h1>Wissens-Suche</h1>
         <p className="text-sm text-ink-soft mt-1">
           Pilot über die DMU/DMC-Baureihe — durchsucht Servicedokumentation aus SharePoint.
         </p>

@@ -91,7 +91,7 @@ export function MitarbeiterFormModal({ employee: editEmployee, onClose, onSaved 
       </div>
 
       <div className="border-t border-line mt-4 pt-3.5">
-        <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft mb-2">
+        <div className="abschnitt mb-2">
           {editing && hatLogin ? 'Passwort ändern' : 'Login anlegen'}
         </div>
         <div className="grid grid-cols-2 gap-3.5">

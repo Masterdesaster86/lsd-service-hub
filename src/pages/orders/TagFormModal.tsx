@@ -154,7 +154,7 @@ export function TagFormModal({ berichtId, tag, onClose, onSaved }: { berichtId: 
 function SectionToggle({ title, checked, onChange, checkboxLabel }: { title: string; checked: boolean; onChange: (v: boolean) => void; checkboxLabel: string }) {
   return (
     <div className="flex items-center justify-between mt-5 mb-1">
-      <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft">{title}</div>
+      <div className="abschnitt">{title}</div>
       <label className="check-inline">
         <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} /> {checkboxLabel}
       </label>

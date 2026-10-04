@@ -40,15 +40,15 @@ export function Verwaltung() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold m-0">Meine Verwaltung</h1>
+      <h1>Meine Verwaltung</h1>
       <p className="text-sm text-ink-soft mt-1 mb-4">{employee?.name}</p>
 
       <div className="flex items-center gap-3 flex-wrap mb-1">
-        <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft">Fehlzeit melden</div>
+        <div className="abschnitt">Fehlzeit melden</div>
         <button className="btn btn-outline btn-sm" onClick={() => setShowFehlzeit(true)}>+ Krankheit / Schulung / Kurzarbeit</button>
       </div>
       <div className="flex items-center gap-3 flex-wrap mb-3">
-        <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft">Urlaub</div>
+        <div className="abschnitt">Urlaub</div>
         <button className="btn btn-amber btn-sm" onClick={() => setShowUrlaub(true)}>+ Urlaub beantragen</button>
       </div>
 
@@ -71,7 +71,7 @@ export function Verwaltung() {
         </div>
       )}
 
-      <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft mb-1.5">Meine erfassten Fehlzeiten</div>
+      <div className="abschnitt mb-1.5">Meine erfassten Fehlzeiten</div>
       {abwesenheiten.length === 0 ? (
         <div className="text-sm text-ink-soft border border-dashed border-line p-4 text-center mb-6">Noch keine Fehlzeiten erfasst.</div>
       ) : (
@@ -85,7 +85,7 @@ export function Verwaltung() {
         </div>
       )}
 
-      <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft mb-1.5">Monats-Stundennachweis</div>
+      <div className="abschnitt mb-1.5">Monats-Stundennachweis</div>
       <div className="max-w-xs"><label>Monat</label><input type="month" value={monat} onChange={(e) => setMonat(e.target.value)} /></div>
       <button className="btn btn-amber mt-3.5" onClick={() => monat && setNachweisMonat(monat)}>Stundennachweis erstellen</button>
 

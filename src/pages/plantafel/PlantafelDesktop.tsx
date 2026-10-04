@@ -111,7 +111,7 @@ export function PlantafelDesktop() {
   return (
     <div>
       <div className="flex items-center gap-3 flex-wrap mb-1">
-        <h1 className="text-xl font-semibold m-0">Plantafel</h1>
+        <h1>Plantafel</h1>
         <div className="flex gap-1.5">
           {(['woche', 'monat', 'jahr'] as ViewMode[]).map((v) => (
             <button key={v} className={`btn btn-sm ${viewMode === v ? 'btn-dark' : 'btn-outline'}`} onClick={() => setViewMode(v)}>
@@ -144,7 +144,7 @@ export function PlantafelDesktop() {
 
       {antraege.length > 0 && (
         <>
-          <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft mt-4 mb-1.5">Offene Urlaubsanträge ({antraege.length})</div>
+          <div className="abschnitt mt-4 mb-1.5">Offene Urlaubsanträge ({antraege.length})</div>
           <div className="flex flex-col gap-1.5 mb-4">
             {antraege.map((a) => (
               <div key={a.id} className="card p-3 flex items-center justify-between gap-3 flex-wrap">
@@ -163,7 +163,7 @@ export function PlantafelDesktop() {
       )}
 
       <div className="flex items-center gap-2 flex-wrap mt-4 mb-1.5">
-        <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft">Geplante Urlaube &amp; Krankheitstage ({bevorstehendeAbwesenheiten.length})</div>
+        <div className="abschnitt">Geplante Urlaube &amp; Krankheitstage ({bevorstehendeAbwesenheiten.length})</div>
         {darfAbwesenheitenPflegen && (
           <button className="btn btn-outline btn-sm" onClick={() => setAbwesenheitForm({ open: true })}>+ Abwesenheit</button>
         )}

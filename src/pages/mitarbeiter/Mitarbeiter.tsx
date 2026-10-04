@@ -43,7 +43,7 @@ export function Mitarbeiter() {
     <div>
       <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
         <div>
-          <h1 className="text-xl font-semibold m-0">Mitarbeiter</h1>
+          <h1>Mitarbeiter</h1>
           <p className="text-sm text-ink-soft mt-1">Benutzerkonten und Rollen verwalten.</p>
         </div>
         <button className="btn btn-amber" onClick={() => setShowNew(true)}>+ Neuer Mitarbeiter</button>

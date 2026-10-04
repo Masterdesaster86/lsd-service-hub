@@ -51,7 +51,7 @@ export function MachineHistorieTab({ maschineId }: { maschineId: string }) {
     <div>
       {protokolle.length > 0 && (
         <div className="mb-4">
-          <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft mb-1.5">Messprotokolle</div>
+          <div className="abschnitt mb-1.5">Messprotokolle</div>
           <div className="flex flex-col gap-1.5">
             {protokolle.map((p) => (
               <div key={p.id} onClick={() => navigate(`/messprotokolle/${p.id}`)} className="card p-3 flex items-center justify-between gap-3 flex-wrap cursor-pointer hover:border-amber transition-colors">
@@ -66,7 +66,7 @@ export function MachineHistorieTab({ maschineId }: { maschineId: string }) {
         </div>
       )}
 
-      <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft mb-1.5">Serviceberichte</div>
+      <div className="abschnitt mb-1.5">Serviceberichte</div>
       {rows.length === 0 ? (
         <div className="text-sm text-ink-soft border border-dashed border-line p-4 text-center">Noch keine Serviceberichte für diese Maschine.</div>
       ) : (

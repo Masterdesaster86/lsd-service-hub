@@ -96,13 +96,13 @@ export function Monatsnachweis({ monatWert, onBack }: { monatWert: string; onBac
 
   return (
     <div>
-      <button className="text-sm text-steel bg-transparent border-none cursor-pointer p-0 mb-4" onClick={onBack}>← Zurück zur Verwaltung</button>
+      <button className="btn btn-outline btn-sm mb-4" onClick={onBack}>← Zurück zur Verwaltung</button>
       <div className="card p-4 mb-4">
         <div className="text-lg font-semibold text-amber">Stundennachweis</div>
         <div className="font-semibold">{employee?.name} · {MONATSNAMEN[monat - 1]} {jahr}</div>
       </div>
 
-      <div className="font-semibold text-sm uppercase tracking-wide text-ink-soft mb-1.5">Erfasste Tage</div>
+      <div className="abschnitt mb-1.5">Erfasste Tage</div>
       {zeilen.length === 0 ? (
         <div className="text-sm text-ink-soft border border-dashed border-line p-4 text-center mb-4">Keine Zeiten in diesem Monat erfasst.</div>
       ) : (

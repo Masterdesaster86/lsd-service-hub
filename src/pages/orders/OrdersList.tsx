@@ -6,13 +6,15 @@ import type { OrderWithRelations } from '../../lib/types'
 import { OrderStatusTag } from '../../components/ui/StatusTag'
 import { customerAddress, mapsLink } from '../../lib/format'
 import { OrderFormModal } from './OrderFormModal'
+import { Icon } from '../../components/ui/Icon'
+import { WOCHENTAGE, formatDMY } from '../../lib/zeit'
 
 type Tab = 'neu' | 'in Arbeit' | 'erledigt'
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'neu', label: 'Neue Aufträge' },
+  { key: 'neu', label: 'Neu' },
   { key: 'in Arbeit', label: 'In Arbeit' },
-  { key: 'erledigt', label: 'Erledigt / Abgerechnet' },
+  { key: 'erledigt', label: 'Erledigt' },
 ]
 
 type SortMode = 'einsatz_auf' | 'einsatz_ab' | 'erstellt_ab'
@@ -88,40 +90,56 @@ export function OrdersList() {
     ? `Nur Aufträge, für die du eingeplant bist (${employee?.name})`
     : `Alle Aufträge sichtbar (Rolle: ${employee?.role})`
 
+  const heute = new Date()
+  const heuteText = `${WOCHENTAGE[heute.getDay()]}, ${formatDMY(heute)}`
+
   return (
     <div>
-      <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
+      <div className="flex items-end justify-between gap-4 flex-wrap mb-4">
         <div>
-          <h1 className="text-xl font-semibold m-0">Serviceaufträge</h1>
-          <p className="text-sm text-ink-soft mt-1">{roleNote}</p>
+          <p className="eyebrow">{heuteText}</p>
+          <h1>Serviceaufträge</h1>
+          <p className="text-sm text-ink-soft mt-1.5 mb-0">{roleNote}</p>
         </div>
-        {canCreate && <button className="btn btn-amber" onClick={() => setShowNew(true)}>+ Neuer Auftrag</button>}
+        {canCreate && <button className="btn btn-amber max-sm:w-full" onClick={() => setShowNew(true)}><Icon name="hinzufuegen" size={20} /> Neuer Auftrag</button>}
       </div>
 
       {kannUmschalten && (
-        <div className="flex gap-1.5 mb-3 flex-wrap">
-          <button className={`btn btn-sm ${!nurMeine ? 'btn-dark' : 'btn-outline'}`} onClick={() => setNurMeine(false)}>Alle Aufträge</button>
-          <button className={`btn btn-sm ${nurMeine ? 'btn-dark' : 'btn-outline'}`} onClick={() => setNurMeine(true)}>Nur meine</button>
-        </div>
-      )}
-
-      <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
-        <div className="flex gap-2 flex-wrap">
-          {TABS.map((t) => (
+        <div className="grid grid-cols-2 gap-0.5 p-0.5 bg-line mb-3 max-w-sm">
+          {([[false, 'Alle Aufträge'], [true, 'Nur meine']] as const).map(([wert, label]) => (
             <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`btn btn-sm ${tab === t.key ? 'btn-dark' : 'btn-outline'}`}
+              key={label}
+              onClick={() => setNurMeine(wert)}
+              className={`min-h-[44px] border-0 cursor-pointer font-mono text-[12px] font-semibold uppercase tracking-[0.04em] ${nurMeine === wert ? 'bg-ink text-paper' : 'bg-white text-ink'}`}
             >
-              {t.label} ({counts[t.key]})
+              {label}
             </button>
           ))}
         </div>
-        <div className="max-w-[260px]">
-          <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)}>
-            {SORT_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-          </select>
-        </div>
+      )}
+
+      <div role="tablist" className="grid grid-cols-3 border-b border-line mb-3">
+        {TABS.map((t) => {
+          const aktiv = tab === t.key
+          return (
+            <button
+              key={t.key}
+              role="tab"
+              aria-selected={aktiv}
+              onClick={() => setTab(t.key)}
+              className={`min-h-[52px] px-1 border-0 border-b-[3px] -mb-px bg-transparent cursor-pointer font-mono text-[12.5px] font-semibold uppercase tracking-[0.05em] ${aktiv ? 'border-ink text-ink' : 'border-transparent text-ink-soft'}`}
+            >
+              {t.label} <span className="font-normal">{counts[t.key]}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="flex items-center gap-3 mb-4">
+        <label className="!mb-0 shrink-0" htmlFor="sortierung">Sortierung</label>
+        <select id="sortierung" className="sm:max-w-[300px]" value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)}>
+          {SORT_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+        </select>
       </div>
 
       {orders === null ? (
@@ -134,35 +152,31 @@ export function OrdersList() {
             <div
               key={o.id}
               onClick={() => navigate(`/auftraege/${o.id}`)}
-              className="card p-4 cursor-pointer hover:border-amber transition-colors flex items-start gap-4 flex-wrap"
+              className="card p-4 cursor-pointer hover:border-ink transition-colors"
             >
-              <div className="font-mono text-sm font-semibold min-w-[110px]">
-                #{o.id}
-                {o.einsatzbeginn && <div className="font-sans font-normal text-[11.5px] text-ink-soft mt-0.5">ab {o.einsatzbeginn.split('-').reverse().join('.')}</div>}
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-mono text-[14px] font-semibold">
+                  #{o.id}
+                  {o.einsatzbeginn && <span className="font-normal text-ink-soft"> · {o.einsatzbeginn.split('-').reverse().join('.')}</span>}
+                </span>
+                <OrderStatusTag status={o.status} />
               </div>
-              <div className="flex-1 min-w-[220px]">
-                <div className="font-semibold">{o.einsatzkunde?.name || '–'}</div>
-                <a
-                  href={mapsLink(customerAddress(o.einsatzkunde))}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-steel no-underline text-[13px]"
-                >
-                  📍 {customerAddress(o.einsatzkunde)}
-                </a>
-                <div className="text-[13px] text-ink-soft">
-                  Auftraggeber: {o.auftraggeber?.name || '–'} · Techniker: {o.techniker.length ? o.techniker.map((t) => t.name).join(', ') : '– nicht zugewiesen –'}
-                </div>
-                {o.machines.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-1.5">
-                    {o.machines.map((m) => (
-                      <span key={m.id} className="text-[11px] bg-paper-2 border border-line px-2 py-0.5">{m.bezeichnung}</span>
-                    ))}
-                  </div>
-                )}
+              <div className="font-semibold text-[17px] leading-snug mt-2">{o.einsatzkunde?.name || '–'}</div>
+              {o.machines.length > 0 && (
+                <div className="font-mono text-[12.5px] text-ink-soft mt-1">{o.machines.map((m) => m.bezeichnung).join(' · ')}</div>
+              )}
+              <a
+                href={mapsLink(customerAddress(o.einsatzkunde))}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1.5 text-ink no-underline text-[14px] mt-2"
+              >
+                <Icon name="standort" size={18} /> <span className="underline underline-offset-[3px] decoration-line">{customerAddress(o.einsatzkunde)}</span>
+              </a>
+              <div className="text-[13px] text-ink-soft mt-1.5">
+                Auftraggeber: {o.auftraggeber?.name || '–'} · Techniker: {o.techniker.length ? o.techniker.map((t) => t.name).join(', ') : '– nicht zugewiesen –'}
               </div>
-              <OrderStatusTag status={o.status} />
             </div>
           ))}
         </div>
