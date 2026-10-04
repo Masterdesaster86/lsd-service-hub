@@ -119,6 +119,18 @@ export function MessprotokollDetail() {
     document.querySelector('.app-inhalt')?.scrollTo({ top: 0 })
   }
 
+  // Zurück dorthin, wo das Protokoll angelegt wurde: zum Servicebericht, sonst zur Maschine.
+  const zurueckZiel = protokoll.servicebericht_id ? `/berichte/${protokoll.servicebericht_id}` : `/maschinen/${protokoll.maschine_id}`
+  const zurueckText = protokoll.servicebericht_id ? 'Zum Bericht' : 'Zur Maschine'
+
+  /** Zwischenstand sichern und das Protokoll verlassen — später geht es genau hier weiter. */
+  async function schliessen() {
+    const ok = await speichern(true)
+    if (!ok) return
+    if (editable) toast('Gespeichert. Du kannst später weitermachen.')
+    navigate(zurueckZiel)
+  }
+
   async function abschliessen() {
     const offen = anzahl('offen')
     const ok = await confirm({
@@ -177,7 +189,10 @@ export function MessprotokollDetail() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <button className="btn btn-outline btn-sm" onClick={() => wechsle({ art: 'uebersicht' })}><Icon name="zurueck" size={18} /> Übersicht</button>
-          <span className="font-mono text-[13px] text-ink-soft">{i + 1} / {punkte.length}</span>
+          <span className="flex items-center gap-3">
+            <span className="font-mono text-[13px] text-ink-soft">{i + 1} / {punkte.length}</span>
+            {editable && <button className="btn btn-outline btn-sm" disabled={saving} onClick={schliessen}>Schließen</button>}
+          </span>
         </div>
         <p className="font-mono text-[12px] uppercase tracking-[0.14em] text-amber m-0 mb-2 flex items-center gap-2">
           <span className="inline-block w-[22px] h-0.5 bg-amber" />{p.gruppe}
@@ -338,7 +353,7 @@ export function MessprotokollDetail() {
 
   return (
     <div>
-      <button className="btn btn-outline btn-sm mb-4" onClick={() => navigate(`/maschinen/${protokoll.maschine_id}`)}><Icon name="zurueck" size={18} /> Zur Maschine</button>
+      <button className="btn btn-outline btn-sm mb-4" disabled={saving} onClick={schliessen}><Icon name="zurueck" size={18} /> {zurueckText}</button>
 
       <div className="flex items-start justify-between gap-3 mb-1">
         <p className="font-mono text-[12px] uppercase tracking-[0.14em] text-amber m-0 flex items-center gap-2"><span className="inline-block w-[22px] h-0.5 bg-amber" />Messprotokoll</p>
@@ -384,6 +399,9 @@ export function MessprotokollDetail() {
           >
             {ersterOffener >= 0 ? `${erledigt === 0 ? 'Start mit' : 'Weiter mit'} Messung ${punkte[ersterOffener].nr}` : 'Zur Zusammenfassung'}
           </button>
+        )}
+        {editable && (
+          <button className="btn btn-outline w-full mt-2" disabled={saving} onClick={schliessen}>Speichern und schließen</button>
         )}
       </div>
 
