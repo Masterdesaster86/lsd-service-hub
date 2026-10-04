@@ -11,6 +11,8 @@ import { MachineHistorieTab } from './MachineHistorieTab'
 import { MachineArbeitenTab } from './MachineArbeitenTab'
 import { MachineNotizenTab } from './MachineNotizenTab'
 import { MachineBilderTab } from './MachineBilderTab'
+import { Icon } from '../../components/ui/Icon'
+import { Typenschild } from '../../components/ui/Typenschild'
 
 type Tab = 'stamm' | 'historie' | 'arbeiten' | 'notizen' | 'bilder'
 const TABS: { key: Tab; label: string }[] = [
@@ -50,7 +52,7 @@ export function MachineDetail() {
   if (!machine) return <div className="text-sm text-ink-soft">Lädt…</div>
 
   const backTo = params.get('from') === 'customer' ? `/kunden/${customer?.id}` : '/maschinen'
-  const backLabel = params.get('from') === 'customer' ? `← Zurück zu ${customer?.name || ''}` : '← Zurück zur Maschinenliste'
+  const backLabel = params.get('from') === 'customer' ? (customer?.name || 'Kunde') : 'Maschinen'
 
   async function handleDelete() {
     const ok = await confirm({ message: `Maschine "${machine!.bezeichnung}" wirklich löschen?`, danger: true, confirmLabel: 'Löschen' })
@@ -66,39 +68,49 @@ export function MachineDetail() {
 
   return (
     <div>
-      <button className="btn btn-outline btn-sm mb-4" onClick={() => navigate(backTo)}>{backLabel}</button>
+      <button className="btn btn-outline btn-sm mb-4" onClick={() => navigate(backTo)}><Icon name="zurueck" size={18} /> {backLabel}</button>
 
-      <div className="card p-4 mb-4">
-        <div className="text-lg font-semibold text-amber">{machine.bezeichnung}</div>
-        <div className="font-semibold">{machine.hersteller} · Nr. {machine.nummer}</div>
-        <div className="text-sm text-ink-soft">Kunde: {customer?.name || '–'}</div>
-      </div>
+      <p className="eyebrow">Maschine</p>
+      <h1 className="font-mono">{machine.bezeichnung}</h1>
+      <div className="font-mono text-[13px] text-ink-soft mt-1.5">{machine.hersteller || '–'} · Nr. {machine.nummer || '–'}{machine.steuerung ? ` · ${machine.steuerung}` : ''}</div>
+      {customer && (
+        <button className="bg-transparent border-0 p-0 mt-1 text-steel text-[15px] font-semibold cursor-pointer text-left" onClick={() => navigate(`/kunden/${customer.id}`)}>{customer.name}</button>
+      )}
 
-      <div className="flex gap-1 border-b border-line mb-4 flex-wrap">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`px-3 py-2 text-sm border-b-2 -mb-px ${tab === t.key ? 'border-amber font-semibold' : 'border-transparent text-ink-soft'}`}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div role="tablist" className="flex overflow-x-auto border-b border-line mt-5 mb-4 -mx-4 px-4 md:mx-0 md:px-0">
+        {TABS.map((t) => {
+          const aktiv = tab === t.key
+          return (
+            <button
+              key={t.key}
+              role="tab"
+              aria-selected={aktiv}
+              onClick={() => setTab(t.key)}
+              className={`shrink-0 min-h-[48px] px-3.5 border-0 border-b-[3px] -mb-px bg-transparent cursor-pointer font-mono text-[12px] font-semibold uppercase tracking-[0.05em] whitespace-nowrap ${aktiv ? 'border-ink text-ink' : 'border-transparent text-ink-soft'}`}
+            >
+              {t.label}
+            </button>
+          )
+        })}
       </div>
 
       {tab === 'stamm' && (
         <div>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-3 max-sm:grid-cols-1">
-            <div><label>Bezeichnung</label><div className="val">{machine.bezeichnung}</div></div>
-            <div><label>Hersteller</label><div className="val">{machine.hersteller || '–'}</div></div>
-            <div><label>Maschinennummer</label><div className="val">{machine.nummer || '–'}</div></div>
-            <div><label>Kunden-Maschinennummer</label><div className="val">{machine.kunden_maschinennummer || '–'}</div></div>
-            <div><label>Steuerung</label><div className="val">{machine.steuerung || '–'}</div></div>
-          </div>
+          <Typenschild
+            titel="Typenschild"
+            zeilen={[
+              ['Bezeichnung', <span className="font-mono">{machine.bezeichnung}</span>],
+              ['Hersteller', machine.hersteller || '–'],
+              ['Maschinennr.', <span className="font-mono">{machine.nummer || '–'}</span>],
+              ['Kunden-Nr.', <span className="font-mono">{machine.kunden_maschinennummer || '–'}</span>],
+              ['Steuerung', machine.steuerung || '–'],
+              ['Kunde', customer?.name || '–'],
+            ]}
+          />
           {darfAendern && (
-            <div className="flex gap-2 mt-4">
-              <button className="btn btn-outline btn-sm" onClick={() => setShowEdit(true)}>Bearbeiten</button>
-              <button className="btn btn-danger btn-sm" onClick={handleDelete}>Löschen</button>
+            <div className="grid grid-cols-2 gap-2 mt-3 sm:max-w-md">
+              <button className="btn btn-outline btn-sm" onClick={() => setShowEdit(true)}><Icon name="bearbeiten" size={16} /> Bearbeiten</button>
+              <button className="btn btn-danger btn-sm" onClick={handleDelete}><Icon name="loeschen" size={16} /> Löschen</button>
             </div>
           )}
         </div>
