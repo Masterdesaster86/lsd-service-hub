@@ -6,8 +6,8 @@ const ORDER_STATUS_MAP: Record<string, [string, string]> = {
 }
 
 const BERICHT_STATUS_MAP: Record<string, [string, string]> = {
-  offen: ['tag-neu', 'Offen'],
-  abgeschlossen: ['tag-geplant', 'Abgeschlossen'],
+  offen: ['tag-offen', 'Offen'],
+  abgeschlossen: ['tag-abgeschlossen', 'Abgeschlossen'],
 }
 
 export function OrderStatusTag({ status }: { status: string }) {
@@ -23,8 +23,8 @@ export function BerichtStatusTag({ status, abgerechnet }: { status: string; abge
 
 export function ArbeitStatusTag({ status }: { status: string }) {
   return status === 'abgeschlossen'
-    ? <span className="tag tag-geplant">Abgeschlossen</span>
-    : <span className="tag tag-neu">Offen</span>
+    ? <span className="tag tag-abgeschlossen">Abgeschlossen</span>
+    : <span className="tag tag-offen">Offen</span>
 }
 
 export function AntragStatusTag({ status }: { status: string }) {

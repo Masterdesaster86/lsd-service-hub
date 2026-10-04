@@ -1,23 +1,40 @@
 @import "tailwindcss";
 
+/* Schriften liegen im App-Paket (kein Abruf bei Google): Big Shoulders Display
+   für Überschriften, IBM Plex Sans für Text, IBM Plex Mono für Etiketten,
+   Buttons und Zahlen. Nur die tatsächlich genutzten Schnitte. */
+@import "@fontsource/big-shoulders-display/latin-800";
+@import "@fontsource/big-shoulders-display/latin-900";
+@import "@fontsource/ibm-plex-sans/latin-400";
+@import "@fontsource/ibm-plex-sans/latin-500";
+@import "@fontsource/ibm-plex-sans/latin-600";
+@import "@fontsource/ibm-plex-sans/latin-700";
+@import "@fontsource/ibm-plex-mono/latin-400";
+@import "@fontsource/ibm-plex-mono/latin-500";
+@import "@fontsource/ibm-plex-mono/latin-600";
+
+/* Farben und Schriften des LSD-Design-Systems. Die Namen stammen noch aus der
+   früheren Optik (z. B. "amber" für die Hauptfarbe) und bleiben bestehen, damit
+   nicht jede Datei angefasst werden muss; die Werte sind die neuen. */
 @theme {
-  --color-graphite: #1B1F24;
-  --color-graphite-2: #262B32;
-  --color-paper: #ECEEE9;
-  --color-paper-2: #DCDFD8;
-  --color-ink: #20242A;
-  --color-ink-soft: #565F68;
-  --color-amber: #E2A63B;
-  --color-amber-dark: #C98F28;
-  --color-steel: #4E7A96;
-  /* Firmenfarben, direkt aus dem Logo entnommen */
-  --color-blau: #0070B8;
-  --color-blau-dunkel: #003868;
-  --color-red: #C1453A;
-  --color-green: #4C8863;
-  --color-line: #C7CBC3;
-  --font-sans: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  --color-graphite: #14181d;        /* Schwarzanthrazit: Kopfzeile, dunkle Flächen */
+  --color-graphite-2: #1d2329;
+  --color-paper: #eef0ee;           /* helle Fläche */
+  --color-paper-2: #e2e6e3;         /* Hover auf heller Fläche */
+  --color-ink: #14181d;
+  --color-ink-soft: #5b6570;        /* gedämpfter Text (im Design: steel) */
+  --color-amber: #2764ad;           /* Hauptfarbe Royalblau (früher Amber) */
+  --color-amber-dark: #1f5289;
+  --color-steel: #2764ad;           /* Links */
+  --color-blau: #2764ad;
+  --color-blau-dunkel: #1f5289;
+  --color-blueprint: #1f7fa0;       /* Fokusring */
+  --color-red: #9b2c24;             /* nur für Fehlertexte */
+  --color-green: #4c8863;
+  --color-line: #ccd3d2;            /* Haarlinien */
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --font-display: "Big Shoulders Display", "Arial Narrow", sans-serif;
 }
 
 html, body, #root {
@@ -29,11 +46,32 @@ body {
   background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Überschriften: Big Shoulders, Großbuchstaben, enger Zeilenabstand. */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 0.96;
+  margin: 0;
+  color: var(--color-ink);
+}
+h1 { font-size: 34px; }
+h2 { font-size: 26px; }
+h3 { font-size: 20px; }
+
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--color-blueprint);
+  outline-offset: 3px;
 }
 
 ::-webkit-scrollbar {
@@ -42,7 +80,6 @@ body {
 }
 ::-webkit-scrollbar-thumb {
   background: var(--color-line);
-  border-radius: 6px;
 }
 
 .card {
@@ -54,97 +91,128 @@ body {
    Statusleiste, Notch und Home-Indikator. Diese Klassen halten den nötigen
    Abstand frei; am Desktop sind die Werte 0. */
 .app-kopf {
-  padding-top: 10px;
-  padding-bottom: 10px;
-  padding-left: calc(env(safe-area-inset-left, 0px) + 18px);
-  padding-right: calc(env(safe-area-inset-right, 0px) + 18px);
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 0;
+  padding-right: calc(env(safe-area-inset-right, 0px) + 16px);
 }
 .app-seitenleiste { padding-left: env(safe-area-inset-left, 0px); }
 .app-inhalt { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); }
 
+/* Buttons: Mono-Schrift, Großbuchstaben. Die Hauptaktion hat die abgeschrägte
+   Ecke oben rechts (Fase wie auf der Webseite). */
 .btn {
-  font-family: var(--font-sans);
+  font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 600;
-  padding: 9px 16px;
-  border: 1px solid transparent;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0 18px;
+  min-height: 46px;
+  border: 1.5px solid transparent;
+  border-radius: 0;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 8px;
   line-height: 1.2;
-  transition: filter 0.1s ease, background 0.1s ease;
+  white-space: nowrap;
+  transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
+.btn:hover:not(:disabled) { transform: translateY(-1px); }
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 .btn-amber {
   background: var(--color-amber);
-  color: #221704;
+  color: #fff;
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
 }
 .btn-amber:hover:not(:disabled) {
   background: var(--color-amber-dark);
 }
 .btn-outline {
   background: transparent;
-  border-color: var(--color-line);
+  border-color: var(--color-ink);
   color: var(--color-ink);
 }
 .btn-outline:hover:not(:disabled) {
   background: var(--color-paper-2);
 }
 .btn-danger {
-  background: transparent;
-  border-color: var(--color-red);
-  color: var(--color-red);
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+  color: var(--color-paper);
 }
 .btn-danger:hover:not(:disabled) {
-  background: var(--color-red);
-  color: #fff;
+  background: var(--color-graphite-2);
 }
 .btn-dark {
   background: var(--color-graphite);
+  border-color: var(--color-graphite);
   color: #fff;
 }
 .btn-dark:hover:not(:disabled) {
   background: var(--color-graphite-2);
 }
 .btn-sm {
-  padding: 6px 10px;
+  padding: 0 12px;
+  min-height: 38px;
   font-size: 12px;
 }
+.btn-amber.btn-sm {
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn { transition: none; }
+  .btn:hover:not(:disabled) { transform: none; }
+}
 
+/* Eingabefelder: hoch genug für den Daumen, kräftiger Rahmen für Tageslicht. */
 input, select, textarea {
   font-family: var(--font-sans);
-  font-size: 14px;
-  padding: 9px 10px;
-  border: 1px solid var(--color-line);
+  font-size: 16px;
+  padding: 11px 12px;
+  min-height: 48px;
+  border: 1.5px solid var(--color-ink-soft);
+  border-radius: 0;
   background: #fff;
   color: var(--color-ink);
   width: 100%;
 }
+textarea { min-height: 0; }
+input::placeholder, textarea::placeholder { color: var(--color-ink-soft); opacity: 0.8; }
 input:focus, select:focus, textarea:focus {
-  outline: 2px solid var(--color-amber);
-  outline-offset: -1px;
+  outline: 2px solid var(--color-blueprint);
+  outline-offset: 1px;
+  border-color: var(--color-ink);
+}
+input:disabled, select:disabled, textarea:disabled {
+  background: var(--color-paper-2);
+  color: var(--color-ink-soft);
 }
 /* Checkboxen/Radios sind keine Textfelder — sie dürfen nicht die volle Breite
    einnehmen. Muss unlayered stehen, sonst gewinnt die input-Regel oben. */
 input[type="checkbox"], input[type="radio"] {
-  width: auto;
+  width: 22px;
+  height: 22px;
+  min-height: 0;
   flex: none;
   padding: 0;
   margin: 0;
   accent-color: var(--color-amber);
 }
 label {
+  font-family: var(--font-mono);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--color-ink-soft);
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.08em;
 }
 /* Zeile in einer Auswahlliste (Techniker, Maschinen). Nutzt <label> für die
    Klickbarkeit, soll aber wie normaler Listentext aussehen — nicht wie ein
@@ -153,27 +221,29 @@ label {
 .check-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 14px;
+  gap: 12px;
+  font-family: var(--font-sans);
+  font-size: 15px;
   font-weight: 400;
   color: var(--color-ink);
   text-transform: none;
   letter-spacing: normal;
   margin: 0;
-  padding: 8px 2px;
+  padding: 11px 2px;
   border-bottom: 1px solid var(--color-line);
   cursor: pointer;
 }
 .check-row:last-child { border-bottom: none; }
 .check-row:hover { background: var(--color-paper-2); }
 .check-row-multi { align-items: flex-start; }
-.check-row-note { color: var(--color-ink-soft); font-size: 12.5px; }
+.check-row-note { color: var(--color-ink-soft); font-size: 13px; }
 /* Kompakter Inline-Schalter (z.B. "Pause eingetragen") ohne Trennlinie. */
 .check-inline {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12.5px;
+  gap: 8px;
+  font-family: var(--font-sans);
+  font-size: 14px;
   font-weight: 400;
   color: var(--color-ink-soft);
   text-transform: none;
@@ -182,24 +252,57 @@ label {
   cursor: pointer;
 }
 
+/* Status-Etiketten: Der Status steht im Quadrat vor dem Text, nie nur in der
+   Farbe. "Abgeschlossen" ist schwarz gefüllt. */
 .tag {
   display: inline-flex;
   align-items: center;
-  padding: 3px 9px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
+  gap: 7px;
+  height: 28px;
+  padding: 0 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  border-radius: 2px;
+  white-space: nowrap;
+  border: 1px solid var(--color-line);
+  background: #fff;
+  color: var(--color-ink);
+  border-radius: 0;
 }
-.tag-neu { background: #E3E7EA; color: #46505A; }
-.tag-arbeit { background: #FBEBCC; color: #8A5E0F; }
-.tag-geplant { background: #DCEADF; color: #2E5C3E; }
-.tag-unterwegs { background: #DDE7EC; color: #2E4C5D; }
-.tag-offen { background: #E3E7EA; color: #46505A; }
-.tag-abgeschlossen { background: #DCEADF; color: #2E5C3E; }
+.tag::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--color-ink);
+  background: transparent;
+  flex: none;
+}
+.tag-neu::before { border-color: var(--color-ink); background: transparent; }
+.tag-arbeit::before { border-color: var(--color-amber); background: var(--color-amber); }
+.tag-geplant::before { border-color: var(--color-ink); background: var(--color-ink); }
+.tag-unterwegs { color: var(--color-ink-soft); }
+.tag-unterwegs::before { border-color: var(--color-ink-soft); background: var(--color-ink-soft); }
+.tag-offen::before { border-color: var(--color-amber); background: transparent; }
+.tag-abgeschlossen {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+  color: var(--color-paper);
+}
+.tag-abgeschlossen::before { border-color: var(--color-paper); background: var(--color-paper); }
 
 .val {
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 500;
   color: var(--color-ink);
+}
+
+/* Dialog fährt am Handy von unten herein. */
+@keyframes sheet-hoch {
+  from { transform: translateY(32px); opacity: 0; }
+}
+.modal-blatt { animation: sheet-hoch 0.2s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .modal-blatt { animation: none; }
 }
