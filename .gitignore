@@ -6,3 +6,6 @@ dist
 
 # Interne Dateien der Entwicklungsumgebung
 .claude/
+
+# Design-Export aus Claude Design (enthaelt auch Hersteller-PDFs, nicht einchecken)
+design/
