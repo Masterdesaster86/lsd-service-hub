@@ -2,13 +2,17 @@ import { Fragment, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Abwesenheit, OrderWithRelations } from '../../lib/types'
 import { OrderStatusTag } from '../../components/ui/StatusTag'
+import { Icon } from '../../components/ui/Icon'
 import { useToast } from '../../components/ui/Toast'
 import { useAuth } from '../../lib/AuthContext'
 import { WOCHENTAGE, addDays, formatDMY, parseISO } from '../../lib/zeit'
 import { AbwesenheitFormModal } from './AbwesenheitFormModal'
-import { SPERR_TEXT, mondayOfWeek, orderCoversDate, usePlantafelDaten, zeitraum, type DragData } from './usePlantafel'
+import { VerschiebenSheet, kalenderwoche } from './PlantafelMobil'
+import { SPERR_TEXT, mondayOfWeek, orderCoversDate, usePlantafelDaten, zeitraum, type DragData, type Sperre } from './usePlantafel'
 
 const MONATSNAMEN = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
+const MONATSNAMEN_LANG = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
+const ABW_KURZ: Record<string, string> = { Urlaub: 'U', Krank: 'K', Schulung: 'S', Kurzarbeit: 'KA' }
 
 function abwesenheitUeberschneidetMonat(a: Abwesenheit, jahr: number, monat: number): boolean {
   const von = parseISO(a.von), bis = parseISO(a.bis)
@@ -17,9 +21,13 @@ function abwesenheitUeberschneidetMonat(a: Abwesenheit, jahr: number, monat: num
   return von <= monatsEnde && bis >= monatsStart
 }
 
+const kante = (s: Sperre) => (s === 'gesperrt' ? 'border-l-ink' : s === 'nurTag' ? 'border-l-amber' : 'border-l-line')
+
 type ViewMode = 'woche' | 'monat' | 'jahr'
 
-/** Plantafel als Raster (Techniker × Tage) für große Bildschirme. */
+/** Plantafel für große Bildschirme: Raster Techniker × Tage, daneben offene
+ * Aufträge, Urlaubsanträge und Abwesenheiten. Umplanen per Antippen (Fenster
+ * „Techniker und Datum wählen“), Ziehen geht zusätzlich, wo der Browser es kann. */
 export function PlantafelDesktop() {
   const navigate = useNavigate()
   const toast = useToast()
@@ -36,16 +44,27 @@ export function PlantafelDesktop() {
   const [weekStart, setWeekStart] = useState(() => mondayOfWeek(new Date()))
   const [monthAnchor, setMonthAnchor] = useState(() => { const d = new Date(); d.setDate(1); return d })
   const [drag, setDrag] = useState<DragData | null>(null)
-  // Zweiter Weg zum Umplanen: Karte antippen, dann Zielfeld antippen. Ziehen
-  // funktioniert nicht in jedem Browser und auf Tablets gar nicht.
-  const [auswahl, setAuswahl] = useState<DragData | null>(null)
+  const [verschieben, setVerschieben] = useState<{ order: OrderWithRelations; quelle: DragData } | null>(null)
 
+  const heute = useMemo(() => { const h = new Date(); h.setHours(0, 0, 0, 0); return h }, [])
   const weekDates = useMemo(() => [0, 1, 2, 3, 4, 5, 6].map((i) => addDays(weekStart, i)), [weekStart])
   const monthDates = useMemo(() => {
     const jahr = monthAnchor.getFullYear(), monat = monthAnchor.getMonth()
     const tageImMonat = new Date(jahr, monat + 1, 0).getDate()
     return Array.from({ length: tageImMonat }, (_, i) => new Date(jahr, monat, i + 1))
   }, [monthAnchor])
+
+  const zeitraumText = viewMode === 'woche'
+    ? `KW ${kalenderwoche(weekStart)} · ${formatDMY(weekStart).slice(0, 6)} – ${formatDMY(addDays(weekStart, 6))}`
+    : viewMode === 'monat'
+    ? `${MONATSNAMEN_LANG[monthAnchor.getMonth()]} ${monthAnchor.getFullYear()}`
+    : `${monthAnchor.getFullYear()}`
+
+  function blaettern(richtung: 1 | -1) {
+    if (viewMode === 'woche') setWeekStart(addDays(weekStart, richtung * 7))
+    else if (viewMode === 'monat') setMonthAnchor(new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + richtung, 1))
+    else setMonthAnchor(new Date(monthAnchor.getFullYear() + richtung, monthAnchor.getMonth(), 1))
+  }
 
   async function applyDrop(techId: string, dateStr: string) {
     if (!drag) return
@@ -54,23 +73,30 @@ export function PlantafelDesktop() {
     await verschiebe(quelle, techId, dateStr)
   }
 
-  /** Klick auf ein Zielfeld, wenn vorher eine Karte zum Verschieben
-   *  ausgewählt wurde. Gibt true zurück, wenn der Klick verbraucht wurde. */
-  function zielGewaehlt(techId: string, dateStr: string): boolean {
-    if (!auswahl) return false
-    const quelle = auswahl
-    setAuswahl(null)
-    verschiebe(quelle, techId, dateStr)
-    return true
+  function oeffne(order: OrderWithRelations, fromTech: string, fromDate: string) {
+    setVerschieben({ order, quelle: { orderId: order.id, fromTech, fromDate } })
   }
 
-  function PlanCard({ order, draggable, fromTech, fromDate, continuation, zeigeTechniker }: { order: OrderWithRelations; draggable: boolean; fromTech?: string; fromDate?: string; continuation?: boolean; zeigeTechniker?: boolean }) {
-    const sperre = sperreFuer(order.id, fromTech || '')
-    const ziehbar = draggable && sperre !== 'gesperrt'
-    const rand = sperre === 'gesperrt' ? 'border-l-2 border-l-red' : sperre === 'nurTag' ? 'border-l-2 border-l-blau' : ''
-    const ausgewaehlt = auswahl?.orderId === order.id && auswahl.fromTech === (fromTech || '')
+  function Karte({ order, techId, datum }: { order: OrderWithRelations; techId: string; datum: Date }) {
+    const dateStr = formatDMY(datum)
+    const istStart = !!order.einsatzbeginn && formatDMY(parseISO(order.einsatzbeginn)!) === dateStr
+    const sperre = sperreFuer(order.id, techId)
+    const ziehbar = istStart && sperre !== 'gesperrt'
+    // Folgetage eines mehrtägigen Auftrags nur als schmaler Balken — der
+    // Zeitraum ist so auf einen Blick sichtbar, ohne die Zellen zu füllen.
+    if (!istStart) {
+      return (
+        <button
+          onClick={() => navigate(`/auftraege/${order.id}`)}
+          title={`Fortsetzung von Auftrag #${order.id} (${order.einsatzkunde?.name || ''})`}
+          className={`w-full text-left px-2 py-1 bg-paper-2 border border-line border-l-4 ${kante(sperre)} font-mono text-[11.5px] text-ink-soft cursor-pointer`}
+        >
+          → #{order.id}
+        </button>
+      )
+    }
     return (
-      <div
+      <button
         draggable={ziehbar}
         onDragStart={(e) => {
           if (!ziehbar) return
@@ -78,144 +104,67 @@ export function PlantafelDesktop() {
           // ihn gar nicht erst — Chrome ist da als einziger nachsichtig.
           e.dataTransfer.setData('text/plain', order.id)
           e.dataTransfer.effectAllowed = 'move'
-          setDrag({ orderId: order.id, fromTech: fromTech || '', fromDate: fromDate || '' })
+          setDrag({ orderId: order.id, fromTech: techId, fromDate: dateStr })
         }}
-        onClick={(e) => { e.stopPropagation(); navigate(`/auftraege/${order.id}`) }}
-        className={`text-xs bg-white border border-line p-1.5 mb-1 cursor-pointer ${rand} ${ziehbar ? 'cursor-grab' : ''} ${continuation ? 'opacity-60 italic' : ''} ${ausgewaehlt ? 'outline-2 outline-blau' : ''}`}
-        title={continuation ? `Fortsetzung von Auftrag #${order.id}` : sperre !== 'frei' ? SPERR_TEXT[sperre] : undefined}
+        onClick={() => oeffne(order, techId, dateStr)}
+        title={sperre !== 'frei' ? SPERR_TEXT[sperre] : 'Antippen zum Verschieben'}
+        className={`w-full text-left flex flex-col gap-0.5 px-2 py-1.5 bg-white border border-line border-l-4 ${kante(sperre)} cursor-pointer`}
       >
-        <b>#{order.id}</b> {order.einsatzkunde?.name}
-        {!continuation && (order.dauer_tage || 1) > 1 && <span className="text-ink-soft"> · {order.dauer_tage} Tage</span>}
-        {continuation && <span className="text-ink-soft"> (Fortsetzung)</span>}
-        {zeigeTechniker && order.techniker.length > 0 && (
-          <div className="text-ink-soft mt-0.5">Techniker: {order.techniker.map((t) => t.name).join(', ')} · Termin fehlt</div>
-        )}
-        <div className="mt-0.5 flex items-center justify-between gap-1">
-          <OrderStatusTag status={order.status} />
-          {ziehbar && (
-            <button
-              className="text-[10px] font-semibold text-blau underline underline-offset-2 shrink-0"
-              onClick={(e) => {
-                e.stopPropagation()
-                setAuswahl(ausgewaehlt ? null : { orderId: order.id, fromTech: fromTech || '', fromDate: fromDate || '' })
-              }}
-            >
-              {ausgewaehlt ? 'Abbrechen' : 'Verschieben'}
-            </button>
-          )}
-        </div>
-      </div>
+        <span className="font-mono text-[12.5px] font-semibold">#{order.id}{(order.dauer_tage || 1) > 1 && <span className="font-normal text-ink-soft"> · {order.dauer_tage} T.</span>}</span>
+        <span className="text-[13px] leading-tight line-clamp-2">{order.einsatzkunde?.name || '–'}</span>
+      </button>
     )
   }
 
   return (
-    <div>
-      <div className="flex items-center gap-3 flex-wrap mb-1">
-        <h1>Plantafel</h1>
-        <div className="flex gap-1.5">
-          {(['woche', 'monat', 'jahr'] as ViewMode[]).map((v) => (
-            <button key={v} className={`btn btn-sm ${viewMode === v ? 'btn-dark' : 'btn-outline'}`} onClick={() => setViewMode(v)}>
-              {v === 'woche' ? 'Woche' : v === 'monat' ? 'Monat' : 'Jahr'}
-            </button>
-          ))}
+    <div className="-m-6 max-md:-m-4">
+      {/* Kopf: Titel, Zeitraum, Ansicht, Abwesenheit */}
+      <div className="flex items-center justify-between gap-6 flex-wrap px-8 py-5 border-b border-line">
+        <div className="flex items-center gap-6 flex-wrap">
+          <h1 className="!text-[44px]">Plantafel</h1>
+          <div className="flex items-center gap-2">
+            <button className="w-12 h-12 border-[1.5px] border-ink bg-white font-mono text-[22px] cursor-pointer text-ink" aria-label="Zurück" onClick={() => blaettern(-1)}>‹</button>
+            <span className="min-w-[250px] text-center font-mono text-[14px] font-semibold uppercase tracking-[0.06em]">{zeitraumText}</span>
+            <button className="w-12 h-12 border-[1.5px] border-ink bg-white font-mono text-[22px] cursor-pointer text-ink" aria-label="Weiter" onClick={() => blaettern(1)}>›</button>
+          </div>
         </div>
-        {viewMode === 'woche' && (
-          <>
-            <button className="btn btn-outline btn-sm" onClick={() => setWeekStart(addDays(weekStart, -7))}>← Vorherige Woche</button>
-            <span className="text-sm text-ink-soft">{formatDMY(weekDates[0])} – {formatDMY(weekDates[6])}</span>
-            <button className="btn btn-outline btn-sm" onClick={() => setWeekStart(addDays(weekStart, 7))}>Nächste Woche →</button>
-          </>
-        )}
-        {viewMode === 'monat' && (
-          <>
-            <button className="btn btn-outline btn-sm" onClick={() => setMonthAnchor(new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() - 1, 1))}>← Vorheriger Monat</button>
-            <span className="text-sm text-ink-soft">{monthAnchor.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}</span>
-            <button className="btn btn-outline btn-sm" onClick={() => setMonthAnchor(new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + 1, 1))}>Nächster Monat →</button>
-          </>
-        )}
-        {viewMode === 'jahr' && (
-          <>
-            <button className="btn btn-outline btn-sm" onClick={() => setMonthAnchor(new Date(monthAnchor.getFullYear() - 1, monthAnchor.getMonth(), 1))}>← Vorheriges Jahr</button>
-            <span className="text-sm text-ink-soft">{monthAnchor.getFullYear()}</span>
-            <button className="btn btn-outline btn-sm" onClick={() => setMonthAnchor(new Date(monthAnchor.getFullYear() + 1, monthAnchor.getMonth(), 1))}>Nächstes Jahr →</button>
-          </>
-        )}
-      </div>
-
-      {antraege.length > 0 && (
-        <>
-          <div className="abschnitt mt-4 mb-1.5">Offene Urlaubsanträge ({antraege.length})</div>
-          <div className="flex flex-col gap-1.5 mb-4">
-            {antraege.map((a) => (
-              <div key={a.id} className="card p-3 flex items-center justify-between gap-3 flex-wrap">
-                <div>
-                  <div className="font-semibold text-sm">{employeesById[a.techniker_id]?.name || '–'} · {zeitraum(a.von, a.bis)}</div>
-                  <div className="text-[13px] text-ink-soft">{a.bemerkung || '–'} · beantragt am {new Date(a.beantragt_am).toLocaleDateString('de-DE')}</div>
-                </div>
-                <div className="flex gap-1.5">
-                  <button className="btn btn-amber btn-sm" onClick={() => genehmigen(a)}>Genehmigen</button>
-                  <button className="btn btn-danger btn-sm" onClick={() => ablehnen(a)}>Ablehnen</button>
-                </div>
-              </div>
+        <div className="flex items-center gap-4">
+          <div className="grid grid-cols-3 gap-0.5 p-0.5 bg-ink">
+            {(['woche', 'monat', 'jahr'] as ViewMode[]).map((v) => (
+              <button
+                key={v}
+                onClick={() => setViewMode(v)}
+                className={`min-h-[44px] px-5 border-0 cursor-pointer font-mono text-[12.5px] font-semibold uppercase tracking-[0.06em] ${viewMode === v ? 'bg-ink text-paper' : 'bg-white text-ink'}`}
+              >
+                {v === 'woche' ? 'Woche' : v === 'monat' ? 'Monat' : 'Jahr'}
+              </button>
             ))}
           </div>
-        </>
-      )}
-
-      <div className="flex items-center gap-2 flex-wrap mt-4 mb-1.5">
-        <div className="abschnitt">Geplante Urlaube &amp; Krankheitstage ({bevorstehendeAbwesenheiten.length})</div>
-        {darfAbwesenheitenPflegen && (
-          <button className="btn btn-outline btn-sm" onClick={() => setAbwesenheitForm({ open: true })}>+ Abwesenheit</button>
-        )}
-      </div>
-      {bevorstehendeAbwesenheiten.length === 0 ? (
-        <div className="text-sm text-ink-soft border border-dashed border-line p-4 text-center mb-4">Keine laufenden oder bevorstehenden Abwesenheiten.</div>
-      ) : (
-        <div className="flex flex-col gap-1.5 mb-4">
-          {bevorstehendeAbwesenheiten.map((a) => (
-            <div key={a.id} className="card p-3 flex items-center justify-between gap-3 flex-wrap">
-              <div className="font-semibold text-sm">{employeesById[a.techniker_id]?.name || '–'}</div>
-              <div className="text-[13px] text-ink-soft">{zeitraum(a.von, a.bis)}</div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className={`tag ${a.art === 'Urlaub' ? 'tag-geplant' : a.art === 'Krank' ? 'tag-unterwegs' : 'tag-arbeit'}`}>{a.art}</span>
-                {darfAbwesenheitenPflegen && (
-                  <>
-                    <button className="btn btn-outline btn-sm" onClick={() => setAbwesenheitForm({ open: true, eintrag: a })}>Bearbeiten</button>
-                    <button className="btn btn-danger btn-sm" onClick={() => abwesenheitLoeschen(a)}>Löschen</button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {viewMode === 'woche' && (
-        <>
-          {auswahl ? (
-            <div className="flex items-center gap-3 flex-wrap bg-blau/10 border border-blau p-2.5 mb-3">
-              <span className="text-sm">
-                <b>Auftrag #{auswahl.orderId}</b> wird verschoben — jetzt das Zielfeld anklicken
-                {auswahl.fromTech ? ' oder den Bereich „Nicht eingeplant“.' : '.'}
-              </span>
-              <button className="btn btn-outline btn-sm ml-auto" onClick={() => setAuswahl(null)}>Abbrechen</button>
-            </div>
-          ) : (
-            <p className="text-sm text-ink-soft mb-3">Aufträge auf einen Techniker und Tag ziehen — oder auf der Karte „Verschieben“ anklicken und dann das Zielfeld wählen. Das geht auch am Tablet.</p>
+          {darfAbwesenheitenPflegen && (
+            <button className="btn btn-amber" onClick={() => setAbwesenheitForm({ open: true })}><Icon name="hinzufuegen" size={20} /> Abwesenheit</button>
           )}
-          <div className="flex gap-4 items-start max-lg:flex-col">
-            <div className="flex-1 overflow-x-auto border border-line bg-graphite">
-              <div className="grid" style={{ gridTemplateColumns: `140px repeat(7, minmax(120px, 1fr))` }}>
-                <div className="p-2" />
-                {weekDates.map((d) => (
-                  <div key={d.toISOString()} className="p-2 text-white text-center border-l border-white/10">
-                    <div className="text-xs text-white/60">{WOCHENTAGE[d.getDay()]}</div>
-                    <div className="text-sm font-semibold">{formatDMY(d)}</div>
-                  </div>
-                ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col xl:flex-row items-stretch">
+        {/* Raster */}
+        <div className="flex-1 min-w-0 px-8 py-6 flex flex-col gap-3.5">
+          {viewMode === 'woche' && (
+            <div className="border border-line bg-white overflow-x-auto">
+              <div className="grid min-w-[760px]" style={{ gridTemplateColumns: '150px repeat(7, minmax(0, 1fr))' }}>
+                <span className="border-b-2 border-ink" />
+                {weekDates.map((d) => {
+                  const istHeute = d.getTime() === heute.getTime()
+                  return (
+                    <div key={d.toISOString()} className={`px-3 py-2.5 border-l border-line border-b-2 border-b-ink flex flex-col gap-0.5 ${istHeute ? 'bg-paper-2' : ''}`}>
+                      <span className="font-mono text-[11.5px] uppercase tracking-[0.08em] text-ink-soft">{WOCHENTAGE[d.getDay()]}{istHeute ? ' · heute' : ''}</span>
+                      <span className="text-[26px] font-extrabold leading-[0.94]" style={{ fontFamily: 'var(--font-display)' }}>{d.getDate()}.</span>
+                    </div>
+                  )
+                })}
                 {technicians.map((tech) => (
                   <Fragment key={tech.id}>
-                    <div className="p-2 text-white text-sm font-semibold bg-graphite-2 flex items-center">{tech.name}</div>
+                    <div className="p-3 font-semibold text-[15px] border-b border-line">{tech.name}</div>
                     {weekDates.map((d) => {
                       const dateStr = formatDMY(d)
                       const abw = abwesenheitFuer(tech.id, d)
@@ -225,21 +174,10 @@ export function PlantafelDesktop() {
                           key={tech.id + dateStr}
                           onDragOver={(e) => { if (!abw) { e.preventDefault(); e.dataTransfer.dropEffect = 'move' } }}
                           onDrop={(e) => { e.preventDefault(); if (abw) { toast('Techniker ist an diesem Tag abwesend.'); setDrag(null); return } applyDrop(tech.id, dateStr) }}
-                          onClick={() => {
-                            if (!auswahl) return
-                            if (abw) { toast('Techniker ist an diesem Tag abwesend.'); setAuswahl(null); return }
-                            zielGewaehlt(tech.id, dateStr)
-                          }}
-                          className={`p-1.5 min-h-[70px] border-l border-t border-line ${auswahl && !abw ? 'bg-blau/10 cursor-pointer' : 'bg-paper'}`}
+                          className={`min-h-[112px] p-1.5 flex flex-col gap-1 border-l border-b border-line ${d.getTime() === heute.getTime() ? 'bg-paper-2/60' : ''}`}
                         >
-                          {abw ? (
-                            <div className="text-xs text-ink-soft italic text-center mt-4">{abw.art}</div>
-                          ) : (
-                            dayOrders.map((o) => {
-                              const isStart = o.einsatzbeginn && formatDMY(parseISO(o.einsatzbeginn)!) === dateStr
-                              return <PlanCard key={o.id} order={o} draggable={!!isStart} fromTech={tech.id} fromDate={dateStr} continuation={!isStart} />
-                            })
-                          )}
+                          {dayOrders.map((o) => <Karte key={o.id} order={o} techId={tech.id} datum={d} />)}
+                          {abw && <div className="px-2 py-1.5 bg-line font-mono text-[11.5px] uppercase tracking-[0.08em]">{abw.art}</div>}
                         </div>
                       )
                     })}
@@ -247,96 +185,188 @@ export function PlantafelDesktop() {
                 ))}
               </div>
             </div>
+          )}
 
-            <div
-              onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
-              onDrop={(e) => { e.preventDefault(); applyDrop('', '') }}
-              onClick={() => { if (auswahl) zielGewaehlt('', '') }}
-              className={`w-full lg:w-64 shrink-0 border p-3 ${auswahl ? 'border-blau bg-blau/10 cursor-pointer' : 'border-line bg-white'}`}
-            >
-              <h3 className="text-sm font-semibold mt-0 mb-2">Nicht eingeplant ({poolOrders.length})</h3>
-              {poolOrders.length === 0 ? (
-                <div className="text-sm text-ink-soft p-3">Alles eingeplant.</div>
-              ) : (
-                poolOrders.map((o) => <PlanCard key={o.id} order={o} draggable zeigeTechniker />)
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4 flex-wrap text-[13px] text-ink-soft mt-2 mb-4">
-            <span className="flex items-center gap-1.5"><span className="inline-block w-0.5 h-3.5 bg-blau" />Bericht angefangen — nur der Tag lässt sich verschieben</span>
-            <span className="flex items-center gap-1.5"><span className="inline-block w-0.5 h-3.5 bg-red" />Bericht abgeschlossen — nicht mehr verschiebbar</span>
-          </div>
-        </>
-      )}
-
-      {viewMode === 'monat' && (
-        <div className="overflow-x-auto border border-line bg-graphite">
-          <div className="grid" style={{ gridTemplateColumns: `140px repeat(${monthDates.length}, 34px)` }}>
-            <div className="p-2" />
-            {monthDates.map((d) => (
-              <div key={d.toISOString()} className="p-1 text-white text-center border-l border-white/10">
-                <div className="text-[10px] text-white/60">{WOCHENTAGE[d.getDay()]}</div>
-                <div className="text-xs font-semibold">{d.getDate()}</div>
-              </div>
-            ))}
-            {technicians.map((tech) => (
-              <Fragment key={tech.id}>
-                <div className="p-2 text-white text-sm font-semibold bg-graphite-2 flex items-center">{tech.name}</div>
-                {monthDates.map((d) => {
-                  const abw = abwesenheitFuer(tech.id, d)
-                  const dayOrders = orders.filter((o) => o.techniker.some((t) => t.id === tech.id) && orderCoversDate(o, d))
-                  const order = dayOrders[0]
-                  return (
-                    <div
-                      key={tech.id + d.toISOString()}
-                      onClick={() => order && navigate(`/auftraege/${order.id}`)}
-                      title={abw ? abw.art : order ? `#${order.id} ${order.einsatzkunde?.name || ''}` : undefined}
-                      className={`h-9 border-l border-t border-line flex items-center justify-center text-[10px] font-semibold ${
-                        abw ? 'bg-ink-soft/40 text-white' : order ? 'bg-amber/80 text-ink cursor-pointer hover:bg-amber' : 'bg-paper'
-                      }`}
-                    >
-                      {abw ? abw.art.slice(0, 1) : order ? '●' : ''}
+          {viewMode === 'monat' && (
+            <>
+              <div className="border border-line bg-white overflow-x-auto">
+                <div className="grid" style={{ gridTemplateColumns: `112px repeat(${monthDates.length}, minmax(20px, 1fr))` }}>
+                  <span className="border-b-2 border-ink" />
+                  {monthDates.map((d) => (
+                    <div key={d.toISOString()} className={`py-1.5 border-l border-line border-b-2 border-b-ink text-center flex flex-col ${d.getDay() === 0 || d.getDay() === 6 ? 'bg-paper-2' : ''}`}>
+                      <span className="font-mono text-[9.5px] text-ink-soft">{WOCHENTAGE[d.getDay()]}</span>
+                      <span className="font-mono text-[12px] font-semibold">{d.getDate()}</span>
                     </div>
-                  )
-                })}
-              </Fragment>
-            ))}
-          </div>
-        </div>
-      )}
+                  ))}
+                  {technicians.map((tech) => (
+                    <Fragment key={tech.id}>
+                      <div className="px-2.5 py-2.5 font-semibold text-[13px] leading-tight border-b border-line">{tech.name}</div>
+                      {monthDates.map((d) => {
+                        const abw = abwesenheitFuer(tech.id, d)
+                        const order = orders.find((o) => o.techniker.some((t) => t.id === tech.id) && orderCoversDate(o, d))
+                        return (
+                          <div key={tech.id + d.toISOString()} className={`min-h-[60px] p-0.5 flex flex-col gap-0.5 border-l border-b border-line ${d.getDay() === 0 || d.getDay() === 6 ? 'bg-paper-2' : ''}`}>
+                            {order && (
+                              <button
+                                onClick={() => navigate(`/auftraege/${order.id}`)}
+                                title={`#${order.id} ${order.einsatzkunde?.name || ''}`}
+                                className={`py-1 bg-white border border-line border-t-[3px] ${sperreFuer(order.id, tech.id) === 'gesperrt' ? 'border-t-ink' : sperreFuer(order.id, tech.id) === 'nurTag' ? 'border-t-amber' : 'border-t-line'} font-mono text-[9.5px] font-semibold cursor-pointer text-ink overflow-hidden`}
+                              >
+                                {order.id.slice(-3)}
+                              </button>
+                            )}
+                            {abw && <div className="py-1 bg-line font-mono text-[10px] font-semibold text-center">{ABW_KURZ[abw.art] || abw.art.slice(0, 1)}</div>}
+                          </div>
+                        )
+                      })}
+                    </Fragment>
+                  ))}
+                </div>
+              </div>
+              <span className="font-mono text-[12px] uppercase tracking-[0.06em] text-ink-soft">Zahl = Ende der Auftragsnummer · U Urlaub · K Krank · S Schulung · KA Kurzarbeit</span>
+            </>
+          )}
 
-      {viewMode === 'jahr' && (
-        <div className="overflow-x-auto border border-line bg-white">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="bg-graphite text-white">
-                <th className="p-2 text-left font-semibold min-w-[140px]">Techniker</th>
-                {MONATSNAMEN.map((m) => <th key={m} className="p-2 text-center font-semibold min-w-[44px]">{m}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {technicians.map((tech) => (
-                <tr key={tech.id} className="border-t border-line">
-                  <td className="p-2 font-semibold">{tech.name}</td>
-                  {MONATSNAMEN.map((_, monat) => {
-                    const tage = abwesenheiten.filter((a) => a.techniker_id === tech.id && abwesenheitUeberschneidetMonat(a, monthAnchor.getFullYear(), monat))
-                    const urlaub = tage.filter((a) => a.art === 'Urlaub').length
-                    const krank = tage.filter((a) => a.art === 'Krank').length
-                    return (
-                      <td key={monat} className="p-1 text-center text-[11px]">
-                        {urlaub > 0 && <div className="text-steel font-semibold">{urlaub}U</div>}
-                        {krank > 0 && <div className="text-red font-semibold">{krank}K</div>}
-                        {urlaub === 0 && krank === 0 && <span className="text-ink-soft">–</span>}
-                      </td>
-                    )
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="text-xs text-ink-soft p-2 m-0">U = Urlaubstage, K = Krankheitstage (Anzahl der Abwesenheits-Einträge, die den jeweiligen Monat überschneiden).</p>
+          {viewMode === 'jahr' && (
+            <>
+              <div className="border border-line bg-white overflow-x-auto">
+                <div className="grid min-w-[760px]" style={{ gridTemplateColumns: '150px repeat(12, minmax(0, 1fr))' }}>
+                  <span className="border-b-2 border-ink" />
+                  {MONATSNAMEN.map((m) => (
+                    <div key={m} className="px-1.5 py-3 border-l border-line border-b-2 border-b-ink font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-center">{m}</div>
+                  ))}
+                  {technicians.map((tech) => (
+                    <Fragment key={tech.id}>
+                      <div className="p-3 font-semibold text-[15px] border-b border-line">{tech.name}</div>
+                      {MONATSNAMEN.map((_, monat) => {
+                        const eintraege = abwesenheiten.filter((a) => a.techniker_id === tech.id && abwesenheitUeberschneidetMonat(a, monthAnchor.getFullYear(), monat))
+                        const urlaub = eintraege.filter((a) => a.art === 'Urlaub').length
+                        const krank = eintraege.filter((a) => a.art === 'Krank').length
+                        const sonst = eintraege.length - urlaub - krank
+                        return (
+                          <button
+                            key={monat}
+                            onClick={() => { setMonthAnchor(new Date(monthAnchor.getFullYear(), monat, 1)); setViewMode('monat') }}
+                            className="min-h-[72px] p-1.5 flex flex-col justify-center gap-0.5 border-0 border-l border-b border-line bg-white cursor-pointer text-ink font-mono text-[11.5px] text-center"
+                          >
+                            {urlaub > 0 && <span className="font-semibold">{urlaub} U</span>}
+                            {krank > 0 && <span className="font-semibold">{krank} K</span>}
+                            {sonst > 0 && <span className="text-ink-soft">{sonst} sonst.</span>}
+                            {eintraege.length === 0 && <span className="text-ink-soft">–</span>}
+                          </button>
+                        )
+                      })}
+                    </Fragment>
+                  ))}
+                </div>
+              </div>
+              <span className="font-mono text-[12px] uppercase tracking-[0.06em] text-ink-soft">Anzahl der Abwesenheits-Einträge je Monat · U Urlaub · K Krank · Monat antippen öffnet die Monatsansicht</span>
+            </>
+          )}
+
+          {viewMode === 'woche' && (
+            <p className="text-[14px] text-ink-soft max-w-[70ch] m-0">
+              Auftrag antippen öffnet „Techniker und Datum wählen“. Blauer Rand: Bericht offen, nur der Tag ist änderbar. Schwarzer Rand: Bericht abgeschlossen, gesperrt.
+            </p>
+          )}
         </div>
+
+        {/* Seitenleiste: offene Aufträge, Urlaubsanträge, Abwesenheiten */}
+        <aside className="xl:w-[380px] shrink-0 border-t xl:border-t-0 xl:border-l border-line px-6 py-6 flex flex-col gap-7">
+          <section className="flex flex-col gap-2.5">
+            <div className="flex justify-between items-baseline">
+              <span className="abschnitt">Offene Aufträge</span>
+              <span className="font-mono text-[15px] font-semibold">{poolOrders.length}</span>
+            </div>
+            {poolOrders.length === 0 ? (
+              <div className="px-3.5 py-3 border-[1.5px] border-dashed border-line font-mono text-[12.5px] uppercase tracking-[0.08em] text-ink-soft">Keine offenen Aufträge</div>
+            ) : poolOrders.map((o) => (
+              <button
+                key={o.id}
+                draggable
+                onDragStart={(e) => { e.dataTransfer.setData('text/plain', o.id); e.dataTransfer.effectAllowed = 'move'; setDrag({ orderId: o.id, fromTech: '', fromDate: '' }) }}
+                onClick={() => oeffne(o, '', '')}
+                className="w-full text-left flex flex-col gap-1 px-3.5 py-3 bg-white border border-line border-l-4 border-l-amber cursor-pointer"
+              >
+                <span className="flex justify-between gap-2 w-full">
+                  <span className="font-mono text-[15px] font-semibold">#{o.id}{(o.dauer_tage || 1) > 1 && <span className="font-normal text-ink-soft"> · {o.dauer_tage} Tage</span>}</span>
+                  <OrderStatusTag status={o.status} />
+                </span>
+                <span className="text-[16px] font-semibold">{o.einsatzkunde?.name || '–'}</span>
+                <span className="font-mono text-[12px] uppercase tracking-[0.06em] text-ink-soft">
+                  {o.techniker.length === 0 ? 'Techniker fehlt' : `Termin fehlt · ${o.techniker.map((t) => t.name).join(', ')}`}
+                </span>
+              </button>
+            ))}
+          </section>
+
+          <section className="flex flex-col gap-2.5">
+            <div className="flex justify-between items-baseline">
+              <span className="abschnitt">Urlaubsanträge</span>
+              <span className="font-mono text-[15px] font-semibold">{antraege.length}</span>
+            </div>
+            {antraege.length === 0 ? (
+              <div className="px-3.5 py-3 border-[1.5px] border-dashed border-line font-mono text-[12.5px] uppercase tracking-[0.08em] text-ink-soft">Keine offenen Anträge</div>
+            ) : antraege.map((a) => {
+              const von = parseISO(a.von), bis = parseISO(a.bis)
+              const tage = von && bis ? Math.round((bis.getTime() - von.getTime()) / 86400000) + 1 : 0
+              return (
+                <div key={a.id} className="flex flex-col gap-2.5 p-3.5 bg-white border border-line">
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="font-semibold text-[17px]">{employeesById[a.techniker_id]?.name || '–'}</span>
+                    <span className="tag tag-offen">Beantragt</span>
+                  </div>
+                  <span className="font-mono text-[14px] text-ink-soft">{zeitraum(a.von, a.bis)} · {tage} {tage === 1 ? 'Tag' : 'Tage'}</span>
+                  {a.bemerkung && <span className="text-[13.5px] text-ink-soft">{a.bemerkung}</span>}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button className="btn btn-amber" onClick={() => genehmigen(a)}><Icon name="erledigt" size={20} /> Genehmigen</button>
+                    <button className="btn btn-outline" onClick={() => ablehnen(a)}>Ablehnen</button>
+                  </div>
+                </div>
+              )
+            })}
+          </section>
+
+          <section className="flex flex-col gap-2.5">
+            <div className="flex justify-between items-baseline">
+              <span className="abschnitt">Abwesenheiten</span>
+              <span className="font-mono text-[15px] font-semibold">{bevorstehendeAbwesenheiten.length}</span>
+            </div>
+            {bevorstehendeAbwesenheiten.length === 0 ? (
+              <div className="px-3.5 py-3 border-[1.5px] border-dashed border-line font-mono text-[12.5px] uppercase tracking-[0.08em] text-ink-soft">Keine bevorstehenden</div>
+            ) : (
+              <div className="bg-white border border-line">
+                {bevorstehendeAbwesenheiten.map((a) => (
+                  <div key={a.id} className="flex items-center justify-between gap-2 px-3.5 py-2.5 border-b border-line last:border-b-0">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-[14.5px]">{employeesById[a.techniker_id]?.name || '–'} <span className="font-mono font-normal text-[12px] uppercase tracking-[0.06em] text-ink-soft">· {a.art}</span></div>
+                      <div className="font-mono text-[12.5px] text-ink-soft">{zeitraum(a.von, a.bis)}</div>
+                    </div>
+                    {darfAbwesenheitenPflegen && (
+                      <div className="flex gap-1.5 shrink-0">
+                        <button className="btn btn-outline btn-sm !px-0 w-9" aria-label="Bearbeiten" onClick={() => setAbwesenheitForm({ open: true, eintrag: a })}><Icon name="bearbeiten" size={15} /></button>
+                        <button className="btn btn-outline btn-sm !px-0 w-9" aria-label="Löschen" onClick={() => abwesenheitLoeschen(a)}><Icon name="loeschen" size={15} /></button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </aside>
+      </div>
+
+      {verschieben && (
+        <VerschiebenSheet
+          order={verschieben.order}
+          quelle={verschieben.quelle}
+          technicians={technicians}
+          sperre={sperreFuer(verschieben.order.id, verschieben.quelle.fromTech)}
+          abwesenheitFuer={abwesenheitFuer}
+          onOeffnen={() => navigate(`/auftraege/${verschieben.order.id}`)}
+          onClose={() => setVerschieben(null)}
+          onSpeichern={async (techId, datumDMY) => { const q = verschieben.quelle; setVerschieben(null); await verschiebe(q, techId, datumDMY) }}
+        />
       )}
 
       {abwesenheitForm.open && (

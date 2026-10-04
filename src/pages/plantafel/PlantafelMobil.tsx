@@ -12,7 +12,7 @@ import { SPERR_TEXT, mondayOfWeek, orderCoversDate, usePlantafelDaten, zeitraum,
 
 type Tab = 'tag' | 'techniker' | 'offen' | 'antraege'
 
-function kalenderwoche(d: Date): number {
+export function kalenderwoche(d: Date): number {
   const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
   const tag = t.getUTCDay() || 7
   t.setUTCDate(t.getUTCDate() + 4 - tag)
@@ -340,7 +340,7 @@ export function PlantafelMobil() {
 }
 
 /** „Techniker und Datum wählen“ — ersetzt das Ziehen vom Desktop. */
-function VerschiebenSheet({ order, quelle, technicians, sperre, abwesenheitFuer, onOeffnen, onClose, onSpeichern }: {
+export function VerschiebenSheet({ order, quelle, technicians, sperre, abwesenheitFuer, onOeffnen, onClose, onSpeichern }: {
   order: OrderWithRelations
   quelle: DragData
   technicians: Employee[]
