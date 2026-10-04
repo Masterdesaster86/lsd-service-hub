@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../lib/AuthContext'
-import { APP_HINTERGRUND_URL, LOGO_URL } from '../lib/branding'
+import { APP_HINTERGRUND_URL, LOGO_SCHRIFTZUG } from '../lib/branding'
 import { DesignSchalter } from '../components/ui/DesignSchalter'
 
 export function Login() {
@@ -26,10 +26,9 @@ export function Login() {
     >
       {/* Abdunkelung, damit die Anmeldekarte klar im Vordergrund steht */}
       <div className="absolute inset-0 bg-graphite/70 pointer-events-none" />
-      <img src={LOGO_URL} alt="" aria-hidden className="absolute w-[900px] max-w-none opacity-[0.06] pointer-events-none select-none" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-8deg)' }} />
-      <form onSubmit={handleSubmit} className="relative bg-paper w-full max-w-sm p-8 shadow-xl">
+      <form onSubmit={handleSubmit} className="relative bg-paper w-full max-w-sm p-8 border-t-4 border-amber">
         <div className="flex items-center gap-2.5 mb-6">
-          <img src={LOGO_URL} alt="LSD Maschinenservice" className="h-10 w-auto" />
+          <img src={LOGO_SCHRIFTZUG} alt="LSD Maschinenservice" className="h-11 w-auto" />
         </div>
         <div className="mb-4">
           <label>E-Mail</label>

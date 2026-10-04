@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
-import { LOGO_URL } from '../lib/branding'
+import { LOGO_SCHRIFTZUG } from '../lib/branding'
 import { NotificationBell } from './NotificationBell'
 import { PdfViewer } from './PdfViewer'
 import { Icon, type IconName } from './ui/Icon'
@@ -85,7 +85,7 @@ export function AppShell() {
           className="bg-paper self-stretch flex items-center pl-[22px] pr-[14px]"
           style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 12px 100%)' }}
         >
-          <img src={LOGO_URL} alt="LSD Maschinenservice" className="h-[26px] w-auto block" />
+          <img src={LOGO_SCHRIFTZUG} alt="LSD Maschinenservice" className="h-[24px] w-auto block" />
         </div>
         <div className="ml-auto text-right leading-tight">
           <div className="font-mono text-[11.5px] uppercase tracking-[0.08em] text-[#9aa7ac]">{employee?.role}</div>
