@@ -129,7 +129,7 @@ export function PlantafelMobil() {
   ]
 
   return (
-    <div className="pb-24">
+    <div className="pb-6">
       <p className="lsd-eyebrow-klein m-0 mb-1 font-mono text-[12px] uppercase tracking-[0.14em] text-amber flex items-center gap-2">
         <span className="inline-block w-[22px] h-0.5 bg-amber" />
         KW {kalenderwoche(weekStart)} · {kurzDatum(weekStart)} – {formatDMY(addDays(weekStart, 6))}
@@ -142,11 +142,14 @@ export function PlantafelMobil() {
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 mb-3">
+      {/* Spalten per style statt Klasse: so greift das Raster auch, wenn ein
+          Gerät noch ein älteres Stylesheet zwischengespeichert hat. */}
+      <div className="grid gap-1 mb-1.5" style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
         {wochentage.map((d) => {
           const aktiv = d.getTime() === gewaehlterTag.getTime()
           const istHeute = d.getTime() === heute.getTime()
-          const hatAuftrag = orders.some((o) => orderCoversDate(o, d))
+          const anzahlAuftraege = orders.filter((o) => orderCoversDate(o, d)).length
+          const anzahlAbwesend = technicians.filter((t) => abwesenheitFuer(t.id, d)).length
           return (
             <button
               key={d.toISOString()}
@@ -156,10 +159,22 @@ export function PlantafelMobil() {
             >
               <span className={`font-mono text-[10.5px] uppercase tracking-[0.06em] ${aktiv ? 'text-paper/70' : 'text-ink-soft'}`}>{WOCHENTAGE[d.getDay()]}</span>
               <span className="font-display text-[22px] font-extrabold leading-none" style={{ fontFamily: 'var(--font-display)' }}>{d.getDate()}</span>
-              <span className={`h-1 w-1 ${hatAuftrag ? (aktiv ? 'bg-paper' : 'bg-amber') : ''} ${istHeute && !hatAuftrag ? 'bg-ink-soft' : ''}`} />
+              <span className="flex gap-0.5 min-h-[18px] mt-0.5">
+                {anzahlAuftraege > 0 && (
+                  <span className="min-w-[18px] h-[18px] px-1 grid place-items-center bg-amber text-white font-mono text-[11px] font-semibold">{anzahlAuftraege}</span>
+                )}
+                {anzahlAbwesend > 0 && (
+                  <span className={`min-w-[18px] h-[18px] px-1 grid place-items-center border font-mono text-[11px] font-semibold ${aktiv ? 'border-paper text-paper' : 'border-ink text-ink'}`}>{anzahlAbwesend}</span>
+                )}
+                {anzahlAuftraege === 0 && anzahlAbwesend === 0 && istHeute && <span className={`font-mono text-[10px] uppercase ${aktiv ? 'text-paper/70' : 'text-ink-soft'}`}>heute</span>}
+              </span>
             </button>
           )
         })}
+      </div>
+      <div className="flex gap-4 font-mono text-[10.5px] uppercase tracking-[0.06em] text-ink-soft mb-3">
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 bg-amber inline-block" />Aufträge</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 border border-ink inline-block" />Abwesend</span>
       </div>
 
       <div className="grid grid-cols-4 gap-0.5 p-0.5 bg-line mb-4">
@@ -266,8 +281,13 @@ export function PlantafelMobil() {
             </div>
           )}
 
-          <div className="font-mono text-[12px] uppercase tracking-[0.1em] text-ink-soft mt-7 mb-2.5">
-            Abwesenheiten ({bevorstehendeAbwesenheiten.length})
+          <div className="flex items-center justify-between gap-2 mt-7 mb-2.5">
+            <span className="font-mono text-[12px] uppercase tracking-[0.1em] text-ink-soft">Abwesenheiten ({bevorstehendeAbwesenheiten.length})</span>
+            {darfAbwesenheitenPflegen && (
+              <button className="btn btn-outline btn-sm" onClick={() => setAbwesenheitForm({ open: true })}>
+                <Icon name="hinzufuegen" size={18} /> Abwesenheit
+              </button>
+            )}
           </div>
           {bevorstehendeAbwesenheiten.length === 0 ? (
             <div className="text-sm text-ink-soft border border-dashed border-line p-4 text-center">Keine laufenden oder bevorstehenden Abwesenheiten.</div>
@@ -293,15 +313,6 @@ export function PlantafelMobil() {
         </>
       )}
 
-      {darfAbwesenheitenPflegen && (
-        <button
-          className="btn btn-amber fixed right-4 z-40"
-          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 78px)' }}
-          onClick={() => setAbwesenheitForm({ open: true })}
-        >
-          <Icon name="hinzufuegen" size={20} /> Abwesenheit
-        </button>
-      )}
 
       {verschieben && (
         <VerschiebenSheet
