@@ -4,6 +4,7 @@ import { useAuth } from '../lib/AuthContext'
 import { LOGO_URL } from '../lib/branding'
 import { NotificationBell } from './NotificationBell'
 import { PdfViewer } from './PdfViewer'
+import { wechsleZu } from '../lib/designwahl'
 
 const NAV_ITEMS = [
   { to: '/auftraege', abbr: 'AU', label: 'Serviceaufträge', roles: ['Administrator', 'Disposition', 'Techniker', 'CEO'] },
@@ -66,6 +67,8 @@ export function AppShell() {
           <div>{employee?.role}</div>
         </div>
         <NotificationBell />
+        {/* Testphase: Umschalten auf das neue Design (gleiche Anmeldung, gleiche Daten) */}
+        <button onClick={() => wechsleZu('neu')} className="btn btn-outline btn-sm">Neues Design</button>
         <button onClick={signOut} className="btn btn-outline btn-sm">Abmelden</button>
       </div>
       <div className="flex flex-1 min-h-0">

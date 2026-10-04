@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../lib/AuthContext'
 import { APP_HINTERGRUND_URL, LOGO_URL } from '../lib/branding'
+import { DesignSchalter } from '../components/ui/DesignSchalter'
 
 export function Login() {
   const { signIn } = useAuth()
@@ -42,6 +43,9 @@ export function Login() {
         <button type="submit" disabled={busy} className="btn btn-amber w-full justify-center">
           {busy ? 'Anmelden…' : 'Anmelden'}
         </button>
+        <div className="mt-6 pt-4 border-t border-line">
+          <DesignSchalter />
+        </div>
       </form>
     </div>
   )

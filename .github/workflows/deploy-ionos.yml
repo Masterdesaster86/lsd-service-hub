@@ -1,18 +1,21 @@
 name: Deploy zu IONOS
 
 # Baut die App und laedt sie per SFTP ins Webspace-Verzeichnis (/public).
-# Laeuft bei jedem Push auf main und kann von Hand gestartet werden.
+#   main     -> bisherige App unter  /
+#   redesign -> neues Design unter   /neu/  (Testphase, Umschalter in der App)
+# Laeuft bei jedem Push auf einen der beiden Zweige und kann von Hand gestartet werden.
 on:
   push:
-    branches: [main]
+    branches: [main, redesign]
   workflow_dispatch:
 
 # Der Workflow braucht nur Lesezugriff aufs Repository.
 permissions:
   contents: read
 
+# Je Zweig nur ein Lauf gleichzeitig; die beiden Zweige stoeren sich nicht.
 concurrency:
-  group: deploy-ionos
+  group: deploy-ionos-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -24,6 +27,8 @@ jobs:
       SFTP_PASSWORD: ${{ secrets.IONOS_SFTP_PASSWORD }}
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      # Zielordner auf dem Webspace
+      ZIEL: ${{ github.ref_name == 'redesign' && '/neu' || '/' }}
     steps:
       - name: Pruefen, ob alle Secrets hinterlegt sind
         id: secrets
@@ -50,7 +55,17 @@ jobs:
 
       - name: Bauen
         if: steps.secrets.outputs.ok == 'true'
-        run: npm run build
+        run: |
+          if [ "$ZIEL" = "/neu" ]; then
+            npm run build -- --base=/neu/
+            # Seiten-Fallback der Single-Page-App auf den Unterordner umbiegen
+            sed -i -e 's#^  RewriteBase /$#  RewriteBase /neu/#' \
+                   -e 's#^  RewriteRule \. /index\.html \[L\]$#  RewriteRule . /neu/index.html [L]#' dist/.htaccess
+            grep -n 'RewriteBase\|index.html' dist/.htaccess
+            grep -q 'RewriteRule . /neu/index.html' dist/.htaccess
+          else
+            npm run build
+          fi
 
       - name: Per SFTP hochladen
         if: steps.secrets.outputs.ok == 'true'
@@ -58,7 +73,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq lftp
           # Leerzeichen/Zeilenumbrueche aus Benutzer und Host entfernen; das
-          # Passwort laeuft ueber LFTP_PASSWORD, damit Sonderzeichen nicht stoeren.
+          # Passwort laeuft ueber ein Skript, damit Sonderzeichen nicht stoeren.
           SFTP_USER="$(printf '%s' "$SFTP_USER" | tr -d '[:space:]')"
           SFTP_HOST="$(printf '%s' "$SFTP_HOST" | tr -d '[:space:]')"
           PW="$(printf '%s' "$SFTP_PASSWORD" | tr -d '\r\n' | sed 's/[\\"]/\\&/g')"
@@ -69,7 +84,7 @@ jobs:
             echo "set net:timeout 30"
             echo "open -p 22 sftp://$SFTP_HOST"
             echo "user \"$SFTP_USER\" \"$PW\""
-            echo "mirror -R --parallel=4 --verbose dist/ /"
+            echo "mirror -R --parallel=4 --verbose dist/ $ZIEL"
             echo "bye"
           } > "$SKRIPT"
           lftp -f "$SKRIPT"
