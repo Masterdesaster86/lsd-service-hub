@@ -183,8 +183,8 @@ export const mm = (n: number) => n.toLocaleString('de-DE', { maximumFractionDigi
 // --- Skizzen ----------------------------------------------------------------
 
 // Eigene Skizzen von LSD (public/messprotokoll/skizzen), je Typ und Prüfpunkt.
-// Bei der H-Maschine nur die Prüfungen, deren Nummer und Inhalt mit der Skizze
-// übereinstimmen — die nummerierten Skizzen 6 und 8–21 gehören zur Schwenkkopf-Folge.
+// Die nummerierten Skizzen im Hauptordner folgen der Schwenkkopf-Nummerierung,
+// die der H-Maschine liegen in h-maschine/ (eigene Nummern, z.B. 10 = Spindel quer).
 const SKIZZE = {
   planlauf: 'rundtisch-draufsicht-messuhr-aussen.png',
   rundlauf: 'rundtisch-draufsicht-messuhr-mitte.png',
@@ -247,7 +247,24 @@ const SKIZZEN: Record<MessprotokollTyp, Record<string, string>> = {
     ref_20b: SKIZZE.p20,
     ref_21: SKIZZE.p21,
   },
-  h_maschine: { ...GEMEINSAME_SKIZZEN },
+  h_maschine: {
+    ...GEMEINSAME_SKIZZEN,
+    parallel_aufspann_quer: 'h-maschine/03-parallelitaet-aufspannflaeche-quer.png',
+    parallel_aufspann_laengs: 'h-maschine/04-parallelitaet-aufspannflaeche-referenznut-laengs.png',
+    parallel_referenznut_p1: 'h-maschine/04-parallelitaet-aufspannflaeche-referenznut-laengs.png',
+    parallel_referenznut_p2: 'h-maschine/04-parallelitaet-aufspannflaeche-referenznut-laengs.png',
+    rechtwinklig_senkr_quer: 'h-maschine/06-rechtwinkligkeit-senkrechtbewegung.png',
+    rechtwinklig_senkr_aufspann_quer: 'h-maschine/06-rechtwinkligkeit-senkrechtbewegung.png',
+    rechtwinklig_senkr_laengs: 'h-maschine/07-rechtwinkligkeit-senkrechtbewegung-laengs.png',
+    rechtwinklig_senkr_aufspann_laengs: 'h-maschine/07-rechtwinkligkeit-senkrechtbewegung-laengs.png',
+    parallel_spindel_quer_a: 'h-maschine/10-parallelitaet-spindel-quer.png',
+    parallel_spindel_quer_b: 'h-maschine/10-parallelitaet-spindel-quer.png',
+    umschlag_senkrecht: 'h-maschine/11-umschlagmessung-senkrecht.png',
+    umschlag_waagrecht: 'h-maschine/12-umschlagmessung-waagerecht.png',
+    ref_13: 'h-maschine/13-abstand-fraesspindel-laengsachse.png',
+    ref_14: 'h-maschine/14-abstand-spindelkonus-querachse.png',
+    ref_15: 'h-maschine/15-abstand-fraesspindel-senkrechte-achse.png',
+  },
 }
 
 /** Adresse der Skizze zu einem Prüfpunkt (berücksichtigt den Unterordner /neu/) — oder null. */
