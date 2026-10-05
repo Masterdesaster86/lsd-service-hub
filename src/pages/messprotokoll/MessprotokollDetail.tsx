@@ -305,7 +305,7 @@ export function MessprotokollDetail() {
           <p className="text-[13.5px] text-ink-soft mt-2.5">
             {p.toleranz === '–' ? 'Maß als Programmierhilfe — keine Toleranz.'
               : stufen.length > 0 ? 'Oben die passende Toleranz wählen — dann prüft die App den Wert.'
-              : 'Toleranz nach Herstellerangabe — bitte selbst prüfen.'}
+              : 'Bitte selbst gegen die Angabe prüfen.'}
           </p>
         )}
 
@@ -352,7 +352,7 @@ export function MessprotokollDetail() {
             </div>
           ))}
         </div>
-        {ohnePruefung > 0 && <p className="text-[13px] text-ink-soft mt-1.5 mb-0">Dazu {ohnePruefung} erfasste Werte ohne automatische Prüfung (Toleranz nicht gewählt, Herstellerangabe oder Maß).</p>}
+        {ohnePruefung > 0 && <p className="text-[13px] text-ink-soft mt-1.5 mb-0">Dazu {ohnePruefung} erfasste Werte ohne automatische Prüfung (Toleranz nicht gewählt oder Maß).</p>}
 
         <div className="font-mono text-[12px] uppercase tracking-[0.1em] text-ink-soft mt-6 mb-2">Abweichungen</div>
         {abweichungen.length === 0 ? (

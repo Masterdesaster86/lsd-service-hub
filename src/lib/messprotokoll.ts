@@ -44,8 +44,8 @@ export const MESSPROTOKOLL_TYPEN: Record<MessprotokollTyp, MessprotokollTypDefin
           { key: 'rundlauf_zentrierbuchse_p2', nr: '2b', bezeichnung: 'Rundlauf der Zentrierbuchse — Palette 2', pruefmittel: 'Fühlhebelmessgerät', toleranz: '0,01 mm' },
           { key: 'parallel_aufspann_quer', nr: '3', bezeichnung: 'Parallelität der Aufspannfläche zur Querachse', pruefmittel: 'Messuhr', toleranz: '0,02 mm/500 mm — 0,03 mm/1000 mm' },
           { key: 'parallel_aufspann_laengs', nr: '4a', bezeichnung: 'Parallelität der Aufspannfläche zur Längsachse', pruefmittel: 'Messuhr', toleranz: '0,02 mm/500 mm — 0,03 mm/1000 mm' },
-          { key: 'parallel_referenznut_p1', nr: '4b/1', bezeichnung: 'Parallelität der Referenznut zur Längsachse — Palette 1', pruefmittel: 'Fühlhebelmessgerät', toleranz: 'nach Herstellerangabe' },
-          { key: 'parallel_referenznut_p2', nr: '4b/2', bezeichnung: 'Parallelität der Referenznut zur Längsachse — Palette 2', pruefmittel: 'Fühlhebelmessgerät', toleranz: 'nach Herstellerangabe' },
+          { key: 'parallel_referenznut_p1', nr: '4b/1', bezeichnung: 'Parallelität der Referenznut zur Längsachse — Palette 1', pruefmittel: 'Fühlhebelmessgerät', toleranz: '0,02 mm/500 mm — 0,03 mm/1000 mm' },
+          { key: 'parallel_referenznut_p2', nr: '4b/2', bezeichnung: 'Parallelität der Referenznut zur Längsachse — Palette 2', pruefmittel: 'Fühlhebelmessgerät', toleranz: '0,02 mm/500 mm — 0,03 mm/1000 mm' },
           { key: 'rechtwinklig_laengs_quer', nr: '5', bezeichnung: 'Rechtwinkligkeit Längsachse zu Querachse', pruefmittel: 'Messuhr, Messwinkel', toleranz: '0,02 mm/500 mm' },
           { key: 'rechtwinklig_senkr_quer', nr: '6a', bezeichnung: 'Rechtwinkligkeit der Aufspannfläche zur Senkrechtachse (Querrichtung)', pruefmittel: 'Messuhr, Messwinkel', toleranz: '0,02 mm/300 mm — 0,03 mm/500 mm' },
           { key: 'rechtwinklig_senkr_laengs', nr: '6b', bezeichnung: 'Rechtwinkligkeit der Aufspannfläche zur Senkrechtachse (Längsrichtung)', pruefmittel: 'Messuhr, Messwinkel', toleranz: '0,02 mm/300 mm — 0,03 mm/500 mm' },
@@ -101,8 +101,8 @@ export const MESSPROTOKOLL_TYPEN: Record<MessprotokollTyp, MessprotokollTypDefin
           { key: 'rundlauf_zentrierbuchse_p2', nr: '2b', bezeichnung: 'Rundlauf der Zentrierbuchse — Palette 2', pruefmittel: 'Fühlhebelmessgerät', toleranz: '0,01 mm' },
           { key: 'parallel_aufspann_quer', nr: '3', bezeichnung: 'Parallelität der Aufspannfläche zur Querachse', pruefmittel: 'Messuhr', toleranz: '0,02 mm/500 mm — 0,03 mm/1000 mm' },
           { key: 'parallel_aufspann_laengs', nr: '4a', bezeichnung: 'Parallelität der Aufspannfläche zur Längsachse', pruefmittel: 'Messuhr', toleranz: '0,02 mm/500 mm — 0,03 mm/1000 mm' },
-          { key: 'parallel_referenznut_p1', nr: '4b/1', bezeichnung: 'Parallelität der Referenznut zur Längsachse — Palette 1 (entfällt bei Paletten ohne Nut)', pruefmittel: 'Fühlhebelmessgerät', toleranz: 'nach Herstellerangabe' },
-          { key: 'parallel_referenznut_p2', nr: '4b/2', bezeichnung: 'Parallelität der Referenznut zur Längsachse — Palette 2 (entfällt bei Paletten ohne Nut)', pruefmittel: 'Fühlhebelmessgerät', toleranz: 'nach Herstellerangabe' },
+          { key: 'parallel_referenznut_p1', nr: '4b/1', bezeichnung: 'Parallelität der Referenznut zur Längsachse — Palette 1 (entfällt bei Paletten ohne Nut)', pruefmittel: 'Fühlhebelmessgerät', toleranz: '0,02 mm/500 mm — 0,03 mm/1000 mm' },
+          { key: 'parallel_referenznut_p2', nr: '4b/2', bezeichnung: 'Parallelität der Referenznut zur Längsachse — Palette 2 (entfällt bei Paletten ohne Nut)', pruefmittel: 'Fühlhebelmessgerät', toleranz: '0,02 mm/500 mm — 0,03 mm/1000 mm' },
           { key: 'rechtwinklig_laengs_quer', nr: '5', bezeichnung: 'Rechtwinkligkeit Längsachse zu Querachse', pruefmittel: 'Messuhr, Messwinkel', toleranz: '0,02 mm/500 mm' },
           { key: 'rechtwinklig_senkr_quer', nr: '6a', bezeichnung: 'Rechtwinkligkeit der Senkrechtachse zur Querachse', pruefmittel: 'Messuhr, Messwinkel', toleranz: '0,02 mm/500 mm' },
           { key: 'rechtwinklig_senkr_aufspann_quer', nr: '6b', bezeichnung: 'Rechtwinkligkeit der Senkrechtachse zur Aufspannfläche (Querrichtung)', pruefmittel: 'Messuhr, Messwinkel', toleranz: '0,02 mm/500 mm' },
@@ -175,7 +175,7 @@ export function toleranzstufen(toleranz: string): Toleranzstufe[] {
   let m = toleranz.match(/^(\d+,\d+) mm bis (Ø \d+ mm) \/ (\d+,\d+) mm bis (Ø \d+ mm)$/)
   if (m) return [{ label: `bis ${m[2]}`, grenze: zahlAus(m[1]) }, { label: `bis ${m[4]}`, grenze: zahlAus(m[3]) }]
   m = toleranz.match(/^(\d+,\d+) mm\/(\d+ mm) — (\d+,\d+) mm\/(\d+ mm)$/)
-  if (m) return [{ label: `Messlänge ${m[2]}`, grenze: zahlAus(m[1]) }, { label: `Messlänge ${m[4]}`, grenze: zahlAus(m[3]) }]
+  if (m) return [{ label: `bis Messlänge ${m[2]}`, grenze: zahlAus(m[1]) }, { label: `bis Messlänge ${m[4]}`, grenze: zahlAus(m[3]) }]
   m = toleranz.match(/^(\d+,\d+) mm \((\d+,\d+) mm bei (.+)\)$/)
   if (m) return [{ label: 'Standard', grenze: zahlAus(m[1]) }, { label: m[3], grenze: zahlAus(m[2]) }]
   return []
