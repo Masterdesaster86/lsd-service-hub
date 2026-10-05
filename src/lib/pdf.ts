@@ -458,13 +458,28 @@ export async function buildMessprotokollPdf(input: MessprotokollPdfInput): Promi
     if (ausgefuellt.length === 0) continue
     y = ensureSpace(doc, y, 24)
     y = sectionTitle(doc, gruppe.titel, y)
+    // Kleine Skizze neben jedem Prüfpunkt (letzte Spalte).
+    const skizzen = await Promise.all(ausgefuellt.map((p) => {
+      const url = skizzeUrl(protokoll.typ as MessprotokollTyp, p.key)
+      return url ? skizzeAlsJpeg(url) : Promise.resolve(null)
+    }))
+    const SKIZZE_W = 28
     autoTable(doc, {
       startY: y,
       margin: { left: MARGIN, right: MARGIN },
       styles: { fontSize: 8, textColor: INK, lineColor: LINE, cellPadding: 2 },
       headStyles: { fillColor: GRAPHITE, textColor: '#ffffff' },
-      columnStyles: { 0: { cellWidth: 12 }, 2: { cellWidth: 32 }, 3: { cellWidth: 38 }, 4: { cellWidth: 26 } },
-      head: [['Nr.', 'Prüfpunkt', 'Prüfmittel', 'Zulässige Abweichung', 'Gemessen']],
+      columnStyles: { 0: { cellWidth: 11 }, 2: { cellWidth: 31 }, 3: { cellWidth: 30 }, 4: { cellWidth: 24 }, 5: { cellWidth: SKIZZE_W, minCellHeight: 19 } },
+      head: [['Nr.', 'Prüfpunkt', 'Prüfmittel', 'Zulässige Abweichung', 'Gemessen', 'Skizze']],
+      didDrawCell: (data) => {
+        if (data.section !== 'body' || data.column.index !== 5) return
+        const bild = skizzen[data.row.index]
+        if (!bild) return
+        const maxW = data.cell.width - 2, maxH = data.cell.height - 2
+        const f = Math.min(maxW, maxH / bild.ratio)
+        const w = f, h = f * bild.ratio
+        doc.addImage(bild.dataUrl, 'JPEG', data.cell.x + 1 + (maxW - w) / 2, data.cell.y + 1 + (maxH - h) / 2, w, h)
+      },
       body: ausgefuellt.map((p) => {
         // Reine Zahl bekommt die Einheit dazu; die Bewertung steht nur da, wo
         // die App sie eindeutig gegen die Toleranz prüfen konnte.
@@ -479,42 +494,11 @@ export async function buildMessprotokollPdf(input: MessprotokollPdfInput): Promi
         // Bei gestaffelter Toleranz nur die gewählte Stufe zeigen.
         const stufe = gewaehlteStufe(p, werte)
         const toleranz = stufe ? `${mm(stufe.grenze)} mm (${stufe.label})` : p.toleranz
-        return [p.nr, p.bezeichnung, p.pruefmittel, toleranz, zeilen.join('\n')]
+        return [p.nr, p.bezeichnung, p.pruefmittel, toleranz, zeilen.join('\n'), '']
       }),
     })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    y = (doc as any).lastAutoTable.finalY + 6
-
-    // Skizzen zu den ausgefüllten Prüfpunkten: je Skizze einmal, mit den Punktnummern.
-    const proSkizze = new Map<string, string[]>()
-    ausgefuellt.forEach((p) => {
-      const url = skizzeUrl(protokoll.typ as MessprotokollTyp, p.key)
-      if (!url) return
-      proSkizze.set(url, [...(proSkizze.get(url) || []), p.nr])
-    })
-    const geladen = await Promise.all(
-      [...proSkizze].map(async ([url, nrn]) => ({ bild: await skizzeAlsJpeg(url), nrn })),
-    )
-    const skizzen = geladen.flatMap((g) => (g.bild ? [{ bild: g.bild, nrn: g.nrn }] : []))
-    const spalteW = (CONTENT_W - 6) / 2
-    for (let i = 0; i < skizzen.length; i += 2) {
-      const reihe = skizzen.slice(i, i + 2)
-      const reiheH = Math.max(...reihe.map((k) => spalteW * k.bild.ratio)) + 5
-      y = ensureSpace(doc, y, reiheH)
-      reihe.forEach((k, spalte) => {
-        const x = MARGIN + spalte * (spalteW + 6)
-        const h = spalteW * k.bild.ratio
-        doc.addImage(k.bild.dataUrl, 'JPEG', x, y, spalteW, h)
-        doc.setDrawColor(LINE)
-        doc.rect(x, y, spalteW, h)
-        doc.setFontSize(7.5)
-        doc.setTextColor(INK_SOFT)
-        doc.text(`Skizze zu Prüfpunkt ${k.nrn.join(', ')}`, x, y + h + 3.5)
-      })
-      y += reiheH + 2
-    }
-    doc.setTextColor(INK)
-    y += 4
+    y = (doc as any).lastAutoTable.finalY + 8
   }
 
   const ergebnis = (werte[ERGEBNIS_KEY] || '').trim()
