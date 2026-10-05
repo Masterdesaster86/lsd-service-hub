@@ -33,7 +33,7 @@ Entwickler): auf Deutsch antworten, verständlich erklären, Ergebnisse knapp zu
   Linien `#ccd3d2`. Schriften Big Shoulders Display / IBM Plex Sans / IBM Plex Mono (@fontsource).
 - Bausteine: `.btn`, `.btn-amber`, `.btn-outline`, `.tag …` in `@layer components`;
   `ui/Icon`, `ui/Typenschild`, `ui/Suchfeld`, `ui/Modal` (Bottom-Sheet am Handy), `ui/TimeSelect`.
-- PDFs behalten das **alte Logo**, bis auch die Rechnungen (easybill) umgestellt werden.
+- PDFs (Servicebericht, Messprotokoll, Stundennachweis) nutzen seit 06.10.2026 das neue Logo (Rechnungen sind umgestellt).
 
 ## Messprotokoll
 

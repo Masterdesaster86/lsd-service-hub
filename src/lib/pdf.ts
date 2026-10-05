@@ -1,9 +1,9 @@
 // PDF-Erzeugung für Servicebericht und Monats-Stundennachweis (client-seitig, jsPDF).
 // Layout/Farben orientieren sich an der Firmenvorlage (servicebericht-vorlage.pdf) und
-// dem LSD-Maschinenservice-Logo, das aus dieser Vorlage extrahiert wurde.
+// dem LSD-Maschinenservice-Schriftzug aus dem Design-System.
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { LOGO_URL, PDF_HINTERGRUND_URL } from './branding'
+import { LOGO_SCHRIFTZUG, PDF_HINTERGRUND_URL } from './branding'
 import type { Ansprechpartner, Customer, Employee, Machine, Messprotokoll, Order, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from './types'
 import { calcBerichtTotalsMitKontext, calcTagMitKontext, type DayTotals, type Tageskontext } from './zeit'
 import { formatDateDE, hhmm } from './format'
@@ -26,7 +26,7 @@ const FOOTER_TEXT = 'Simon Dirr und Manuel Lautenbacher GbR · Oblisbergstrasse 
 const AGB_TEXT = 'Die Berechnung und Durchführung der Leistungen erfolgt nach unseren aktuellen AGB. Techniker und Kunde bestätigen mit ihrer Unterschrift die Richtigkeit der oben aufgeführten Angaben. AGB auf Anfrage oder unter www.lsd-maschinenservice.de/agb-s/.'
 
 // Logo-Seitenverhältnis (Breite/Höhe) des extrahierten PNGs.
-const LOGO_RATIO = 646 / 254
+const LOGO_RATIO = 1030 / 285
 
 const bildCache = new Map<string, Promise<string>>()
 function bildAlsDataUrl(url: string): Promise<string> {
@@ -89,8 +89,8 @@ function drawHeader(doc: jsPDF, logo: string, title: string, felder: [string, st
     doc.text(wert, x, 29.5)
   })
 
-  const logoH = 13, logoW = logoH * LOGO_RATIO
-  doc.addImage(logo, 'PNG', PAGE_W - MARGIN - logoW, 8.5, logoW, logoH)
+  const logoH = 11.5, logoW = logoH * LOGO_RATIO
+  doc.addImage(logo, 'PNG', PAGE_W - MARGIN - logoW, 9.2, logoW, logoH)
 
   if (zusatz) {
     doc.setFont('helvetica', 'normal')
@@ -212,7 +212,7 @@ export interface BerichtPdfInput {
 
 export async function buildBerichtPdf(input: BerichtPdfInput): Promise<jsPDF> {
   const { bericht, tage, tageskontext, ersatzteile, machine, techniker, order } = input
-  const [logo, hintergrund] = await Promise.all([bildAlsDataUrl(LOGO_URL), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
+  const [logo, hintergrund] = await Promise.all([bildAlsDataUrl(LOGO_SCHRIFTZUG), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const totals = calcBerichtTotalsMitKontext(tage, tageskontext)
 
@@ -424,7 +424,7 @@ export interface MessprotokollPdfInput {
 export async function buildMessprotokollPdf(input: MessprotokollPdfInput): Promise<jsPDF> {
   const { protokoll, machine, kunde, techniker, abnehmer, ppNummer, werte } = input
   const typDef = MESSPROTOKOLL_TYPEN[protokoll.typ as MessprotokollTyp]
-  const [logo, hintergrund] = await Promise.all([bildAlsDataUrl(LOGO_URL), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
+  const [logo, hintergrund] = await Promise.all([bildAlsDataUrl(LOGO_SCHRIFTZUG), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
 
   setupPage(doc, hintergrund)
@@ -574,7 +574,7 @@ export async function buildNachweisPdf(args: {
   fehltage: { krank: number; schulung: number; kurzarbeit: number; urlaub: number }
 }): Promise<jsPDF> {
   const { technikerName, monatLabel, zeilen, sum, fehltage } = args
-  const [logo, hintergrund] = await Promise.all([bildAlsDataUrl(LOGO_URL), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
+  const [logo, hintergrund] = await Promise.all([bildAlsDataUrl(LOGO_SCHRIFTZUG), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   setupPage(doc, hintergrund)
   let y = drawHeader(doc, logo, 'STUNDENNACHWEIS', [['Zeitraum', monatLabel]], technikerName)
