@@ -34,7 +34,8 @@ function seiteLaden(pfad: string): Promise<void> {
 
 export async function fuerEinsatzVorbereiten(ich: Employee, melden: (f: Fortschritt) => void): Promise<number> {
   // Offene Aufträge: beim Techniker die eigenen, sonst alle offenen.
-  const auftraege = (await fetchOrders()).filter((o) => o.status !== 'erledigt')
+  // Nur "neu" und "in Arbeit" — erledigte und abgerechnete Aufträge braucht beim Kunden niemand.
+  const auftraege = (await fetchOrders()).filter((o) => o.status === 'neu' || o.status === 'in Arbeit')
   const meine = auftraege.filter((o) => o.techniker.some((t) => t.id === ich.id))
   const relevant = ich.role === 'Techniker' ? meine : auftraege
   const ids = relevant.map((o) => o.id)
