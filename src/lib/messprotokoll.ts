@@ -294,6 +294,8 @@ const SKIZZEN: Record<MessprotokollTyp, Record<string, string>> = {
     rechtwinklig_senkr_aufspann_quer: 'h-maschine/06-rechtwinkligkeit-senkrechtbewegung.png',
     rechtwinklig_senkr_laengs: 'h-maschine/07-rechtwinkligkeit-senkrechtbewegung-laengs.png',
     rechtwinklig_senkr_aufspann_laengs: 'h-maschine/07-rechtwinkligkeit-senkrechtbewegung-laengs.png',
+    rundlauf_innenkegel_nah: 'h-maschine/09-rundlauf-innenkegel-arbeitsspindel.png',
+    rundlauf_innenkegel_fern: 'h-maschine/09-rundlauf-innenkegel-arbeitsspindel.png',
     parallel_spindel_quer_a: 'h-maschine/10-parallelitaet-spindel-quer.png',
     parallel_spindel_quer_b: 'h-maschine/10-parallelitaet-spindel-quer.png',
     umschlag_senkrecht: 'h-maschine/11-umschlagmessung-senkrecht.png',
