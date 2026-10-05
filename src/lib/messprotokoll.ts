@@ -184,7 +184,7 @@ export const mm = (n: number) => n.toLocaleString('de-DE', { maximumFractionDigi
 
 // Eigene Skizzen von LSD (public/messprotokoll/skizzen), je Typ und Prüfpunkt.
 // Bei der H-Maschine nur die Prüfungen, deren Nummer und Inhalt mit der Skizze
-// übereinstimmen — die nummerierten Skizzen 6, 9 und 12 gehören zur Schwenkkopf-Folge.
+// übereinstimmen — die nummerierten Skizzen 6 und 8–21 gehören zur Schwenkkopf-Folge.
 const SKIZZE = {
   planlauf: 'rundtisch-draufsicht-messuhr-aussen.png',
   rundlauf: 'rundtisch-draufsicht-messuhr-mitte.png',
@@ -193,8 +193,20 @@ const SKIZZE = {
   p5: '05-rechtwinkligkeit-laengs-quer.png',
   p6: '06-rechtwinkligkeit-aufspannflaeche-senkrecht.png',
   axial: 'detail-messuhr-pruefkoerper.png',
+  p8: '08-rundlauf-innenkegel-arbeitsspindel.png',
   p9: '09-parallelitaet-spindel-quer.png',
+  p10: '10-umschlagmessung-senkrecht.png',
+  p11: '11-umschlagmessung-waagerecht.png',
   p12: '12-parallelitaet-spindel-senkrecht.png',
+  p13: '13-umschlagmessung-arbeitsspindel.png',
+  p14: '14-abstand-fraesspindel-laengsachse.png',
+  p15: '15-abstand-fraesspindel-querachse.png',
+  p16: '16-abstand-spindelkonus-senkrechte-achse.png',
+  p17: '17-abstand-fraesspindel-laengsachse-bezug.png',
+  p18: '18-abstand-spindelkonus-querachse.png',
+  p19: '19-abstand-fraesspindel-senkrechte-achse.png',
+  p20: '20-abstand-spindelkonus-schwenkachse.png',
+  p21: '21-abstand-schwenkachse-laengsachse.png',
 }
 
 const GEMEINSAME_SKIZZEN: Record<string, string> = {
@@ -219,6 +231,21 @@ const SKIZZEN: Record<MessprotokollTyp, Record<string, string>> = {
     parallel_spindel_quer_b: SKIZZE.p9,
     parallel_spindel_senkr_a: SKIZZE.p12,
     parallel_spindel_senkr_b: SKIZZE.p12,
+    rundlauf_innenkegel_nah: SKIZZE.p8,
+    rundlauf_innenkegel_fern: SKIZZE.p8,
+    umschlag_senkrecht: SKIZZE.p10,
+    umschlag_waagrecht: SKIZZE.p11,
+    umschlag_schwenk_laengs: SKIZZE.p13,
+    umschlag_schwenk_quer: SKIZZE.p13,
+    ref_14: SKIZZE.p14,
+    ref_15: SKIZZE.p15,
+    ref_16: SKIZZE.p16,
+    ref_17: SKIZZE.p17,
+    ref_18: SKIZZE.p18,
+    ref_19: SKIZZE.p19,
+    ref_20a: SKIZZE.p20,
+    ref_20b: SKIZZE.p20,
+    ref_21: SKIZZE.p21,
   },
   h_maschine: { ...GEMEINSAME_SKIZZEN },
 }
