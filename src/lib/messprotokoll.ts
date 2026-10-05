@@ -146,15 +146,51 @@ export const bemerkungKey = (key: string) => `${key}__bemerkung`
 /** Ergebnis / Bemerkung zum ganzen Protokoll, ebenfalls in `werte`. */
 export const ERGEBNIS_KEY = '_ergebnis'
 
+/** Unter diesem Schlüssel steht in `werte` die gewählte Toleranz-Stufe (Index). */
+export const stufeKey = (key: string) => `${key}__stufe`
+
 /**
  * Zulässige Abweichung als Zahl in mm — nur wenn die Angabe eindeutig ist
  * ("0,01 mm", "0,02 mm/500 mm", "0,02 mm bei Ø 300 mm"). Gestaffelte Angaben
- * ("… bis Ø 500 mm / … bis Ø 1000 mm", HSK-Sonderfälle) und Maße ohne
- * Toleranz geben null: dort prüft der Techniker selbst, die App bewertet nicht.
+ * und Maße ohne Toleranz geben null (siehe toleranzstufen).
  */
 export function grenzwertMm(toleranz: string): number | null {
   const m = toleranz.match(/^\s*(\d+(?:,\d+)?)\s*mm(?:\s*\/\s*\d+\s*mm|\s+bei\s+Ø\s*\d+\s*mm)?\s*$/)
   return m ? parseFloat(m[1].replace(',', '.')) : null
+}
+
+export interface Toleranzstufe {
+  /** Wovon die Stufe abhängt, z.B. "bis Ø 500 mm" oder "Messlänge 1000 mm". */
+  label: string
+  grenze: number
+}
+
+const zahlAus = (s: string) => parseFloat(s.replace(',', '.'))
+
+/**
+ * Stufen einer gestaffelten Toleranz, aus denen der Techniker die passende
+ * wählt — danach prüft die App wie bei einer eindeutigen Angabe.
+ */
+export function toleranzstufen(toleranz: string): Toleranzstufe[] {
+  let m = toleranz.match(/^(\d+,\d+) mm bis (Ø \d+ mm) \/ (\d+,\d+) mm bis (Ø \d+ mm)$/)
+  if (m) return [{ label: `bis ${m[2]}`, grenze: zahlAus(m[1]) }, { label: `bis ${m[4]}`, grenze: zahlAus(m[3]) }]
+  m = toleranz.match(/^(\d+,\d+) mm\/(\d+ mm) — (\d+,\d+) mm\/(\d+ mm)$/)
+  if (m) return [{ label: `Messlänge ${m[2]}`, grenze: zahlAus(m[1]) }, { label: `Messlänge ${m[4]}`, grenze: zahlAus(m[3]) }]
+  m = toleranz.match(/^(\d+,\d+) mm \((\d+,\d+) mm bei (.+)\)$/)
+  if (m) return [{ label: 'Standard', grenze: zahlAus(m[1]) }, { label: m[3], grenze: zahlAus(m[2]) }]
+  return []
+}
+
+/** Die gewählte Stufe eines Prüfpunkts, sonst null. */
+export function gewaehlteStufe(p: Messpunkt, werte: Record<string, string>): Toleranzstufe | null {
+  const w = werte[stufeKey(p.key)]
+  if (w === undefined || w === '') return null
+  return toleranzstufen(p.toleranz)[Number(w)] ?? null
+}
+
+/** Grenzwert für die Prüfung: eindeutige Angabe oder gewählte Stufe. */
+export function grenzeFuer(p: Messpunkt, werte: Record<string, string>): number | null {
+  return grenzwertMm(p.toleranz) ?? gewaehlteStufe(p, werte)?.grenze ?? null
 }
 
 /** Eingegebenen Messwert als Zahl lesen ("0,015", "0.015 mm"); sonst null. */
@@ -169,9 +205,10 @@ export type Bewertung = 'offen' | 'io' | 'nio' | 'erfasst'
 
 /** offen = nichts eingetragen, io/nio = gegen die Toleranz geprüft,
  * erfasst = Wert steht da, aber ohne automatische Prüfung. */
-export function bewerte(p: Messpunkt, wert: string | undefined): Bewertung {
+export function bewerte(p: Messpunkt, werte: Record<string, string>): Bewertung {
+  const wert = werte[p.key]
   if (!(wert || '').trim()) return 'offen'
-  const g = grenzwertMm(p.toleranz)
+  const g = grenzeFuer(p, werte)
   const n = messwertZahl(wert)
   if (g === null || n === null) return 'erfasst'
   return Math.abs(n) <= g + 1e-9 ? 'io' : 'nio'

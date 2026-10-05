@@ -7,7 +7,7 @@ import { LOGO_URL, PDF_HINTERGRUND_URL } from './branding'
 import type { Ansprechpartner, Customer, Employee, Machine, Messprotokoll, Order, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from './types'
 import { calcBerichtTotalsMitKontext, calcTagMitKontext, type DayTotals, type Tageskontext } from './zeit'
 import { formatDateDE, hhmm } from './format'
-import { ERGEBNIS_KEY, MESSPROTOKOLL_TYPEN, bemerkungKey, bewerte, messwertZahl, mm, type MessprotokollTyp } from './messprotokoll'
+import { ERGEBNIS_KEY, MESSPROTOKOLL_TYPEN, bemerkungKey, bewerte, gewaehlteStufe, messwertZahl, mm, type MessprotokollTyp } from './messprotokoll'
 
 const GRAPHITE = '#1B1F24'
 // Firmenfarben, direkt aus dem Logo entnommen
@@ -441,13 +441,16 @@ export async function buildMessprotokollPdf(input: MessprotokollPdfInput): Promi
         // die App sie eindeutig gegen die Toleranz prüfen konnte.
         const n = messwertZahl(werte[p.key])
         const wert = n !== null && /^[\s\d.,-]+$/.test(werte[p.key]) ? `${mm(n)} mm` : werte[p.key]
-        const b = bewerte(p, werte[p.key])
+        const b = bewerte(p, werte)
         const bemerkung = (werte[bemerkungKey(p.key)] || '').trim()
         const zeilen = [wert]
         if (b === 'io') zeilen.push('in Ordnung')
         if (b === 'nio') zeilen.push('über Toleranz')
         if (bemerkung) zeilen.push(bemerkung)
-        return [p.nr, p.bezeichnung, p.pruefmittel, p.toleranz, zeilen.join('\n')]
+        // Bei gestaffelter Toleranz nur die gewählte Stufe zeigen.
+        const stufe = gewaehlteStufe(p, werte)
+        const toleranz = stufe ? `${mm(stufe.grenze)} mm (${stufe.label})` : p.toleranz
+        return [p.nr, p.bezeichnung, p.pruefmittel, toleranz, zeilen.join('\n')]
       }),
     })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

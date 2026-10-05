@@ -7,7 +7,8 @@ import { useToast } from '../../components/ui/Toast'
 import { Icon } from '../../components/ui/Icon'
 import type { Customer, Employee, Machine, Messprotokoll, Order } from '../../lib/types'
 import {
-  ERGEBNIS_KEY, MESSPROTOKOLL_TYPEN, alleMesspunkte, bemerkungKey, bewerte, grenzwertMm, messwertZahl, mm, skizzeUrl,
+  ERGEBNIS_KEY, MESSPROTOKOLL_TYPEN, alleMesspunkte, bemerkungKey, bewerte, grenzeFuer, messwertZahl, mm, skizzeUrl,
+  stufeKey, toleranzstufen,
   type Bewertung, type MessprotokollTyp,
 } from '../../lib/messprotokoll'
 import { buildMessprotokollPdf, messprotokollPdfFilename } from '../../lib/pdf'
@@ -91,7 +92,7 @@ export function MessprotokollDetail() {
   const editable = protokoll.status === 'offen' && employee?.id === protokoll.techniker_id
   const canDelete = employee?.role === 'Administrator' || employee?.role === 'Disposition' || employee?.role === 'CEO'
 
-  const bewertungen = punkte.map((p) => bewerte(p, werte[p.key]))
+  const bewertungen = punkte.map((p) => bewerte(p, werte))
   const anzahl = (b: Bewertung) => bewertungen.filter((x) => x === b).length
   const erledigt = bewertungen.filter((b) => b !== 'offen').length
   const ersterOffener = bewertungen.findIndex((b) => b === 'offen')
@@ -181,7 +182,18 @@ export function MessprotokollDetail() {
     const p = punkte[i]
     const wert = werte[p.key] || ''
     const b = bewertungen[i]
-    const grenze = grenzwertMm(p.toleranz)
+    const grenze = grenzeFuer(p, werte)
+    const stufen = toleranzstufen(p.toleranz)
+    const stufe = werte[stufeKey(p.key)] ?? ''
+    // Die Wahl gilt auch für die übrigen Punkte mit derselben gestaffelten
+    // Angabe, solange dort noch nichts gewählt ist (z.B. 1a → 1b).
+    const waehleStufe = (idx: number) => setWerte((w) => {
+      const neu = { ...w, [stufeKey(p.key)]: String(idx) }
+      for (const q of punkte) {
+        if (q.toleranz === p.toleranz && !neu[stufeKey(q.key)]) neu[stufeKey(q.key)] = String(idx)
+      }
+      return neu
+    })
     const zahl = messwertZahl(wert)
     // Balken: Skala bis 1,5 × Grenze (oder bis zum Messwert, wenn der darüber liegt).
     const skala = grenze !== null ? Math.max(grenze * 1.5, zahl !== null ? Math.abs(zahl) : 0) : 0
@@ -235,6 +247,30 @@ export function MessprotokollDetail() {
           </div>
         </div>
 
+        {stufen.length > 0 && (
+          <div className="mb-5">
+            <label>Toleranz für diese Maschine</label>
+            <div className="grid grid-cols-2 gap-2">
+              {stufen.map((s, idx) => {
+                const aktiv = stufe === String(idx)
+                return (
+                  <button
+                    key={s.label}
+                    type="button"
+                    disabled={!editable}
+                    onClick={() => waehleStufe(idx)}
+                    aria-pressed={aktiv}
+                    className={`min-h-[56px] px-3 py-2 border-2 text-left cursor-pointer disabled:cursor-default ${aktiv ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink'}`}
+                  >
+                    <span className="block text-[14px] font-medium leading-tight">{s.label}</span>
+                    <span className={`block font-mono text-[13px] mt-0.5 ${aktiv ? 'text-white/80' : 'text-ink-soft'}`}>{mm(s.grenze)} mm</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         <label>Gemessen</label>
         <div className={`flex items-center bg-white border-2 ${b === 'nio' ? 'border-red' : 'border-ink'}`}>
           <input
@@ -267,7 +303,9 @@ export function MessprotokollDetail() {
           </div>
         ) : (
           <p className="text-[13.5px] text-ink-soft mt-2.5">
-            {p.toleranz === '–' ? 'Maß als Programmierhilfe — keine Toleranz.' : 'Gestaffelte Toleranz — bitte selbst gegen die Angabe prüfen.'}
+            {p.toleranz === '–' ? 'Maß als Programmierhilfe — keine Toleranz.'
+              : stufen.length > 0 ? 'Oben die passende Toleranz wählen — dann prüft die App den Wert.'
+              : 'Toleranz nach Herstellerangabe — bitte selbst prüfen.'}
           </p>
         )}
 
@@ -314,7 +352,7 @@ export function MessprotokollDetail() {
             </div>
           ))}
         </div>
-        {ohnePruefung > 0 && <p className="text-[13px] text-ink-soft mt-1.5 mb-0">Dazu {ohnePruefung} erfasste Werte ohne automatische Prüfung (gestaffelte Toleranz oder Maß).</p>}
+        {ohnePruefung > 0 && <p className="text-[13px] text-ink-soft mt-1.5 mb-0">Dazu {ohnePruefung} erfasste Werte ohne automatische Prüfung (Toleranz nicht gewählt, Herstellerangabe oder Maß).</p>}
 
         <div className="font-mono text-[12px] uppercase tracking-[0.1em] text-ink-soft mt-6 mb-2">Abweichungen</div>
         {abweichungen.length === 0 ? (
@@ -329,7 +367,7 @@ export function MessprotokollDetail() {
               >
                 <span className="font-mono font-semibold text-red w-10 shrink-0">{p.nr}</span>
                 <span className="flex-1 font-medium leading-snug">{p.bezeichnung}</span>
-                <span className="font-mono text-[13px] text-red shrink-0">{mm(Math.abs(messwertZahl(werte[p.key])!))} / {mm(grenzwertMm(p.toleranz)!)}</span>
+                <span className="font-mono text-[13px] text-red shrink-0">{mm(Math.abs(messwertZahl(werte[p.key])!))} / {mm(grenzeFuer(p, werte)!)}</span>
               </button>
             ))}
           </div>
