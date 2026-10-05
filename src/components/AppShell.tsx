@@ -79,17 +79,19 @@ export function AppShell() {
   const mehrAktiv = mehrPunkte.some((i) => location.pathname.startsWith(i.to))
 
   return (
-    <div className="flex flex-col h-full min-h-[640px]" style={{ height: '100dvh' }}>
+    // minHeight 100%: Vom Home-Bildschirm ist die Fläche höher als 100dvh, sonst bliebe unter der Leiste ein Streifen.
+    <div className="flex flex-col h-full min-h-[640px]" style={{ height: '100dvh', minHeight: '100%' }}>
       {/* Streifen hinter der Statusleiste (Uhrzeit) dunkel halten, damit die
           weiße Systemschrift dort lesbar bleibt. Am Desktop 0 Pixel hoch. */}
       <div className="bg-graphite shrink-0" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
-      <div className="app-kopf bg-graphite flex items-center gap-3 shrink-0 min-h-[60px]">
-        {/* Logo auf heller Platte mit schräger Unterkante links, wie auf der Webseite */}
+      <div className="app-kopf bg-graphite flex items-center gap-3 shrink-0 min-h-[64px] border-b-[3px] border-amber">
+        {/* Logo auf heller Platte mit schräger Kante links, wie auf der Webseite.
+            Die blaue Linie unter der Leiste trennt die Platte sauber vom Seiteninhalt. */}
         <div
-          className="bg-paper self-stretch flex items-center pl-[22px] pr-[14px]"
-          style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 12px 100%)' }}
+          className="bg-paper self-stretch flex items-center pl-[20px] pr-[16px]"
+          style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 14px 100%)' }}
         >
-          <img src={LOGO_SCHRIFTZUG} alt="LSD Maschinenservice" className="h-[24px] w-auto block" />
+          <img src={LOGO_SCHRIFTZUG} alt="LSD Maschinenservice" className="h-[28px] w-auto block" />
         </div>
         <div className="ml-auto text-right leading-tight">
           <div className="font-mono text-[11.5px] uppercase tracking-[0.08em] text-[#9aa7ac]">{employee?.role}</div>
