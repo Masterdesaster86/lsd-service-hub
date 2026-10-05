@@ -1,0 +1,62 @@
+# LSD Service Hub — Hinweise für Claude
+
+Interne Service-App von LSD Maschinenservice (Aufträge, Serviceberichte mit Unterschrift,
+Messprotokolle, Plantafel, Verwaltung). Ansprechpartner ist Manuel Lautenbacher (CEO, kein
+Entwickler): auf Deutsch antworten, verständlich erklären, Ergebnisse knapp zusammenfassen.
+
+## Technik
+
+- React 19 + TypeScript + Vite + React Router 7, Tailwind v4 (Tokens per `@theme` in `src/index.css`).
+- Supabase-Projekt `cyvjcskxqluqmerjxqty` — **es gibt nur die Produktivdatenbank**. Testdaten nach
+  dem Testen wieder entfernen, bei Schreibzugriffen vorher kurz nachfragen.
+- Typprüfung: `npx tsc -b`. Dev-Server über die Vorschau (`.claude/launch.json`, Name `lsd-dev`,
+  läuft mit `--host`, damit Manuel vom Handy unter der LAN-Adresse testen kann).
+- Unter Windows bemerkt der Vite-Dev-Server Dateiänderungen manchmal nicht — wenn die Vorschau
+  alten Code zeigt, Server neu starten.
+- Mehrzeiligen Code nicht per Bash-Heredoc schreiben (Backticks/`${}` gehen kaputt), sondern mit
+  Write/Edit. Dateien haben teils CRLF-Zeilenenden.
+
+## Zweige und Auslieferung (IONOS, per GitHub Action `.github/workflows/deploy-ionos.yml`)
+
+- `main` → https://lsd-maschinenservice-app.de/ (die App, die alle benutzen)
+- `redesign` → https://lsd-maschinenservice-app.de/neu/ (neues Design, Testphase)
+- Push genügt, die Action baut und lädt hoch (ca. 1–3 Minuten).
+- Umschalter „Bisher / Neu (Test)“ (`src/lib/designwahl.ts`, `DesignSchalter`) — Wahl wird pro
+  Gerät gemerkt. Neue Arbeit gehört auf `redesign`. Erst nach Manuels Freigabe `redesign` nach
+  `main` mergen und Umschalter + `/neu` entfernen. Dringende Fixes für alle einzeln auf `main`.
+
+## Design (Zweig `redesign`)
+
+- Handy zuerst für alle Seiten; die Plantafel ist für den Desktop (`PlantafelDesktop`), am Handy
+  gibt es `PlantafelMobil`. Unterschrift ist fürs Tablet optimiert.
+- Farben: Tinte `#14181d`, Papier `#eef0ee`, Akzent `#2764ad` (heißt im Code noch „amber“),
+  Linien `#ccd3d2`. Schriften Big Shoulders Display / IBM Plex Sans / IBM Plex Mono (@fontsource).
+- Bausteine: `.btn`, `.btn-amber`, `.btn-outline`, `.tag …` in `@layer components`;
+  `ui/Icon`, `ui/Typenschild`, `ui/Suchfeld`, `ui/Modal` (Bottom-Sheet am Handy), `ui/TimeSelect`.
+- PDFs behalten das **alte Logo**, bis auch die Rechnungen (easybill) umgestellt werden.
+
+## Messprotokoll
+
+- Prüfpunkt-Kataloge (Schwenkkopf, H-Maschine) in `src/lib/messprotokoll.ts`. Eigene
+  Formulierungen — **keine Texte, Skizzen oder Formularnummern vom Hersteller übernehmen**.
+- Werte liegen in `messprotokolle.werte` (JSON): Messwert unter `key`, Bemerkung `key__bemerkung`,
+  gewählte Toleranzstufe `key__stufe`, Ergebnis zum Protokoll `_ergebnis`.
+- Gestaffelte Toleranzen: Auswahl per `toleranzstufen()`, danach automatische Prüfung.
+- Skizzen: `public/messprotokoll/skizzen/` (Schwenkkopf-Nummerierung) und `…/skizzen/h-maschine/`.
+  Manuel zeichnet sie selbst, Quellen liegen in `D:\lsd-protokoll\skizzen`. Format PNG 2400×1440.
+- Beim Blättern zwischen Messungen wird automatisch gespeichert (echte Datenbank!).
+
+## Regeln
+
+- Nie Passwörter oder Schlüssel eintippen oder im Chat ausgeben — das macht Manuel selbst.
+- Downloads nur nach Rückfrage.
+
+## Offene Punkte (Stand 05.10.2026)
+
+- Neues Design testen und dann freigeben (redesign → main).
+- Texte im Messprotokoll will Manuel später noch überarbeiten.
+- Skizzen 8 und 9: Text „8b/9b nur bei HSK-32, 40, 50“ passt nicht zum Katalog (dort: Abstand
+  150 statt 300 mm bei HSK 32/40/50) — Manuel prüft.
+- Offene Frage: zweites offenes Messprotokoll am SB-2026-0030 (04.10.) — behalten oder löschen?
+- Offene Frage: soll „Genehmigen“ in der Plantafel ohne Rückfrage gehen?
+- `D:\lsd-protokoll\skizzen\quellen\` (verworfene Entwürfe von Claude) kann gelöscht werden.
