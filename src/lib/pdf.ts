@@ -7,7 +7,7 @@ import { LOGO_URL, PDF_HINTERGRUND_URL } from './branding'
 import type { Ansprechpartner, Customer, Employee, Machine, Messprotokoll, Order, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from './types'
 import { calcBerichtTotalsMitKontext, calcTagMitKontext, type DayTotals, type Tageskontext } from './zeit'
 import { formatDateDE, hhmm } from './format'
-import { ERGEBNIS_KEY, MESSPROTOKOLL_TYPEN, bemerkungKey, bewerte, gewaehlteStufe, messwertZahl, mm, type MessprotokollTyp } from './messprotokoll'
+import { ERGEBNIS_KEY, MESSPROTOKOLL_TYPEN, bemerkungKey, bewerte, gewaehlteStufe, messwertZahl, mm, skizzeUrl, type MessprotokollTyp } from './messprotokoll'
 
 const GRAPHITE = '#1B1F24'
 // Firmenfarben, direkt aus dem Logo entnommen
@@ -381,6 +381,35 @@ export function messprotokollPdfFilename(protokoll: Messprotokoll): string {
   return `Messprotokoll-${protokoll.auftrag_id}-${kurz}.pdf`
 }
 
+/** Skizze (PNG) als verkleinertes JPEG laden, damit das PDF klein bleibt. */
+type SkizzeBild = { dataUrl: string; ratio: number }
+const skizzeCache = new Map<string, Promise<SkizzeBild | null>>()
+function skizzeAlsJpeg(url: string): Promise<SkizzeBild | null> {
+  let vorhanden = skizzeCache.get(url)
+  if (!vorhanden) {
+    vorhanden = new Promise((resolve) => {
+      const img = new Image()
+      img.onload = () => {
+        const breite = Math.min(1200, img.naturalWidth)
+        const hoehe = Math.round(breite * (img.naturalHeight / img.naturalWidth))
+        const canvas = document.createElement('canvas')
+        canvas.width = breite
+        canvas.height = hoehe
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return resolve(null)
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, breite, hoehe)
+        ctx.drawImage(img, 0, 0, breite, hoehe)
+        resolve({ dataUrl: canvas.toDataURL('image/jpeg', 0.85), ratio: hoehe / breite })
+      }
+      img.onerror = () => resolve(null)
+      img.src = url
+    })
+    skizzeCache.set(url, vorhanden)
+  }
+  return vorhanden
+}
+
 export interface MessprotokollPdfInput {
   protokoll: Messprotokoll
   order: Order | null
@@ -424,9 +453,9 @@ export async function buildMessprotokollPdf(input: MessprotokollPdfInput): Promi
   // Nur tatsächlich ausgefüllte Prüfpunkte ins PDF — nicht bearbeitete
   // Abschnitte (z.B. weil bei diesem Einsatz nur ein Teil der Geometrie
   // geprüft wurde) fallen dadurch ganz weg, statt mit lauter "–" aufzufallen.
-  typDef.gruppen.forEach((gruppe) => {
+  for (const gruppe of typDef.gruppen) {
     const ausgefuellt = gruppe.punkte.filter((p) => (werte[p.key] || '').trim())
-    if (ausgefuellt.length === 0) return
+    if (ausgefuellt.length === 0) continue
     y = ensureSpace(doc, y, 24)
     y = sectionTitle(doc, gruppe.titel, y)
     autoTable(doc, {
@@ -454,8 +483,39 @@ export async function buildMessprotokollPdf(input: MessprotokollPdfInput): Promi
       }),
     })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    y = (doc as any).lastAutoTable.finalY + 8
-  })
+    y = (doc as any).lastAutoTable.finalY + 6
+
+    // Skizzen zu den ausgefüllten Prüfpunkten: je Skizze einmal, mit den Punktnummern.
+    const proSkizze = new Map<string, string[]>()
+    ausgefuellt.forEach((p) => {
+      const url = skizzeUrl(protokoll.typ as MessprotokollTyp, p.key)
+      if (!url) return
+      proSkizze.set(url, [...(proSkizze.get(url) || []), p.nr])
+    })
+    const geladen = await Promise.all(
+      [...proSkizze].map(async ([url, nrn]) => ({ bild: await skizzeAlsJpeg(url), nrn })),
+    )
+    const skizzen = geladen.flatMap((g) => (g.bild ? [{ bild: g.bild, nrn: g.nrn }] : []))
+    const spalteW = (CONTENT_W - 6) / 2
+    for (let i = 0; i < skizzen.length; i += 2) {
+      const reihe = skizzen.slice(i, i + 2)
+      const reiheH = Math.max(...reihe.map((k) => spalteW * k.bild.ratio)) + 5
+      y = ensureSpace(doc, y, reiheH)
+      reihe.forEach((k, spalte) => {
+        const x = MARGIN + spalte * (spalteW + 6)
+        const h = spalteW * k.bild.ratio
+        doc.addImage(k.bild.dataUrl, 'JPEG', x, y, spalteW, h)
+        doc.setDrawColor(LINE)
+        doc.rect(x, y, spalteW, h)
+        doc.setFontSize(7.5)
+        doc.setTextColor(INK_SOFT)
+        doc.text(`Skizze zu Prüfpunkt ${k.nrn.join(', ')}`, x, y + h + 3.5)
+      })
+      y += reiheH + 2
+    }
+    doc.setTextColor(INK)
+    y += 4
+  }
 
   const ergebnis = (werte[ERGEBNIS_KEY] || '').trim()
   if (ergebnis) {
