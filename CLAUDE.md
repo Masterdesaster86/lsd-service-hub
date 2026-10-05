@@ -35,6 +35,21 @@ Entwickler): auf Deutsch antworten, verständlich erklären, Ergebnisse knapp zu
   `ui/Icon`, `ui/Typenschild`, `ui/Suchfeld`, `ui/Modal` (Bottom-Sheet am Handy), `ui/TimeSelect`.
 - PDFs (Servicebericht, Messprotokoll, Stundennachweis) nutzen seit 06.10.2026 das neue Logo (Rechnungen sind umgestellt).
 
+## Offline-Modus (seit 06.10.2026 auf `redesign`)
+
+- `src/lib/offline.ts` ist die `global.fetch` des Supabase-Clients: GET/rpc werden in IndexedDB
+  gemerkt und ohne Netz von dort beantwortet; insert/update/delete und Storage-Uploads gehen ohne
+  Netz in eine Warteschlange (synthetische Erfolgsantwort) und werden mit Netz der Reihe nach
+  hochgeladen. Wartende Änderungen werden beim Lesen über die Antworten gelegt.
+- Neue Zeilen in `serviceberichte`, `servicebericht_tage`, `servicebericht_ersatzteile`,
+  `messprotokolle` bekommen ihre UUID auf dem Gerät (doppeltes Hochladen → 23505 = erledigt).
+- `public/sw.js` + `precache.json` (Vite-Plugin in `vite.config.ts`): App startet ohne Netz.
+- Anzeige/Dialog: `components/OfflineStatus.tsx`; „Für Einsatz vorbereiten“ (`lib/vorbereiten.ts`)
+  öffnet die relevanten Seiten in unsichtbaren iframes, damit ihre Abfragen gespeichert werden.
+- AuthContext nutzt offline die gespeicherte Anmeldung, auch wenn das Token abgelaufen ist.
+- Nur ohne echte Anmeldung getestet (Warteschlange, Überlagerung, Service Worker); echtes
+  Hochladen mit Login noch von Manuel prüfen lassen.
+
 ## Messprotokoll
 
 - Prüfpunkt-Kataloge (Schwenkkopf, H-Maschine) in `src/lib/messprotokoll.ts`. Eigene

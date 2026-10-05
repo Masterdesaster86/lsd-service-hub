@@ -11,7 +11,7 @@ AddType application/manifest+json .webmanifest
 # Stand, dessen Dateinamen es nicht mehr gibt). Die Dateien unter /assets
 # haben ohnehin einen Hash im Namen und aendern sich nie.
 <IfModule mod_headers.c>
-  <FilesMatch "\.(html|webmanifest)$">
+  <FilesMatch "(\.(html|webmanifest)|sw\.js|precache\.json)$">
     Header set Cache-Control "no-cache, must-revalidate"
   </FilesMatch>
 </IfModule>

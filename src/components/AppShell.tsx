@@ -6,6 +6,9 @@ import { NotificationBell } from './NotificationBell'
 import { PdfViewer } from './PdfViewer'
 import { Icon, type IconName } from './ui/Icon'
 import { DesignSchalter } from './ui/DesignSchalter'
+import { useConfirm } from './ui/ConfirmProvider'
+import { OfflineDialog, OfflineStatus } from './OfflineStatus'
+import { offlineZustand } from '../lib/offline'
 
 interface NavItem {
   to: string
@@ -50,6 +53,23 @@ export function AppShell() {
   // innerhalb der App mit einem echten Schließen-Knopf.
   const [zeigeAnleitung, setZeigeAnleitung] = useState<AnleitungKey | null>(null)
   const [mehrOffen, setMehrOffen] = useState(false)
+  const [zeigeVerbindung, setZeigeVerbindung] = useState(false)
+  const confirm = useConfirm()
+
+  // Abmelden löscht die auf dem Gerät gespeicherten Daten. Liegen noch nicht
+  // hochgeladene Änderungen vor, gingen die verloren — vorher deutlich nachfragen.
+  async function abmelden() {
+    const { wartend } = offlineZustand()
+    if (wartend > 0) {
+      const ok = await confirm({
+        message: `Es sind noch ${wartend} Änderungen nicht hochgeladen. Beim Abmelden gehen sie verloren. Besser erst mit Netz hochladen lassen.`,
+        confirmLabel: 'Trotzdem abmelden',
+        danger: true,
+      })
+      if (!ok) return
+    }
+    await signOut()
+  }
 
   // Diese Ansicht ersetzt die App komplett, mit demselben Aufbau (flex-col
   // über die volle Höhe), der beim restlichen Inhalt bereits zuverlässig
@@ -93,12 +113,15 @@ export function AppShell() {
         >
           <img src={LOGO_SCHRIFTZUG} alt="LSD Maschinenservice" className="h-[28px] w-auto block" />
         </div>
-        <div className="ml-auto text-right leading-tight">
+        <div className="ml-auto">
+          <OfflineStatus onOpen={() => { setMehrOffen(false); setZeigeVerbindung(true) }} />
+        </div>
+        <div className="text-right leading-tight">
           <div className="font-mono text-[11.5px] uppercase tracking-[0.08em] text-[#9aa7ac]">{employee?.role}</div>
           <div className="text-[13px] text-[#eef0ee] max-md:hidden">{employee?.name}</div>
         </div>
         <NotificationBell />
-        <button onClick={signOut} className="btn btn-sm !bg-transparent !text-[#eef0ee] !border-[#9aa7ac] max-md:hidden">Abmelden</button>
+        <button onClick={abmelden} className="btn btn-sm !bg-transparent !text-[#eef0ee] !border-[#9aa7ac] max-md:hidden">Abmelden</button>
       </div>
       <div className="flex flex-1 min-h-0">
         <div className="app-seitenleiste w-[210px] shrink-0 bg-graphite-2 flex flex-col overflow-y-auto max-md:hidden">
@@ -175,6 +198,8 @@ export function AppShell() {
         </button>
       </nav>
 
+      {zeigeVerbindung && <OfflineDialog onClose={() => setZeigeVerbindung(false)} />}
+
       {mehrOffen && (
         <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end" onClick={() => setMehrOffen(false)}>
           <div className="absolute inset-0 bg-[rgba(9,11,13,0.72)]" />
@@ -217,7 +242,7 @@ export function AppShell() {
               ))}
               <div className="p-4 flex flex-col gap-4">
                 <DesignSchalter />
-                <button onClick={signOut} className="btn btn-outline w-full">Abmelden</button>
+                <button onClick={abmelden} className="btn btn-outline w-full">Abmelden</button>
               </div>
             </div>
           </div>

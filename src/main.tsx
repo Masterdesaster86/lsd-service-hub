@@ -10,6 +10,18 @@ import { zurGewaehltenFassung } from './lib/designwahl'
 
 // Übergangsphase: Hat das Gerät die andere Fassung gewählt (bisher / neues
 // Design), wird dorthin umgeleitet, bevor überhaupt etwas angezeigt wird.
+declare const __BUILD_ID__: string
+
+// Offline-Modus: Der Service Worker legt die App aufs Gerät, damit sie ohne Netz startet.
+// Die Versionsnummer in der Adresse sorgt dafür, dass jedes Update ankommt.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register(`${import.meta.env.BASE_URL}sw.js?v=${__BUILD_ID__}`, { scope: import.meta.env.BASE_URL })
+      .catch((e) => console.error('Service Worker nicht registriert', e))
+  })
+}
+
 if (!zurGewaehltenFassung()) {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>

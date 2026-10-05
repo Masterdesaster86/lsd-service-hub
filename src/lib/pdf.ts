@@ -7,6 +7,7 @@ import { LOGO_SCHRIFTZUG, PDF_HINTERGRUND_URL } from './branding'
 import type { Ansprechpartner, Customer, Employee, Machine, Messprotokoll, Order, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from './types'
 import { calcBerichtTotalsMitKontext, calcTagMitKontext, type DayTotals, type Tageskontext } from './zeit'
 import { formatDateDE, hhmm } from './format'
+import { wartendesBild } from './offline'
 import { ERGEBNIS_KEY, MESSPROTOKOLL_TYPEN, bemerkungKey, bewerte, gewaehlteStufe, messwertZahl, mm, skizzeUrl, type MessprotokollTyp } from './messprotokoll'
 
 const GRAPHITE = '#1B1F24'
@@ -581,8 +582,8 @@ export async function sharePdf(doc: jsPDF, filename: string, title: string, text
 
 /** Lädt eine öffentliche Storage-URL (z.B. Unterschrift) und wandelt sie in eine data:-URL um. */
 export async function urlToDataUrl(url: string): Promise<string> {
-  const res = await fetch(url)
-  const blob = await res.blob()
+  // Offline unterschrieben und noch nicht hochgeladen: Bild direkt vom Gerät nehmen.
+  const blob = (await wartendesBild(url)) ?? await (await fetch(url)).blob()
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onloadend = () => resolve(reader.result as string)
