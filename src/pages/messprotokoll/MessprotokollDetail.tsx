@@ -7,7 +7,7 @@ import { useToast } from '../../components/ui/Toast'
 import { Icon } from '../../components/ui/Icon'
 import type { Customer, Employee, Machine, Messprotokoll, Order } from '../../lib/types'
 import {
-  ERGEBNIS_KEY, MESSPROTOKOLL_TYPEN, alleMesspunkte, bemerkungKey, bewerte, grenzwertMm, messwertZahl, mm,
+  ERGEBNIS_KEY, MESSPROTOKOLL_TYPEN, alleMesspunkte, bemerkungKey, bewerte, grenzwertMm, messwertZahl, mm, skizzeUrl,
   type Bewertung, type MessprotokollTyp,
 } from '../../lib/messprotokoll'
 import { buildMessprotokollPdf, messprotokollPdfFilename } from '../../lib/pdf'
@@ -52,6 +52,7 @@ export function MessprotokollDetail() {
   const [ansicht, setAnsicht] = useState<Ansicht>({ art: 'uebersicht' })
   const [saving, setSaving] = useState(false)
   const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const [skizzeGross, setSkizzeGross] = useState<string | null>(null)
   // Stand der letzten Speicherung — so wird beim Blättern nur gespeichert,
   // wenn sich wirklich etwas geändert hat.
   const gespeichert = useRef('')
@@ -185,6 +186,7 @@ export function MessprotokollDetail() {
     // Balken: Skala bis 1,5 × Grenze (oder bis zum Messwert, wenn der darüber liegt).
     const skala = grenze !== null ? Math.max(grenze * 1.5, zahl !== null ? Math.abs(zahl) : 0) : 0
     const naechster = punkte[i + 1]
+    const skizze = skizzeUrl(protokoll.typ as MessprotokollTyp, p.key)
     return (
       <div>
         <div className="flex items-center justify-between mb-4">
@@ -199,6 +201,28 @@ export function MessprotokollDetail() {
         </p>
         <h1>Messung {p.nr}</h1>
         <div className="font-semibold text-[17px] mt-2 mb-4 leading-snug">{p.bezeichnung}</div>
+
+        {skizze && (
+          <button
+            type="button"
+            onClick={() => setSkizzeGross(skizze)}
+            className="block w-full p-0 mb-4 border border-line bg-white cursor-zoom-in"
+            aria-label="Skizze vergrößern"
+          >
+            <img src={skizze} alt={`Skizze zu Messung ${p.nr}`} className="block w-full h-auto" loading="lazy" />
+          </button>
+        )}
+        {skizzeGross && (
+          <div className="fixed inset-0 z-[120] bg-white flex flex-col" onClick={() => setSkizzeGross(null)}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-line" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}>
+              <span className="font-mono text-[12px] uppercase tracking-[0.1em] text-ink-soft">Messung {p.nr} · antippen zum Schließen</span>
+              <button className="w-11 h-11 grid place-items-center border-[1.5px] border-ink bg-transparent cursor-pointer" aria-label="Schließen"><Icon name="schliessen" size={20} /></button>
+            </div>
+            <div className="flex-1 min-h-0 flex items-center justify-center p-3 overflow-hidden">
+              <img src={skizzeGross} alt={`Skizze zu Messung ${p.nr}`} className="max-w-full max-h-full object-contain portrait:max-w-none portrait:max-h-none portrait:w-[min(calc(100dvh_-_120px),calc((100vw_-_24px)_*_1.66))] portrait:rotate-90" />
+            </div>
+          </div>
+        )}
 
         <div className="bg-white border border-line mb-5">
           <div className="grid grid-cols-[minmax(0,9rem)_1fr] gap-3 px-3.5 py-2.5 border-b border-line">

@@ -179,3 +179,52 @@ export function bewerte(p: Messpunkt, wert: string | undefined): Bewertung {
 
 /** Zahl deutsch formatiert, ohne überflüssige Nullen. */
 export const mm = (n: number) => n.toLocaleString('de-DE', { maximumFractionDigits: 4 })
+
+// --- Skizzen ----------------------------------------------------------------
+
+// Eigene Skizzen von LSD (public/messprotokoll/skizzen), je Typ und Prüfpunkt.
+// Bei der H-Maschine nur die Prüfungen, deren Nummer und Inhalt mit der Skizze
+// übereinstimmen — die nummerierten Skizzen 6, 9 und 12 gehören zur Schwenkkopf-Folge.
+const SKIZZE = {
+  planlauf: 'rundtisch-draufsicht-messuhr-aussen.png',
+  rundlauf: 'rundtisch-draufsicht-messuhr-mitte.png',
+  quer: 'tisch-seitenansicht-messuhr-spindel.png',
+  p4: '04-parallelitaet-aufspannflaeche-referenznut-laengs.png',
+  p5: '05-rechtwinkligkeit-laengs-quer.png',
+  p6: '06-rechtwinkligkeit-aufspannflaeche-senkrecht.png',
+  axial: 'detail-messuhr-pruefkoerper.png',
+  p9: '09-parallelitaet-spindel-quer.png',
+  p12: '12-parallelitaet-spindel-senkrecht.png',
+}
+
+const GEMEINSAME_SKIZZEN: Record<string, string> = {
+  planlauf_p1: SKIZZE.planlauf,
+  planlauf_p2: SKIZZE.planlauf,
+  rundlauf_zentrierbuchse_p1: SKIZZE.rundlauf,
+  rundlauf_zentrierbuchse_p2: SKIZZE.rundlauf,
+  parallel_aufspann_quer: SKIZZE.quer,
+  parallel_aufspann_laengs: SKIZZE.p4,
+  parallel_referenznut_p1: SKIZZE.p4,
+  parallel_referenznut_p2: SKIZZE.p4,
+  rechtwinklig_laengs_quer: SKIZZE.p5,
+  axialruhe_spindel: SKIZZE.axial,
+}
+
+const SKIZZEN: Record<MessprotokollTyp, Record<string, string>> = {
+  schwenkkopf: {
+    ...GEMEINSAME_SKIZZEN,
+    rechtwinklig_senkr_quer: SKIZZE.p6,
+    rechtwinklig_senkr_laengs: SKIZZE.p6,
+    parallel_spindel_quer_a: SKIZZE.p9,
+    parallel_spindel_quer_b: SKIZZE.p9,
+    parallel_spindel_senkr_a: SKIZZE.p12,
+    parallel_spindel_senkr_b: SKIZZE.p12,
+  },
+  h_maschine: { ...GEMEINSAME_SKIZZEN },
+}
+
+/** Adresse der Skizze zu einem Prüfpunkt (berücksichtigt den Unterordner /neu/) — oder null. */
+export function skizzeUrl(typ: MessprotokollTyp, key: string): string | null {
+  const datei = SKIZZEN[typ]?.[key]
+  return datei ? `${import.meta.env.BASE_URL}messprotokoll/skizzen/${datei}` : null
+}
