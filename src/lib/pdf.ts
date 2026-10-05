@@ -29,6 +29,40 @@ const AGB_TEXT = 'Die Berechnung und Durchführung der Leistungen erfolgt nach u
 const LOGO_RATIO = 1030 / 285
 
 const bildCache = new Map<string, Promise<string>>()
+
+// Die eingebauten PDF-Schriften kennen nur Latin-1/WinAnsi. Ein einziges anderes
+// Zeichen (z.B. ein Pfeil oder ≈) lässt jsPDF die ganze Zeile in einer Breitkodierung
+// setzen: die Zeile wird auseinandergezogen und läuft über den Rand. Deshalb werden
+// solche Zeichen vor dem Zeichnen ersetzt.
+const ERSATZ: Record<string, string> = {
+  '→': '->', '⇒': '=>', '←': '<-', '↔': '<->', '↑': '(auf)', '↓': '(ab)', '≈': '~', '≥': '>=', '≤': '<=', '≠': '!=',
+  'Ω': 'Ohm', '−': '-', '‑': '-', '‐': '-', '✓': 'ok', '✔': 'ok', '✗': 'x', '✘': 'x', '×': 'x', '\u00a0': ' ', '\u202f': ' ', '\u2009': ' ',
+}
+const WINANSI_EXTRA = '€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ'
+function pdfSicher(text: string): string {
+  return text.replace(/[\u0100-\uffff]/g, (c) => {
+    if (ERSATZ[c] !== undefined) return ERSATZ[c]
+    if (WINANSI_EXTRA.includes(c)) return c
+    const grund = c.normalize('NFKD').replace(/[\u0100-\uffff]/g, '')
+    return grund || '?'
+  }).replace(/[\u00a0\u202f\u2009]/g, ' ')
+}
+function sicher<T extends string | string[]>(t: T): T {
+  return (Array.isArray(t) ? t.map(pdfSicher) : pdfSicher(t as string)) as T
+}
+
+/** Neues A4-Dokument, dessen Texte vor dem Zeichnen auf druckbare Zeichen geprüft werden
+ * (gilt auch für Tabellen, die intern doc.text aufrufen). */
+function neuesPdf(): jsPDF {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const text = doc.text.bind(doc) as (...a: unknown[]) => jsPDF
+  const teilen = doc.splitTextToSize.bind(doc) as (...a: unknown[]) => string[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(doc as any).text = (t: string | string[], ...rest: unknown[]) => text(sicher(t), ...rest)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(doc as any).splitTextToSize = (t: string | string[], ...rest: unknown[]) => teilen(sicher(t), ...rest)
+  return doc
+}
 function bildAlsDataUrl(url: string): Promise<string> {
   let vorhanden = bildCache.get(url)
   if (!vorhanden) {
@@ -213,7 +247,7 @@ export interface BerichtPdfInput {
 export async function buildBerichtPdf(input: BerichtPdfInput): Promise<jsPDF> {
   const { bericht, tage, tageskontext, ersatzteile, machine, techniker, order } = input
   const [logo, hintergrund] = await Promise.all([bildAlsDataUrl(LOGO_SCHRIFTZUG), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const doc = neuesPdf()
   const totals = calcBerichtTotalsMitKontext(tage, tageskontext)
 
   setupPage(doc, hintergrund)
@@ -425,7 +459,7 @@ export async function buildMessprotokollPdf(input: MessprotokollPdfInput): Promi
   const { protokoll, machine, kunde, techniker, abnehmer, ppNummer, werte } = input
   const typDef = MESSPROTOKOLL_TYPEN[protokoll.typ as MessprotokollTyp]
   const [logo, hintergrund] = await Promise.all([bildAlsDataUrl(LOGO_SCHRIFTZUG), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const doc = neuesPdf()
 
   setupPage(doc, hintergrund)
   let y = drawHeader(doc, logo, 'MESSPROTOKOLL', [
@@ -575,7 +609,7 @@ export async function buildNachweisPdf(args: {
 }): Promise<jsPDF> {
   const { technikerName, monatLabel, zeilen, sum, fehltage } = args
   const [logo, hintergrund] = await Promise.all([bildAlsDataUrl(LOGO_SCHRIFTZUG), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const doc = neuesPdf()
   setupPage(doc, hintergrund)
   let y = drawHeader(doc, logo, 'STUNDENNACHWEIS', [['Zeitraum', monatLabel]], technikerName)
   y = sectionTitle(doc, 'Erfasste Tage', y)
