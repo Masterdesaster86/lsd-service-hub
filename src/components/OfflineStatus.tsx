@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../lib/AuthContext'
 import {
-  aufZustandHoeren, erneutVersuchen, offlineZustand, synchronisieren, verwerfen, warteschlangeAnzeigen,
+  aufZustandHoeren, erneutVersuchen, offlineZustand, synchronisieren, verbindungPruefen, verwerfen, warteschlangeAnzeigen,
   type OfflineZustand, type WarteEintrag,
 } from '../lib/offline'
-import { fuerEinsatzVorbereiten, type Fortschritt } from '../lib/vorbereiten'
+import { datenstand, fuerEinsatzVorbereiten, letzteVorbereitung, type Fortschritt } from '../lib/vorbereiten'
 import { Modal, ModalActions, ModalTitle } from './ui/Modal'
 import { useConfirm } from './ui/ConfirmProvider'
 import { useToast } from './ui/Toast'
@@ -43,8 +43,26 @@ export function OfflineDialog({ onClose }: { onClose: () => void }) {
   const confirm = useConfirm()
   const [liste, setListe] = useState<WarteEintrag[]>([])
   const [fortschritt, setFortschritt] = useState<Fortschritt | null>(null)
+  // Stand des Geräts gegenüber der Datenbank: 'pruefe' | 'aktuell' | 'veraltet' | 'unbekannt'
+  const [stand, setStand] = useState<'pruefe' | 'aktuell' | 'veraltet' | 'unbekannt'>('pruefe')
+  const [pruefe, setPruefe] = useState(false)
+  const letzte = letzteVorbereitung()
 
   useEffect(() => { void warteschlangeAnzeigen().then(setListe) }, [z.wartend, z.fehler])
+
+  // Beim Öffnen (und nach jedem Hochladen) prüfen, ob das Gerät noch dem Stand der Datenbank entspricht.
+  useEffect(() => {
+    if (!employee || fortschritt) return
+    if (z.offline || !letzte) { setStand('unbekannt'); return }
+    let aktiv = true
+    setStand('pruefe')
+    datenstand(employee)
+      .then((s) => { if (aktiv) setStand(s === letzte.stand ? 'aktuell' : 'veraltet') })
+      .catch(() => { if (aktiv) setStand('unbekannt') })
+    return () => { aktiv = false }
+    // letzte ändert sich nur durch vorbereiten(), das fortschritt setzt
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employee, z.offline, z.wartend, fortschritt])
 
   async function vorbereiten() {
     if (!employee) return
@@ -55,6 +73,16 @@ export function OfflineDialog({ onClose }: { onClose: () => void }) {
       toast('Vorbereiten fehlgeschlagen: ' + (e instanceof Error ? e.message : 'unbekannter Fehler'))
     } finally {
       setFortschritt(null)
+    }
+  }
+
+  async function pruefen() {
+    setPruefe(true)
+    try {
+      const ok = await verbindungPruefen()
+      toast(ok ? 'Server erreichbar.' : 'Server nicht erreichbar. Hilft auch Warten nicht: App einmal schließen und neu öffnen.')
+    } finally {
+      setPruefe(false)
     }
   }
 
@@ -75,6 +103,16 @@ export function OfflineDialog({ onClose }: { onClose: () => void }) {
             ? 'Netz ist da, die gespeicherten Änderungen werden gerade hochgeladen.'
             : 'Online. Alle Änderungen sind hochgeladen.'}
       </p>
+      {z.pruefung && (
+        <div className="font-mono text-[12px] text-ink-soft mt-2">
+          Letzte Prüfung {uhrzeit(z.pruefung.zeit)}: {z.pruefung.ok ? 'Server erreichbar' : z.pruefung.grund}
+        </div>
+      )}
+      {z.offline && (
+        <button className="btn btn-outline mt-3" disabled={pruefe} onClick={() => void pruefen()}>
+          {pruefe ? 'Prüfe …' : 'Verbindung prüfen'}
+        </button>
+      )}
 
       {liste.length > 0 && (
         <div className="mt-4 border border-line">
@@ -116,9 +154,21 @@ export function OfflineDialog({ onClose }: { onClose: () => void }) {
             </div>
           </div>
         ) : (
-          <button className="btn btn-amber w-full" disabled={z.offline} onClick={() => void vorbereiten()}>
-            {z.offline ? 'Nur mit Netz möglich' : 'Jetzt vorbereiten'}
-          </button>
+          <>
+            <button className="btn btn-amber w-full" disabled={z.offline || stand === 'pruefe' || stand === 'aktuell'} onClick={() => void vorbereiten()}>
+              {z.offline ? 'Nur mit Netz möglich'
+                : stand === 'pruefe' ? 'Vergleiche mit Datenbank …'
+                : stand === 'aktuell' ? 'Alles auf dem Gerät'
+                : 'Jetzt vorbereiten'}
+            </button>
+            {letzte && (
+              <div className="font-mono text-[12px] text-ink-soft mt-1.5">
+                Zuletzt vorbereitet {uhrzeit(letzte.zeit)}
+                {stand === 'aktuell' && ' · unverändert'}
+                {stand === 'veraltet' && ' · seitdem gab es Änderungen'}
+              </div>
+            )}
+          </>
         )}
       </div>
 

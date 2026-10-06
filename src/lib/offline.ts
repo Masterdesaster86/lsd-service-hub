@@ -118,15 +118,17 @@ export interface OfflineZustand {
   wartend: number
   fehler: string | null
   synchronisiert: boolean
+  /** Letzte Verbindungsprüfung (für die Anzeige im Dialog). */
+  pruefung: { zeit: number; ok: boolean; grund: string } | null
 }
 
-let zustand: OfflineZustand = { offline: typeof navigator !== 'undefined' && !navigator.onLine, wartend: 0, fehler: null, synchronisiert: false }
+let zustand: OfflineZustand = { offline: typeof navigator !== 'undefined' && !navigator.onLine, wartend: 0, fehler: null, synchronisiert: false, pruefung: null }
 const hoerer = new Set<(z: OfflineZustand) => void>()
 
 function setzeZustand(neu: Partial<OfflineZustand>) {
   const vorher = zustand
   zustand = { ...zustand, ...neu }
-  if (vorher.offline !== zustand.offline || vorher.wartend !== zustand.wartend || vorher.fehler !== zustand.fehler || vorher.synchronisiert !== zustand.synchronisiert) {
+  if (vorher !== zustand && (Object.keys(neu) as (keyof OfflineZustand)[]).some((k) => vorher[k] !== zustand[k])) {
     hoerer.forEach((h) => h(zustand))
   }
   if (vorher.offline && !zustand.offline) void synchronisieren()
@@ -502,7 +504,17 @@ export function synchronisieren(): Promise<void> {
       liste = await warteZahlAktualisieren()
       if (!liste.length) setzeZustand({ synchronisiert: true })
     }
-    const mitSperre = () => (navigator.locks ? navigator.locks.request('lsd-sync', arbeit) : arbeit())
+    // Die Sperre verhindert doppeltes Hochladen aus zwei Fenstern. Gibt ein anderes Fenster
+    // sie nicht binnen 10 s frei, laufen wir trotzdem (ein doppelter Versuch ist harmlos:
+    // gleiche IDs, Änderungen mehrfach anwendbar) — hängen bleiben darf die Warteschlange nie.
+    const mitSperre = () => {
+      if (!navigator.locks) return arbeit()
+      const ctrl = new AbortController()
+      const timer = setTimeout(() => ctrl.abort(), 10000)
+      return navigator.locks.request('lsd-sync', { signal: ctrl.signal }, arbeit)
+        .catch((e) => (e instanceof DOMException && e.name === 'AbortError' ? arbeit() : Promise.reject(e)))
+        .finally(() => clearTimeout(timer))
+    }
     laeuft = mitSperre().catch((e) => console.error('Synchronisieren fehlgeschlagen', e)).finally(() => { laeuft = null })
   }
   return laeuft
@@ -552,16 +564,53 @@ export async function wartendesBild(publicUrl: string): Promise<Blob | null> {
 
 // --- Netz beobachten ---------------------------------------------------------
 
-async function probe() {
-  try {
-    const res = await mitTimeout(`${SUPABASE_URL}/auth/v1/health`, { headers: { apikey: ANON_KEY } }, 5000)
-    if (res.ok) netzDa()
-  } catch { /* weiter offline */ }
+let probeLaeuft: Promise<boolean> | null = null
+
+/** Fragt den Server kurz an. true = erreichbar (Zustand wird dabei auf online gesetzt). */
+function probe(): Promise<boolean> {
+  if (!probeLaeuft) {
+    probeLaeuft = (async () => {
+      let ok = false, grund = ''
+      try {
+        const res = await mitTimeout(`${SUPABASE_URL}/auth/v1/health`, { headers: { apikey: ANON_KEY } }, 5000)
+        ok = res.ok
+        if (!ok) grund = `Server antwortet mit Fehler ${res.status}`
+      } catch (e) {
+        grund = e instanceof DOMException && e.name === 'AbortError' ? 'Keine Antwort (Zeitüberschreitung)' : 'Keine Verbindung zum Server'
+      }
+      setzeZustand({ pruefung: { zeit: Date.now(), ok, grund } })
+      if (ok) netzDa()
+      return ok
+    })().finally(() => { probeLaeuft = null })
+  }
+  return probeLaeuft
+}
+
+/** Vom Knopf "Verbindung prüfen": Server anfragen und, wenn erreichbar, Warteschlange hochladen. */
+export async function verbindungPruefen(): Promise<boolean> {
+  const ok = await probe()
+  if (ok) await synchronisieren()
+  return ok
+}
+
+// Nach dem Flugmodus braucht das Netz am Handy oft ein paar Sekunden: rasch mehrmals prüfen.
+function baldPruefen() {
+  ;[1500, 4000, 8000].forEach((ms) => setTimeout(() => { if (zustand.offline) void probe() }, ms))
+  void probe()
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('online', () => { void probe() })
+  window.addEventListener('online', baldPruefen)
   window.addEventListener('offline', netzWeg)
+  // iOS hält die App im Hintergrund an. Kommt sie wieder nach vorn, sofort prüfen bzw. hochladen.
+  const wiederDa = () => {
+    if (document.visibilityState !== 'visible') return
+    if (zustand.offline) baldPruefen()
+    else if (zustand.wartend && !zustand.fehler) void synchronisieren()
+  }
+  document.addEventListener('visibilitychange', wiederDa)
+  window.addEventListener('pageshow', wiederDa)
+  window.addEventListener('focus', wiederDa)
   setInterval(() => {
     if (zustand.offline) void probe()
     else if (zustand.wartend && !zustand.fehler) void synchronisieren()
