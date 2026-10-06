@@ -47,12 +47,16 @@ Entwickler): auf Deutsch antworten, verständlich erklären, Ergebnisse knapp zu
 - Anzeige/Dialog: `components/OfflineStatus.tsx`; „Für Einsatz vorbereiten“ (`lib/vorbereiten.ts`)
   öffnet die relevanten Seiten in unsichtbaren iframes, damit ihre Abfragen gespeichert werden.
 - AuthContext nutzt offline die gespeicherte Anmeldung, auch wenn das Token abgelaufen ist.
-- Netz-Erkennung: `/auth/v1/health`-Probe bei online/visibilitychange/pageshow/focus und alle 15 s;
-  Knopf „Verbindung prüfen“ im Dialog. iOS hält die App im Hintergrund an, daher kann die
-  Anzeige erst beim Zurückkommen umspringen.
-- „Für Einsatz vorbereiten“ merkt sich in localStorage (`lsd-vorbereitet`) eine SHA-256-Prüfsumme
-  über die geladenen Daten (`datenstand()`); ist sie beim Öffnen des Dialogs unverändert, ist der
-  Knopf ausgegraut („Alles auf dem Gerät“).
+- Netz-Erkennung: `/auth/v1/health`-Probe (10 s) bei online/visibilitychange/pageshow/focus und
+  alle 15 s; Knopf „Verbindung prüfen“ im Dialog. **Offline wird nur durch die Probe (harter
+  Fehler) oder `navigator.onLine === false` gesetzt** — eine einzelne langsame/gescheiterte
+  Anfrage löst nur eine Probe aus (`anfrageGescheitert()`), sonst kippte die Anzeige bei
+  schlechtem Mobilfunk ständig. iOS hält die App im Hintergrund an.
+- Daten auf dem Gerät: `datenstand()` = SHA-256 über alle geladenen Zeilen, gemerkt in
+  localStorage `lsd-vorbereitet`. `autoVorbereitenStarten()` (AppShell) vergleicht beim Start,
+  beim Sichtbarwerden, nach dem Hochladen und alle 10 min; bei Abweichung läuft das Vorbereiten
+  von selbst im Hintergrund (iframes). Der Knopf im Dialog ist ausgegraut, solange der Stand
+  gleich ist.
 - Am 06.10.2026 von Manuel mit echtem Login getestet (Bericht + 2 Tage offline angelegt, mit Netz korrekt hochgeladen).
 
 ## Messprotokoll

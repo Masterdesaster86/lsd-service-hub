@@ -335,6 +335,14 @@ function istNetzfehler(e: unknown) {
 function netzWeg() { setzeZustand({ offline: true }) }
 function netzDa() { if (zustand.offline) setzeZustand({ offline: false }) }
 
+/** Eine Anfrage ist gescheitert. Ist das Gerät sicher ohne Netz (Flugmodus), sofort offline;
+ * sonst entscheidet die Server-Prüfung — eine einzelne langsame Anfrage darf nicht die ganze
+ * App auf offline schalten, während andere Anfragen durchgehen. */
+function anfrageGescheitert() {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) netzWeg()
+  else void probe()
+}
+
 async function lesen(input: RequestInfo | URL, init: RequestInit | undefined, url: URL, headers: Record<string, string>, body: string | null): Promise<Response> {
   const key = cacheKey(init?.method || 'GET', url.toString(), headers, body)
   const warte = zustand.wartend ? await warteschlangeLesen() : []
@@ -350,7 +358,7 @@ async function lesen(input: RequestInfo | URL, init: RequestInit | undefined, ur
       return (warte.length && mitUeberlagerung(url, headers, gespeichert, warte, false)) || res
     } catch (e) {
       if (init?.signal?.aborted || !istNetzfehler(e)) throw e
-      netzWeg()
+      anfrageGescheitert()
     }
   }
   const gespeichert = (await antwortLesen(key).catch(() => undefined)) || null
@@ -397,7 +405,7 @@ async function schreiben(input: RequestInfo | URL, init: RequestInit | undefined
       return res
     } catch (e) {
       if (init?.signal?.aborted || !istNetzfehler(e)) throw e
-      netzWeg()
+      anfrageGescheitert()
     }
   }
 
@@ -479,7 +487,7 @@ export function synchronisieren(): Promise<void> {
           if (istForm(e.body)) delete headers['content-type']
           res = await mitTimeout(e.url, { method: e.method, headers, body: alsSendeBody(e.body) }, 30000)
         } catch (err) {
-          if (istNetzfehler(err)) { netzWeg(); break }
+          if (istNetzfehler(err)) { anfrageGescheitert(); break }
           throw err
         }
         netzDa()
@@ -570,16 +578,21 @@ let probeLaeuft: Promise<boolean> | null = null
 function probe(): Promise<boolean> {
   if (!probeLaeuft) {
     probeLaeuft = (async () => {
-      let ok = false, grund = ''
+      let ok = false, grund = '', hart = false
       try {
-        const res = await mitTimeout(`${SUPABASE_URL}/auth/v1/health`, { headers: { apikey: ANON_KEY } }, 5000)
+        const res = await mitTimeout(`${SUPABASE_URL}/auth/v1/health`, { headers: { apikey: ANON_KEY } }, 10000)
         ok = res.ok
         if (!ok) grund = `Server antwortet mit Fehler ${res.status}`
       } catch (e) {
-        grund = e instanceof DOMException && e.name === 'AbortError' ? 'Keine Antwort (Zeitüberschreitung)' : 'Keine Verbindung zum Server'
+        const zeitueberschreitung = e instanceof DOMException && e.name === 'AbortError'
+        grund = zeitueberschreitung ? 'Keine Antwort (Zeitüberschreitung)' : 'Keine Verbindung zum Server'
+        hart = !zeitueberschreitung
       }
       setzeZustand({ pruefung: { zeit: Date.now(), ok, grund } })
+      // Eine Zeitüberschreitung allein (langsames Netz, viele Anfragen gleichzeitig) schaltet
+      // nicht auf offline — nur ein harter Fehler oder ein Gerät, das selbst "kein Netz" meldet.
       if (ok) netzDa()
+      else if (hart || navigator.onLine === false) netzWeg()
       return ok
     })().finally(() => { probeLaeuft = null })
   }
@@ -601,7 +614,7 @@ function baldPruefen() {
 
 if (typeof window !== 'undefined') {
   window.addEventListener('online', baldPruefen)
-  window.addEventListener('offline', netzWeg)
+  window.addEventListener('offline', anfrageGescheitert)
   // iOS hält die App im Hintergrund an. Kommt sie wieder nach vorn, sofort prüfen bzw. hochladen.
   const wiederDa = () => {
     if (document.visibilityState !== 'visible') return

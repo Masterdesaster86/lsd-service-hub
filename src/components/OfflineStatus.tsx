@@ -4,7 +4,10 @@ import {
   aufZustandHoeren, erneutVersuchen, offlineZustand, synchronisieren, verbindungPruefen, verwerfen, warteschlangeAnzeigen,
   type OfflineZustand, type WarteEintrag,
 } from '../lib/offline'
-import { datenstand, fuerEinsatzVorbereiten, letzteVorbereitung, type Fortschritt } from '../lib/vorbereiten'
+import {
+  aufVorbereitungHoeren, datenstand, fuerEinsatzVorbereiten, letzteVorbereitung, vorbereitungsZustand,
+  type VorbereitungsZustand,
+} from '../lib/vorbereiten'
 import { Modal, ModalActions, ModalTitle } from './ui/Modal'
 import { useConfirm } from './ui/ConfirmProvider'
 import { useToast } from './ui/Toast'
@@ -13,6 +16,12 @@ export function useOfflineZustand(): OfflineZustand {
   const [z, setZ] = useState(offlineZustand())
   useEffect(() => aufZustandHoeren(setZ), [])
   return z
+}
+
+function useVorbereitung(): VorbereitungsZustand {
+  const [v, setV] = useState(vorbereitungsZustand())
+  useEffect(() => aufVorbereitungHoeren(setV), [])
+  return v
 }
 
 /** Kleine Anzeige in der Kopfleiste: Netzstatus und wartende Änderungen. Antippen öffnet Details. */
@@ -38,21 +47,21 @@ export function OfflineStatus({ onOpen }: { onOpen: () => void }) {
 /** Details: Warteschlange, Fehler und "Für Einsatz vorbereiten". */
 export function OfflineDialog({ onClose }: { onClose: () => void }) {
   const z = useOfflineZustand()
+  const v = useVorbereitung()
   const { employee } = useAuth()
   const toast = useToast()
   const confirm = useConfirm()
   const [liste, setListe] = useState<WarteEintrag[]>([])
-  const [fortschritt, setFortschritt] = useState<Fortschritt | null>(null)
-  // Stand des Geräts gegenüber der Datenbank: 'pruefe' | 'aktuell' | 'veraltet' | 'unbekannt'
+  // Stand des Geräts gegenüber der Datenbank
   const [stand, setStand] = useState<'pruefe' | 'aktuell' | 'veraltet' | 'unbekannt'>('pruefe')
   const [pruefe, setPruefe] = useState(false)
   const letzte = letzteVorbereitung()
 
   useEffect(() => { void warteschlangeAnzeigen().then(setListe) }, [z.wartend, z.fehler])
 
-  // Beim Öffnen (und nach jedem Hochladen) prüfen, ob das Gerät noch dem Stand der Datenbank entspricht.
+  // Beim Öffnen, nach jedem Hochladen und nach jedem Vorbereiten prüfen, ob das Gerät dem Stand der Datenbank entspricht.
   useEffect(() => {
-    if (!employee || fortschritt) return
+    if (!employee || v.laeuft) return
     if (z.offline || !letzte) { setStand('unbekannt'); return }
     let aktiv = true
     setStand('pruefe')
@@ -60,19 +69,17 @@ export function OfflineDialog({ onClose }: { onClose: () => void }) {
       .then((s) => { if (aktiv) setStand(s === letzte.stand ? 'aktuell' : 'veraltet') })
       .catch(() => { if (aktiv) setStand('unbekannt') })
     return () => { aktiv = false }
-    // letzte ändert sich nur durch vorbereiten(), das fortschritt setzt
+    // letzte ändert sich nur durch einen Durchgang, der v.laeuft setzt
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employee, z.offline, z.wartend, fortschritt])
+  }, [employee, z.offline, z.wartend, v.laeuft])
 
   async function vorbereiten() {
     if (!employee) return
     try {
-      const n = await fuerEinsatzVorbereiten(employee, setFortschritt)
+      const n = await fuerEinsatzVorbereiten(employee)
       toast(`Fertig: ${n} offene Aufträge sind auf dem Gerät gespeichert.`)
     } catch (e) {
       toast('Vorbereiten fehlgeschlagen: ' + (e instanceof Error ? e.message : 'unbekannter Fehler'))
-    } finally {
-      setFortschritt(null)
     }
   }
 
@@ -92,6 +99,7 @@ export function OfflineDialog({ onClose }: { onClose: () => void }) {
   }
 
   const uhrzeit = (t: number) => new Date(t).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+  const f = v.fortschritt
 
   return (
     <Modal onClose={onClose}>
@@ -140,17 +148,17 @@ export function OfflineDialog({ onClose }: { onClose: () => void }) {
       )}
 
       <div className="mt-5 border-t border-line pt-4">
-        <h3 className="m-0 text-[15px] font-semibold">Für Einsatz vorbereiten</h3>
+        <h3 className="m-0 text-[15px] font-semibold">Daten auf dem Gerät</h3>
         <p className="text-sm text-ink-soft leading-relaxed mt-1 mb-3">
-          Vor der Fahrt zum Kunden mit Netz antippen: Deine offenen Aufträge mit Berichten, Messprotokollen, Maschinen und Kunden werden auf dem Gerät gespeichert.
+          Deine offenen Aufträge mit Berichten, Messprotokollen, Maschinen und Kunden werden von selbst auf dem Gerät aktuell gehalten, solange die App offen ist und Netz hat. Vor der Fahrt zum Kunden kannst du es hier zusätzlich anstoßen.
         </p>
-        {fortschritt ? (
+        {v.laeuft && f ? (
           <div>
             <div className="h-2 bg-line">
-              <div className="h-2 bg-amber transition-[width]" style={{ width: `${fortschritt.gesamt ? (fortschritt.fertig / fortschritt.gesamt) * 100 : 0}%` }} />
+              <div className="h-2 bg-amber transition-[width]" style={{ width: `${f.gesamt ? (f.fertig / f.gesamt) * 100 : 0}%` }} />
             </div>
             <div className="font-mono text-[12px] text-ink-soft mt-1.5">
-              {fortschritt.fertig} / {fortschritt.gesamt} {fortschritt.aktuell && `· ${fortschritt.aktuell}`}
+              {v.automatisch ? 'Lädt im Hintergrund · ' : ''}{f.fertig} / {f.gesamt || '…'} {f.aktuell && `· ${f.aktuell}`}
             </div>
           </div>
         ) : (
@@ -159,15 +167,16 @@ export function OfflineDialog({ onClose }: { onClose: () => void }) {
               {z.offline ? 'Nur mit Netz möglich'
                 : stand === 'pruefe' ? 'Vergleiche mit Datenbank …'
                 : stand === 'aktuell' ? 'Alles auf dem Gerät'
-                : 'Jetzt vorbereiten'}
+                : 'Jetzt laden'}
             </button>
             {letzte && (
               <div className="font-mono text-[12px] text-ink-soft mt-1.5">
-                Zuletzt vorbereitet {uhrzeit(letzte.zeit)}
-                {stand === 'aktuell' && ' · unverändert'}
+                Stand {uhrzeit(letzte.zeit)}
+                {stand === 'aktuell' && ' · wie in der Datenbank'}
                 {stand === 'veraltet' && ' · seitdem gab es Änderungen'}
               </div>
             )}
+            {v.letzterFehler && <div className="text-[13px] text-[#c0392b] mt-1.5">Letzter Durchgang fehlgeschlagen: {v.letzterFehler}</div>}
           </>
         )}
       </div>

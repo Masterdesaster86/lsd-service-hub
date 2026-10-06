@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { LOGO_SCHRIFTZUG } from '../lib/branding'
@@ -9,6 +9,7 @@ import { DesignSchalter } from './ui/DesignSchalter'
 import { useConfirm } from './ui/ConfirmProvider'
 import { OfflineDialog, OfflineStatus } from './OfflineStatus'
 import { offlineZustand } from '../lib/offline'
+import { autoVorbereitenStarten } from '../lib/vorbereiten'
 
 interface NavItem {
   to: string
@@ -55,6 +56,15 @@ export function AppShell() {
   const [mehrOffen, setMehrOffen] = useState(false)
   const [zeigeVerbindung, setZeigeVerbindung] = useState(false)
   const confirm = useConfirm()
+
+  // Offline-Modus: Daten auf dem Gerät von selbst aktuell halten (siehe lib/vorbereiten.ts).
+  const employeeId = employee?.id
+  useEffect(() => {
+    if (!employee) return
+    return autoVorbereitenStarten(() => employee)
+    // nur neu starten, wenn ein anderer Mitarbeiter angemeldet ist
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employeeId])
 
   // Abmelden löscht die auf dem Gerät gespeicherten Daten. Liegen noch nicht
   // hochgeladene Änderungen vor, gingen die verloren — vorher deutlich nachfragen.

@@ -4,6 +4,7 @@
 // Jede Seite wird in einem unsichtbaren Rahmen (iframe) wirklich geöffnet. So landen
 // genau die Abfragen im Speicher, die die Seite auch offline wieder stellt — egal, wie
 // die Seite ihre Daten lädt.
+import { aufZustandHoeren, offlineZustand } from './offline'
 import { fetchOrders } from './queries'
 import { supabase } from './supabase'
 import type { Employee } from './types'
@@ -80,7 +81,76 @@ export async function datenstand(ich: Employee): Promise<string> {
   return hash(JSON.stringify([relevant, berichte.data, protokolle.data, masch.data, kund.data, ansprech.data, tage.data, teile.data]))
 }
 
-export async function fuerEinsatzVorbereiten(ich: Employee, melden: (f: Fortschritt) => void): Promise<number> {
+// --- Laufender Durchgang (für Knopf und Dialog) -------------------------------
+
+export interface VorbereitungsZustand {
+  laeuft: boolean
+  fortschritt: Fortschritt | null
+  /** true = von selbst gestartet, nicht über den Knopf. */
+  automatisch: boolean
+  letzterFehler: string | null
+}
+
+let vz: VorbereitungsZustand = { laeuft: false, fortschritt: null, automatisch: false, letzterFehler: null }
+const vHoerer = new Set<(z: VorbereitungsZustand) => void>()
+function setzeVz(neu: Partial<VorbereitungsZustand>) {
+  vz = { ...vz, ...neu }
+  vHoerer.forEach((h) => h(vz))
+}
+export function vorbereitungsZustand() { return vz }
+export function aufVorbereitungHoeren(h: (z: VorbereitungsZustand) => void) {
+  vHoerer.add(h)
+  return () => { vHoerer.delete(h) }
+}
+
+let laufend: Promise<number> | null = null
+
+/** Startet das Vorbereiten (vom Knopf oder automatisch). Läuft es schon, wird der laufende Durchgang mitbenutzt. */
+export function fuerEinsatzVorbereiten(ich: Employee, automatisch = false): Promise<number> {
+  if (laufend) return laufend
+  setzeVz({ laeuft: true, automatisch, fortschritt: { fertig: 0, gesamt: 0, aktuell: 'Aufträge' }, letzterFehler: null })
+  laufend = ablauf(ich, (f) => setzeVz({ fortschritt: f }))
+    .catch((e) => { setzeVz({ letzterFehler: e instanceof Error ? e.message : 'unbekannter Fehler' }); throw e })
+    .finally(() => { laufend = null; setzeVz({ laeuft: false, fortschritt: null }) })
+  return laufend
+}
+
+// --- Von selbst aktuell halten --------------------------------------------------
+
+const AUTO_INTERVALL = 10 * 60 * 1000
+let letzterVergleich = 0
+
+/**
+ * Hält das Gerät ohne Zutun aktuell: Solange die App sichtbar ist und Netz hat, wird beim Start,
+ * beim Zurückkommen, nach dem Hochladen und alle 10 Minuten der Datenstand verglichen; weicht er
+ * vom letzten Vorbereiten ab, läuft das Vorbereiten im Hintergrund. Gibt eine Stopp-Funktion zurück.
+ */
+export function autoVorbereitenStarten(ichHolen: () => Employee | null): () => void {
+  if (window.top !== window) return () => {}
+  const lauf = async () => {
+    const ich = ichHolen()
+    if (!ich || laufend || offlineZustand().offline || offlineZustand().wartend || document.visibilityState !== 'visible') return
+    if (Date.now() - letzterVergleich < 60_000) return
+    letzterVergleich = Date.now()
+    try {
+      const stand = await datenstand(ich)
+      if (stand !== letzteVorbereitung()?.stand) await fuerEinsatzVorbereiten(ich, true)
+    } catch { /* beim nächsten Mal */ }
+  }
+  const sichtbar = () => { if (document.visibilityState === 'visible') void lauf() }
+  document.addEventListener('visibilitychange', sichtbar)
+  const abNetz = aufZustandHoeren((z) => { if (!z.offline && !z.wartend) void lauf() })
+  const timer = window.setInterval(lauf, AUTO_INTERVALL)
+  const start = window.setTimeout(lauf, 5000)
+  return () => {
+    document.removeEventListener('visibilitychange', sichtbar)
+    abNetz()
+    clearInterval(timer)
+    clearTimeout(start)
+  }
+}
+
+async function ablauf(ich: Employee, melden: (f: Fortschritt) => void): Promise<number> {
   const relevant = await relevanteAuftraege(ich)
   const ids = relevant.map((o) => o.id)
 
