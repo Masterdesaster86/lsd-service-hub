@@ -8,7 +8,8 @@ import type { Ansprechpartner, Customer, Employee, Machine, Messprotokoll, Order
 import { calcBerichtTotalsMitKontext, calcTagMitKontext, type DayTotals, type Tageskontext } from './zeit'
 import { formatDateDE, hhmm } from './format'
 import { wartendesBild } from './offline'
-import { ERGEBNIS_KEY, MESSPROTOKOLL_TYPEN, bemerkungKey, bewerte, gewaehlteStufe, messwertZahl, mm, skizzeUrl, type MessprotokollTyp } from './messprotokoll'
+import { BIG_SHOULDERS_800_TTF } from '../assets/bigShouldersFont'
+import { ERGEBNIS_KEY, MESSPROTOKOLL_TYPEN, bemerkungKey, bewerte, gewaehlteStufe, grenzeFuer, messwertZahl, skizzeUrl, type Messpunkt, type MessprotokollTyp } from './messprotokoll'
 
 const GRAPHITE = '#1B1F24'
 // Firmenfarben, direkt aus dem Logo entnommen
@@ -55,7 +56,7 @@ function sicher<T extends string | string[]>(t: T): T {
 /** Neues A4-Dokument, dessen Texte vor dem Zeichnen auf druckbare Zeichen geprüft werden
  * (gilt auch für Tabellen, die intern doc.text aufrufen). */
 function neuesPdf(): jsPDF {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true })
   const text = doc.text.bind(doc) as (...a: unknown[]) => jsPDF
   const teilen = doc.splitTextToSize.bind(doc) as (...a: unknown[]) => string[]
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -64,6 +65,31 @@ function neuesPdf(): jsPDF {
   ;(doc as any).splitTextToSize = (t: string | string[], ...rest: unknown[]) => teilen(sicher(t), ...rest)
   return doc
 }
+/** Logo verkleinert (640 px breit) als PNG mit Transparenz. Das Original (1030 px) legte
+ * jsPDF unkomprimiert ab — über 1 MB pro PDF. Beim Einfügen zusätzlich 'FAST' (deflate). */
+let logoPromise: Promise<string> | null = null
+function logoAlsDataUrl(): Promise<string> {
+  if (!logoPromise) {
+    logoPromise = new Promise((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => {
+        const breite = Math.min(640, img.naturalWidth)
+        const hoehe = Math.round(breite * (img.naturalHeight / img.naturalWidth))
+        const canvas = document.createElement('canvas')
+        canvas.width = breite
+        canvas.height = hoehe
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return reject(new Error('Canvas nicht verfügbar'))
+        ctx.drawImage(img, 0, 0, breite, hoehe)
+        resolve(canvas.toDataURL('image/png'))
+      }
+      img.onerror = () => reject(new Error('Logo konnte nicht geladen werden'))
+      img.src = LOGO_SCHRIFTZUG
+    })
+  }
+  return logoPromise
+}
+
 function bildAlsDataUrl(url: string): Promise<string> {
   let vorhanden = bildCache.get(url)
   if (!vorhanden) {
@@ -125,7 +151,7 @@ function drawHeader(doc: jsPDF, logo: string, title: string, felder: [string, st
   })
 
   const logoH = 11.5, logoW = logoH * LOGO_RATIO
-  doc.addImage(logo, 'PNG', PAGE_W - MARGIN - logoW, 9.2, logoW, logoH)
+  doc.addImage(logo, 'PNG', PAGE_W - MARGIN - logoW, 9.2, logoW, logoH, undefined, 'FAST')
 
   if (zusatz) {
     doc.setFont('helvetica', 'normal')
@@ -247,7 +273,7 @@ export interface BerichtPdfInput {
 
 export async function buildBerichtPdf(input: BerichtPdfInput): Promise<jsPDF> {
   const { bericht, tage, tageskontext, ersatzteile, machine, techniker, order } = input
-  const [logo, hintergrund] = await Promise.all([bildAlsDataUrl(LOGO_SCHRIFTZUG), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
+  const [logo, hintergrund] = await Promise.all([logoAlsDataUrl(), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
   const doc = neuesPdf()
   const totals = calcBerichtTotalsMitKontext(tage, tageskontext)
 
@@ -419,13 +445,14 @@ export function messprotokollPdfFilename(protokoll: Messprotokoll): string {
 /** Skizze (PNG) als verkleinertes JPEG laden, damit das PDF klein bleibt. */
 type SkizzeBild = { dataUrl: string; ratio: number }
 const skizzeCache = new Map<string, Promise<SkizzeBild | null>>()
-function skizzeAlsJpeg(url: string): Promise<SkizzeBild | null> {
-  let vorhanden = skizzeCache.get(url)
+function skizzeAlsJpeg(url: string, maxBreite = 1200): Promise<SkizzeBild | null> {
+  const key = `${url}@${maxBreite}`
+  let vorhanden = skizzeCache.get(key)
   if (!vorhanden) {
     vorhanden = new Promise((resolve) => {
       const img = new Image()
       img.onload = () => {
-        const breite = Math.min(1200, img.naturalWidth)
+        const breite = Math.min(maxBreite, img.naturalWidth)
         const hoehe = Math.round(breite * (img.naturalHeight / img.naturalWidth))
         const canvas = document.createElement('canvas')
         canvas.width = breite
@@ -435,12 +462,13 @@ function skizzeAlsJpeg(url: string): Promise<SkizzeBild | null> {
         ctx.fillStyle = '#ffffff'
         ctx.fillRect(0, 0, breite, hoehe)
         ctx.drawImage(img, 0, 0, breite, hoehe)
-        resolve({ dataUrl: canvas.toDataURL('image/jpeg', 0.85), ratio: hoehe / breite })
+        // Kleine Vorschauen dürfen stärker komprimiert sein (Strichzeichnung auf Weiß).
+        resolve({ dataUrl: canvas.toDataURL('image/jpeg', maxBreite <= 600 ? 0.72 : 0.85), ratio: hoehe / breite })
       }
       img.onerror = () => resolve(null)
       img.src = url
     })
-    skizzeCache.set(url, vorhanden)
+    skizzeCache.set(key, vorhanden)
   }
   return vorhanden
 }
@@ -456,102 +484,410 @@ export interface MessprotokollPdfInput {
   werte: Record<string, string>
 }
 
+// --- Messprotokoll: Layout nach dem Claude-Design-Entwurf (Okt. 2026) ---------
+// Dunkler Kopfblock mit Schrägkante, Ergebnis-Kasten, je Prüfpunkt ein Balken
+// (gemessen gegen zulässig), Status-Marke und Skizze; Bemerkungen/Nacharbeit am Ende.
+
+const MP = { tinte: '#14181d', papier: '#eef0ee', akzent: '#2764ad', linie: '#ccd3d2', weich: '#5b6670', hell: '#9aa7ac' }
+// Spaltenbreiten der Messtabelle (Summe = CONTENT_W)
+const MP_SPALTEN = { nr: 9, punkt: 70, zul: 24, ist: 15, anteil: 22, status: 24, skizze: 18 }
+/** Messwerte immer mit drei Nachkommastellen (0,010 statt 0,01), wie auf dem Messgerät. */
+const mm3 = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 3, maximumFractionDigits: 4 })
+const MP_SEITENENDE = 281
+
+function bigShouldersLaden(doc: jsPDF) {
+  if (!doc.getFontList()['BigShoulders']) {
+    doc.addFileToVFS('BigShoulders800.ttf', BIG_SHOULDERS_800_TTF)
+    doc.addFont('BigShoulders800.ttf', 'BigShoulders', 'normal')
+  }
+}
+
+/** Kleine Beschriftung in Versalien mit Sperrung (Ersatz für die Mono-Schrift des Entwurfs). */
+function mpLabel(doc: jsPDF, text: string, x: number, y: number, farbe = MP.weich, groesse = 6.3, align: 'left' | 'right' = 'left') {
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(groesse)
+  doc.setCharSpace(0.45)
+  doc.setTextColor(farbe)
+  doc.text(text.toUpperCase(), x, y, { align })
+  doc.setCharSpace(0)
+}
+
+function mpAbschnitt(doc: jsPDF, text: string, y: number): number {
+  doc.setFillColor(MP.akzent)
+  doc.rect(MARGIN, y - 2.1, 2.2, 2.2, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(7.5)
+  doc.setCharSpace(0.6)
+  doc.setTextColor(MP.tinte)
+  doc.text(text.toUpperCase(), MARGIN + 4.5, y)
+  doc.setCharSpace(0)
+  return y + 5
+}
+
+/** Kopfzeile der Folgeseiten. Gibt die Y-Position für den Inhalt zurück. */
+function mpFolgeseite(doc: jsPDF, logo: string, zeile: string): number {
+  doc.addPage()
+  mpLabel(doc, zeile, MARGIN, 14, MP.weich, 6.8)
+  const h = 6, w = h * LOGO_RATIO
+  doc.addImage(logo, 'PNG', PAGE_W - MARGIN - w, 9.6, w, h, undefined, 'FAST')
+  doc.setDrawColor(MP.linie)
+  doc.setLineWidth(0.3)
+  doc.line(MARGIN, 18.5, PAGE_W - MARGIN, 18.5)
+  doc.setLineWidth(0.2)
+  return 27
+}
+
+function mpFuss(doc: jsPDF) {
+  const n = doc.getNumberOfPages()
+  for (let i = 1; i <= n; i++) {
+    doc.setPage(i)
+    doc.setDrawColor(MP.linie)
+    doc.setLineWidth(0.3)
+    doc.line(MARGIN, 286.5, PAGE_W - MARGIN, 286.5)
+    doc.setLineWidth(0.2)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(6.3)
+    doc.setTextColor(MP.weich)
+    doc.text(FOOTER_TEXT, MARGIN, 290.5)
+    mpLabel(doc, `Seite ${i} / ${n}`, PAGE_W - MARGIN, 290.5, MP.weich, 6.3, 'right')
+  }
+}
+
+/** Beschriftete Zellen in einer Reihe mit Rahmen; mehrzeilige Werte machen die Reihe höher. */
+function mpRaster(doc: jsPDF, y: number, zellen: [string, string][]): number {
+  const w = CONTENT_W / zellen.length
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(8.3)
+  const zeilen = zellen.map(([, wert]) => doc.splitTextToSize(wert || '–', w - 5) as string[])
+  const h = 7.5 + Math.max(...zeilen.map((z) => z.length)) * 3.6
+  doc.setDrawColor(MP.linie)
+  doc.setLineWidth(0.3)
+  doc.rect(MARGIN, y, CONTENT_W, h)
+  zellen.forEach(([label], i) => {
+    const x = MARGIN + i * w
+    if (i > 0) doc.line(x, y, x, y + h)
+    mpLabel(doc, label, x + 2.5, y + 4)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8.3)
+    doc.setTextColor(MP.tinte)
+    doc.text(zeilen[i], x + 2.5, y + 8.8)
+  })
+  doc.setLineWidth(0.2)
+  return y + h
+}
+
+/** Status-Marke: gefüllt = über Toleranz, umrandet = in Ordnung, ohne Rahmen = nur erfasst. */
+function mpStatus(doc: jsPDF, x: number, y: number, art: 'io' | 'nio' | 'erfasst') {
+  const w = MP_SPALTEN.status - 2, h = 5
+  if (art === 'nio') {
+    doc.setFillColor(MP.tinte)
+    doc.rect(x, y, w, h, 'F')
+    doc.setFillColor('#ffffff')
+    doc.triangle(x + 2.2, y + 3.6, x + 4.4, y + 3.6, x + 3.3, y + 1.5, 'F')
+    mpLabel(doc, 'Über Tol.', x + 5.8, y + 3.5, '#ffffff', 5.7)
+  } else if (art === 'io') {
+    doc.setDrawColor(MP.linie)
+    doc.rect(x, y, w, h)
+    doc.setFillColor(MP.tinte)
+    doc.rect(x + 2.3, y + 1.7, 1.7, 1.7, 'F')
+    mpLabel(doc, 'In Ordnung', x + 5.8, y + 3.5, MP.tinte, 5.7)
+  } else {
+    mpLabel(doc, 'Erfasst', x, y + 3.5, MP.weich, 5.7)
+  }
+}
+
+interface MpZeile {
+  p: Messpunkt
+  wert: string
+  n: number | null
+  grenze: number | null
+  stufeLabel: string | null
+  bewertung: ReturnType<typeof bewerte>
+  bemerkung: string
+  skizze: SkizzeBild | null
+}
+
 export async function buildMessprotokollPdf(input: MessprotokollPdfInput): Promise<jsPDF> {
   const { protokoll, machine, kunde, techniker, abnehmer, ppNummer, werte } = input
-  const typDef = MESSPROTOKOLL_TYPEN[protokoll.typ as MessprotokollTyp]
-  const [logo, hintergrund] = await Promise.all([bildAlsDataUrl(LOGO_SCHRIFTZUG), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
+  const typ = protokoll.typ as MessprotokollTyp
+  const typDef = MESSPROTOKOLL_TYPEN[typ]
+  const logo = await logoAlsDataUrl()
   const doc = neuesPdf()
+  bigShouldersLaden(doc)
 
-  setupPage(doc, hintergrund)
-  let y = drawHeader(doc, logo, 'MESSPROTOKOLL', [
-    ['Auftragsnummer', `#${protokoll.auftrag_id}`],
-    ['PP-Nr.', ppNummer || '–'],
-  ])
+  const datum = formatDateDE((protokoll.abgeschlossen_am || protokoll.erstellt_am || '').slice(0, 10))
+  const maschineName = machine?.bezeichnung || protokoll.maschine_id
+  const kurzzeile = `Messprotokoll · Auftrag #${protokoll.auftrag_id} · ${maschineName}${machine?.nummer ? ' · ' + machine.nummer : ''}`
 
-  y = fieldRow(doc, y, [
-    ['Typ', typDef.label],
-    ['Maschine', machine?.bezeichnung || protokoll.maschine_id],
-    ['Maschinennummer', machine?.nummer || '–'],
-  ])
-  y = fieldRow(doc, y, [
+  // --- Kopfblock --------------------------------------------------------------
+  doc.setFillColor(MP.papier)
+  doc.rect(0, 0, PAGE_W, 30, 'F')
+  doc.setFillColor(MP.tinte)
+  doc.rect(0, 0, 138, 30, 'F')
+  doc.triangle(138, 0, 150, 0, 138, 30, 'F')
+  doc.setFillColor(MP.akzent)
+  doc.rect(MARGIN, 8.6, 5, 0.7, 'F')
+  mpLabel(doc, 'Geometrieprüfung · Abnahme', MARGIN + 7, 9.6, MP.hell, 6.3)
+  doc.setFont('BigShoulders', 'normal')
+  doc.setFontSize(27)
+  doc.setTextColor('#ffffff')
+  doc.text('MESSPROTOKOLL', MARGIN, 20.6)
+  mpLabel(doc, `Auftrag #${protokoll.auftrag_id} · ${maschineName} · ${datum}`, MARGIN, 26, '#c9d0d4', 6.8)
+  const logoH = 9, logoW = logoH * LOGO_RATIO
+  doc.addImage(logo, 'PNG', PAGE_W - MARGIN - logoW, 10.5, logoW, logoH, undefined, 'FAST')
+
+  // --- Stammdaten -------------------------------------------------------------
+  let y = 37
+  y = mpRaster(doc, y, [
     ['Kunde', kunde?.name || '–'],
-    ['Techniker', techniker?.name || '–'],
-    ['Abnehmer', abnehmer || '–'],
+    ['Maschine', maschineName],
+    ['Maschinennummer', machine?.nummer || '–'],
+    ['Typ', typDef.label],
   ])
-  y = fieldRow(doc, y, [
+  y = mpRaster(doc, y, [
+    ['Auftragsnummer', `#${protokoll.auftrag_id}`],
+    ['Techniker', techniker?.name || '–'],
     ['Erstellt am', formatDateDE(protokoll.erstellt_am?.slice(0, 10))],
     ['Abgeschlossen am', protokoll.abgeschlossen_am ? formatDateDE(protokoll.abgeschlossen_am.slice(0, 10)) : '–'],
-    ['', ''],
   ])
-  y = divider(doc, y)
+  if (ppNummer || abnehmer) {
+    y = mpRaster(doc, y, [['PP-Nr.', ppNummer || '–'], ['Abnehmer', abnehmer || '–'], ['', ''], ['', '']])
+  }
+  y += 6
 
-  // Nur tatsächlich ausgefüllte Prüfpunkte ins PDF — nicht bearbeitete
-  // Abschnitte (z.B. weil bei diesem Einsatz nur ein Teil der Geometrie
-  // geprüft wurde) fallen dadurch ganz weg, statt mit lauter "–" aufzufallen.
-  for (const gruppe of typDef.gruppen) {
-    const ausgefuellt = gruppe.punkte.filter((p) => (werte[p.key] || '').trim())
-    if (ausgefuellt.length === 0) continue
-    y = ensureSpace(doc, y, 24)
-    y = sectionTitle(doc, gruppe.titel, y)
-    // Kleine Skizze neben jedem Prüfpunkt (letzte Spalte).
-    const skizzen = await Promise.all(ausgefuellt.map((p) => {
-      const url = skizzeUrl(protokoll.typ as MessprotokollTyp, p.key)
-      return url ? skizzeAlsJpeg(url) : Promise.resolve(null)
+  // --- Messwerte vorbereiten --------------------------------------------------
+  const gruppen = await Promise.all(typDef.gruppen.map(async (g) => {
+    const zeilen = await Promise.all(g.punkte.filter((p) => (werte[p.key] || '').trim()).map(async (p): Promise<MpZeile> => {
+      const url = skizzeUrl(typ, p.key)
+      return {
+        p,
+        wert: werte[p.key].trim(),
+        n: messwertZahl(werte[p.key]),
+        grenze: grenzeFuer(p, werte),
+        stufeLabel: gewaehlteStufe(p, werte)?.label ?? null,
+        bewertung: bewerte(p, werte),
+        bemerkung: (werte[bemerkungKey(p.key)] || '').trim(),
+        // Kleine Vorschau (16 mm breit) — in voller Auflösung würde jede Skizze das PDF um ~80 KB vergrößern.
+        skizze: url ? await skizzeAlsJpeg(url, 400) : null,
+      }
     }))
-    const SKIZZE_W = 28
-    autoTable(doc, {
-      startY: y,
-      margin: { left: MARGIN, right: MARGIN },
-      styles: { fontSize: 8, textColor: INK, lineColor: LINE, cellPadding: 2 },
-      headStyles: { fillColor: GRAPHITE, textColor: '#ffffff' },
-      columnStyles: { 0: { cellWidth: 11 }, 2: { cellWidth: 31 }, 3: { cellWidth: 30 }, 4: { cellWidth: 24 }, 5: { cellWidth: SKIZZE_W, minCellHeight: 19 } },
-      head: [['Nr.', 'Prüfpunkt', 'Prüfmittel', 'Zulässige Abweichung', 'Gemessen', 'Skizze']],
-      didDrawCell: (data) => {
-        if (data.section !== 'body' || data.column.index !== 5) return
-        const bild = skizzen[data.row.index]
-        if (!bild) return
-        const maxW = data.cell.width - 2, maxH = data.cell.height - 2
-        const f = Math.min(maxW, maxH / bild.ratio)
-        const w = f, h = f * bild.ratio
-        doc.addImage(bild.dataUrl, 'JPEG', data.cell.x + 1 + (maxW - w) / 2, data.cell.y + 1 + (maxH - h) / 2, w, h)
-      },
-      body: ausgefuellt.map((p) => {
-        // Reine Zahl bekommt die Einheit dazu; die Bewertung steht nur da, wo
-        // die App sie eindeutig gegen die Toleranz prüfen konnte.
-        const n = messwertZahl(werte[p.key])
-        const wert = n !== null && /^[\s\d.,-]+$/.test(werte[p.key]) ? `${mm(n)} mm` : werte[p.key]
-        const b = bewerte(p, werte)
-        const bemerkung = (werte[bemerkungKey(p.key)] || '').trim()
-        const zeilen = [wert]
-        if (b === 'io') zeilen.push('in Ordnung')
-        if (b === 'nio') zeilen.push('über Toleranz')
-        if (bemerkung) zeilen.push(bemerkung)
-        // Bei gestaffelter Toleranz nur die gewählte Stufe zeigen.
-        const stufe = gewaehlteStufe(p, werte)
-        const toleranz = stufe ? `${mm(stufe.grenze)} mm (${stufe.label})` : p.toleranz
-        return [p.nr, p.bezeichnung, p.pruefmittel, toleranz, zeilen.join('\n'), '']
-      }),
-    })
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    y = (doc as any).lastAutoTable.finalY + 8
+    return { titel: g.titel, zeilen }
+  }))
+  const alle = gruppen.flatMap((g) => g.zeilen)
+  const nio = alle.filter((z) => z.bewertung === 'nio')
+  const nurErfasst = alle.filter((z) => z.bewertung === 'erfasst')
+
+  // --- Ergebnis-Kasten --------------------------------------------------------
+  {
+    const h = 19, kastenW = 26
+    doc.setFillColor(MP.tinte)
+    doc.rect(MARGIN, y, kastenW, h, 'F')
+    mpLabel(doc, 'Ergebnis', MARGIN + 3, y + 5, MP.hell, 6)
+    doc.setFont('BigShoulders', 'normal')
+    doc.setFontSize(19)
+    doc.setTextColor('#ffffff')
+    doc.text(alle.length ? `${nio.length} / ${alle.length}` : '–', MARGIN + 3, y + 15.2)
+    doc.setDrawColor(MP.tinte)
+    doc.setLineWidth(0.5)
+    doc.rect(MARGIN, y, CONTENT_W, h)
+    doc.setLineWidth(0.2)
+    const tx = MARGIN + kastenW + 5
+    let kopf: string, erklaerung: string
+    if (!alle.length) {
+      kopf = 'Keine Messwerte erfasst'
+      erklaerung = 'Für dieses Protokoll wurden noch keine Werte eingetragen.'
+    } else if (nio.length === 0) {
+      kopf = 'Alle geprüften Werte innerhalb der zulässigen Abweichung'
+      erklaerung = `${alle.length} Prüfpunkte gemessen.`
+    } else {
+      kopf = `${nio.length} ${nio.length === 1 ? 'Prüfpunkt' : 'Prüfpunkte'} über Toleranz: ${nio.map((z) => z.p.nr).join(', ')}`
+      erklaerung = nio.length === alle.length ? '' : 'Alle übrigen Werte liegen innerhalb der zulässigen Abweichung.'
+    }
+    if (nurErfasst.length) erklaerung += `${erklaerung ? ' ' : ''}${nurErfasst.length} ${nurErfasst.length === 1 ? 'Wert' : 'Werte'} ohne automatische Prüfung (${nurErfasst.map((z) => z.p.nr).join(', ')}).`
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9)
+    doc.setTextColor(MP.tinte)
+    doc.text(doc.splitTextToSize(kopf, CONTENT_W - kastenW - 9), tx, y + 7.3)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.8)
+    doc.setTextColor(MP.weich)
+    doc.text(doc.splitTextToSize(erklaerung, CONTENT_W - kastenW - 9), tx, y + 12.6)
+    y += h + 8
   }
 
+  // --- Messtabellen -----------------------------------------------------------
+  const S = MP_SPALTEN
+  const x = {
+    nr: MARGIN,
+    punkt: MARGIN + S.nr,
+    zul: MARGIN + S.nr + S.punkt,
+    ist: MARGIN + S.nr + S.punkt + S.zul,
+    anteil: MARGIN + S.nr + S.punkt + S.zul + S.ist,
+    status: MARGIN + S.nr + S.punkt + S.zul + S.ist + S.anteil,
+    skizze: MARGIN + S.nr + S.punkt + S.zul + S.ist + S.anteil + S.status,
+  }
+  const tabellenkopf = (yy: number): number => {
+    mpLabel(doc, 'Nr.', x.nr, yy + 3.5)
+    mpLabel(doc, 'Prüfpunkt · Prüfmittel', x.punkt, yy + 3.5)
+    mpLabel(doc, 'Zulässig mm', x.zul, yy + 3.5)
+    mpLabel(doc, 'Ist mm', x.ist, yy + 3.5)
+    mpLabel(doc, 'Anteil', x.anteil, yy + 3.5)
+    mpLabel(doc, 'Status', x.status, yy + 3.5)
+    mpLabel(doc, 'Skizze', x.skizze, yy + 3.5)
+    doc.setDrawColor(MP.tinte)
+    doc.setLineWidth(0.4)
+    doc.line(MARGIN, yy + 5.2, PAGE_W - MARGIN, yy + 5.2)
+    doc.setLineWidth(0.2)
+    return yy + 6.5
+  }
+  const BALKEN_W = 17 // Strich für "zulässig" steht am rechten Ende dieser Strecke
+
+  let nummer = 0
+  for (const g of gruppen) {
+    if (!g.zeilen.length) continue
+    nummer++
+    if (y + 30 > MP_SEITENENDE) y = mpFolgeseite(doc, logo, kurzzeile)
+    y = mpAbschnitt(doc, `${String(nummer).padStart(2, '0')} · ${g.titel}`, y + 2)
+    y = tabellenkopf(y)
+
+    for (const z of g.zeilen) {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      const namenszeilen = doc.splitTextToSize(z.p.bezeichnung, S.punkt - 3) as string[]
+      doc.setFontSize(7)
+      const zulText = z.grenze !== null ? null : (doc.splitTextToSize(z.p.toleranz, S.zul - 3) as string[])
+      const istText = z.n !== null && /^[\s\d.,-]+$/.test(z.wert) ? null : (doc.splitTextToSize(z.wert, S.ist - 2) as string[])
+      const textH = 3 + namenszeilen.length * 3.5 + 3.2 + 2.5
+      const h = Math.max(textH, z.skizze ? 13.5 : 10, zulText ? 3 + zulText.length * 3 + 2.5 : 0, istText ? 3 + istText.length * 3 + 2.5 : 0)
+      if (y + h > MP_SEITENENDE) {
+        y = mpFolgeseite(doc, logo, kurzzeile)
+        y = tabellenkopf(y)
+      }
+      const mitte = y + h / 2
+
+      // Nr.
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8)
+      doc.setTextColor(MP.tinte)
+      doc.text(z.p.nr, x.nr, y + 5.8)
+      // Prüfpunkt und Prüfmittel
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.text(namenszeilen, x.punkt, y + 5.8)
+      doc.setFontSize(6.3)
+      doc.setTextColor(MP.weich)
+      doc.text(z.p.pruefmittel, x.punkt, y + 5.8 + namenszeilen.length * 3.5)
+      // Zulässig
+      doc.setTextColor(MP.tinte)
+      if (z.grenze !== null) {
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8)
+        doc.text(mm3(z.grenze), x.zul + S.zul - 4, y + 5.8, { align: 'right' })
+        if (z.stufeLabel) {
+          doc.setFontSize(5.8)
+          doc.setTextColor(MP.weich)
+          doc.text(doc.splitTextToSize(z.stufeLabel, S.zul - 1), x.zul + S.zul - 4, y + 9, { align: 'right' })
+        }
+      } else if (zulText) {
+        doc.setFontSize(7)
+        doc.text(zulText, x.zul, y + 5.5)
+      }
+      // Ist
+      doc.setTextColor(MP.tinte)
+      if (istText) {
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(7)
+        doc.text(istText, x.ist, y + 5.5)
+      } else if (z.n !== null) {
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(8)
+        doc.text(mm3(z.n), x.ist + S.ist - 4, y + 5.8, { align: 'right' })
+      }
+      // Anteil: Balken = gemessen, Strich = zulässig
+      if (z.n !== null && z.grenze !== null && z.grenze > 0) {
+        const laenge = Math.min(Math.abs(z.n) / z.grenze, 1.28) * BALKEN_W
+        doc.setFillColor(z.bewertung === 'nio' ? MP.akzent : MP.tinte)
+        doc.rect(x.anteil, mitte - 0.8, laenge, 1.6, 'F')
+        doc.setDrawColor(MP.tinte)
+        doc.setLineWidth(0.4)
+        doc.line(x.anteil + BALKEN_W, mitte - 2.2, x.anteil + BALKEN_W, mitte + 2.2)
+        doc.setLineWidth(0.2)
+      }
+      // Status
+      if (z.bewertung === 'io' || z.bewertung === 'nio' || z.bewertung === 'erfasst') mpStatus(doc, x.status, mitte - 2.5, z.bewertung)
+      // Skizze
+      if (z.skizze) {
+        const bw = S.skizze - 2, bh = 10
+        const f = Math.min(bw, bh / z.skizze.ratio)
+        const w = f, hh = f * z.skizze.ratio
+        const bx = x.skizze + (bw - w) / 2, by = mitte - hh / 2
+        doc.addImage(z.skizze.dataUrl, 'JPEG', bx, by, w, hh)
+        doc.setDrawColor(MP.linie)
+        doc.rect(bx, by, w, hh)
+      }
+      // Trennlinie
+      doc.setDrawColor(MP.linie)
+      doc.line(MARGIN, y + h, PAGE_W - MARGIN, y + h)
+      y += h
+    }
+    y += 3
+  }
+
+  if (alle.length) {
+    // Legende
+    if (y + 8 > MP_SEITENENDE) y = mpFolgeseite(doc, logo, kurzzeile)
+    doc.setDrawColor(MP.tinte)
+    doc.setLineWidth(0.4)
+    doc.line(MARGIN + 0.5, y + 0.6, MARGIN + 0.5, y + 3.4)
+    doc.setLineWidth(0.2)
+    mpLabel(doc, 'Strich = zulässige Abweichung', MARGIN + 3, y + 2.8, MP.weich, 5.8)
+    doc.setFillColor(MP.tinte)
+    doc.rect(MARGIN + 62, y + 1.3, 5, 1.4, 'F')
+    mpLabel(doc, 'Balken = gemessener Wert', MARGIN + 69.5, y + 2.8, MP.weich, 5.8)
+    y += 10
+  } else {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(MP.weich)
+    doc.text('Keine Messwerte erfasst.', MARGIN, y + 4)
+    y += 12
+  }
+
+  // --- Bemerkungen · Nacharbeit ----------------------------------------------
+  const eintraege: string[] = []
+  nio.forEach((z) => {
+    const ist = z.n !== null ? `${mm3(z.n)} mm` : z.wert
+    const zul = z.grenze !== null ? ` bei ${mm3(z.grenze)} mm zulässig` : ''
+    eintraege.push(`${z.p.nr} ${z.p.bezeichnung}: ${ist}${zul}.${z.bemerkung ? ' ' + z.bemerkung : ''}`)
+  })
+  alle.filter((z) => z.bewertung !== 'nio' && z.bemerkung).forEach((z) => eintraege.push(`${z.p.nr} ${z.p.bezeichnung}: ${z.bemerkung}`))
   const ergebnis = (werte[ERGEBNIS_KEY] || '').trim()
-  if (ergebnis) {
-    y = ensureSpace(doc, y, 26)
-    y = sectionTitle(doc, 'Ergebnis / Bemerkung', y)
-    y = textBox(doc, y, ergebnis, 12)
+  if (ergebnis) eintraege.push(ergebnis)
+
+  if (eintraege.length) {
+    if (y + 20 > MP_SEITENENDE) y = mpFolgeseite(doc, logo, kurzzeile)
+    y = mpAbschnitt(doc, 'Bemerkungen · Nacharbeit', y + 2)
+    doc.setDrawColor(MP.tinte)
+    doc.setLineWidth(0.4)
+    doc.line(MARGIN, y - 1, PAGE_W - MARGIN, y - 1)
+    doc.setLineWidth(0.2)
+    for (const text of eintraege) {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      const zeilen = doc.splitTextToSize(text, CONTENT_W - 8) as string[]
+      const h = zeilen.length * 3.6 + 4.5
+      if (y + h > MP_SEITENENDE) y = mpFolgeseite(doc, logo, kurzzeile)
+      doc.setFillColor(MP.tinte)
+      doc.rect(MARGIN, y + 3.4, 3, 0.5, 'F')
+      doc.setTextColor(MP.tinte)
+      doc.text(zeilen, MARGIN + 6, y + 4.6)
+      doc.setDrawColor(MP.linie)
+      doc.line(MARGIN, y + h, PAGE_W - MARGIN, y + h)
+      y += h
+    }
   }
 
-  const nichtsAusgefuellt = typDef.gruppen.every((g) => g.punkte.every((p) => !(werte[p.key] || '').trim()))
-  if (nichtsAusgefuellt) {
-    doc.setFontSize(9.5)
-    doc.setTextColor(INK_SOFT)
-    doc.text('Keine Messwerte erfasst.', MARGIN, y)
-    doc.setTextColor(INK)
-  }
-
-  drawFooterAndPageNumbers(doc)
+  mpFuss(doc)
   return doc
 }
 
@@ -609,7 +945,7 @@ export async function buildNachweisPdf(args: {
   fehltage: { krank: number; schulung: number; kurzarbeit: number; urlaub: number }
 }): Promise<jsPDF> {
   const { technikerName, monatLabel, zeilen, sum, fehltage } = args
-  const [logo, hintergrund] = await Promise.all([bildAlsDataUrl(LOGO_SCHRIFTZUG), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
+  const [logo, hintergrund] = await Promise.all([logoAlsDataUrl(), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
   const doc = neuesPdf()
   setupPage(doc, hintergrund)
   let y = drawHeader(doc, logo, 'STUNDENNACHWEIS', [['Zeitraum', monatLabel]], technikerName)

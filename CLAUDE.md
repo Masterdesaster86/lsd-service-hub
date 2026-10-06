@@ -34,6 +34,12 @@ Entwickler): auf Deutsch antworten, verständlich erklären, Ergebnisse knapp zu
 - Bausteine: `.btn`, `.btn-amber`, `.btn-outline`, `.tag …` in `@layer components`;
   `ui/Icon`, `ui/Typenschild`, `ui/Suchfeld`, `ui/Modal` (Bottom-Sheet am Handy), `ui/TimeSelect`.
 - PDFs (Servicebericht, Messprotokoll, Stundennachweis) nutzen seit 06.10.2026 das neue Logo (Rechnungen sind umgestellt).
+  Das Logo wird in `logoAlsDataUrl()` auf 640 px verkleinert und mit 'FAST' eingefügt — das
+  Original-PNG mit Transparenz legte jsPDF unkomprimiert ab (>1 MB je PDF).
+- Messprotokoll-PDF seit 07.10.2026 nach dem Claude-Design-Entwurf (dunkler Kopfblock, Ergebnis-
+  Kasten, Balken gemessen/zulässig, Status-Marken, Bemerkungen/Nacharbeit). Titel in Big Shoulders
+  (`src/assets/bigShouldersFont.ts`, TTF als Base64, aus @fontsource per zlib entpackt). Bewusst
+  ohne Messbedingungen, Unterschriften und Hersteller-Hinweis (Manuels Entscheidung).
 
 ## Offline-Modus (seit 06.10.2026 auf `redesign`)
 
