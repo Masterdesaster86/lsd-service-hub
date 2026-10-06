@@ -22,7 +22,10 @@ const PROBE_INTERVALL = 15000
 const MAX_ALTER_MS = 45 * 24 * 3600 * 1000
 
 /** Tabellen, deren neue Datensätze eine UUID auf dem Gerät bekommen. */
-const UUID_TABELLEN = new Set(['serviceberichte', 'servicebericht_tage', 'servicebericht_ersatzteile', 'messprotokolle'])
+const UUID_TABELLEN = new Set([
+  'serviceberichte', 'servicebericht_tage', 'servicebericht_ersatzteile', 'messprotokolle',
+  'machines', 'ansprechpartner', 'customers',
+])
 
 // --- IndexedDB ---------------------------------------------------------------
 
@@ -190,6 +193,9 @@ const TITEL: Record<string, string> = {
   servicebericht_tage: 'Arbeitstag',
   servicebericht_ersatzteile: 'Ersatzteil',
   messprotokolle: 'Messprotokoll',
+  machines: 'Maschine',
+  ansprechpartner: 'Ansprechpartner',
+  customers: 'Kunde',
 }
 function titelFuer(method: string, url: URL): string {
   if (url.pathname.includes('/storage/v1/object/')) return 'Unterschrift hochladen'
@@ -410,6 +416,9 @@ function synthetischeAntwort(e: WarteEintrag): Response {
   if (!representation) return new Response(null, { status: e.method === 'POST' ? 201 : 204 })
   let zeilen = bodyZeilen(e.body)
   if (e.method === 'DELETE') zeilen = []
+  // Bei Änderungen steht die ID nur im Filter (id=eq.…) — die App erwartet sie aber zurück.
+  const idFilter = url.searchParams.get('id')
+  if (e.method === 'PATCH' && idFilter?.startsWith('eq.')) zeilen = zeilen.map((z) => ({ id: idFilter.slice(3), ...z }))
   const objekt = (e.headers['accept'] || '').includes(OBJEKT_ACCEPT)
   return new Response(JSON.stringify(objekt ? zeilen[0] ?? null : zeilen), {
     status: e.method === 'POST' ? 201 : 200,
