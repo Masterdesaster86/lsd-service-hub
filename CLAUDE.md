@@ -47,8 +47,7 @@ Entwickler): auf Deutsch antworten, verständlich erklären, Ergebnisse knapp zu
 - Anzeige/Dialog: `components/OfflineStatus.tsx`; „Für Einsatz vorbereiten“ (`lib/vorbereiten.ts`)
   öffnet die relevanten Seiten in unsichtbaren iframes, damit ihre Abfragen gespeichert werden.
 - AuthContext nutzt offline die gespeicherte Anmeldung, auch wenn das Token abgelaufen ist.
-- Nur ohne echte Anmeldung getestet (Warteschlange, Überlagerung, Service Worker); echtes
-  Hochladen mit Login noch von Manuel prüfen lassen.
+- Am 06.10.2026 von Manuel mit echtem Login getestet (Bericht + 2 Tage offline angelegt, mit Netz korrekt hochgeladen).
 
 ## Messprotokoll
 
