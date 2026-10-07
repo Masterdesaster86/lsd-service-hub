@@ -95,47 +95,71 @@ export function Monatsnachweis({ monatWert, onBack }: { monatWert: string; onBac
     return (vy === jahr && vm === monat) || (by === jahr && bm === monat)
   }).length
 
+  const euro = (n: number) => `${n.toFixed(2).replace('.', ',')} €`
+  const std = (n: number) => `${round2(n).toLocaleString('de-DE')} h`
+  // Summen als Tafel: Bezeichnung links, Wert rechts — liest sich am Handy ohne Überlappung.
+  const tafel = (titel: string, zeilenTafel: [string, string, boolean?][]) => (
+    <div className="mb-4">
+      <div className="abschnitt mb-1.5">{titel}</div>
+      <div className="bg-white border border-line">
+        {zeilenTafel.map(([label, wert, fett]) => (
+          <div key={label} className="flex items-center justify-between gap-3 px-3.5 py-2.5 border-b border-line last:border-b-0">
+            <span className="font-mono text-[11.5px] uppercase tracking-[0.06em] text-ink-soft">{label}</span>
+            <span className={`font-mono text-[14px] ${fett ? 'font-bold' : ''}`}>{wert}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+  const stundenGesamt = sum.arbeitNormal + sum.arbeitZuschlag50 + sum.arbeitZuschlag100 + sum.reiseNormal + sum.reiseZuschlag50 + sum.reiseZuschlag100
+
   return (
     <div>
       <button className="btn btn-outline btn-sm mb-4" onClick={onBack}>← Zurück zur Verwaltung</button>
-      <div className="card p-4 mb-4">
-        <div className="text-lg font-semibold text-amber">Stundennachweis</div>
-        <div className="font-semibold">{employee?.name} · {MONATSNAMEN[monat - 1]} {jahr}</div>
-      </div>
+      <p className="eyebrow">Stundennachweis</p>
+      <h1>{MONATSNAMEN[monat - 1]} {jahr}</h1>
+      <p className="text-sm text-ink-soft mt-1.5 mb-4">{employee?.name}</p>
 
       <div className="abschnitt mb-1.5">Erfasste Tage</div>
       {zeilen.length === 0 ? (
         <div className="text-sm text-ink-soft border border-dashed border-line p-4 text-center mb-4">Keine Zeiten in diesem Monat erfasst.</div>
       ) : (
-        <div className="flex flex-col gap-1.5 mb-4">
+        <div className="bg-white border border-line mb-4">
           {zeilen.map((z, i) => (
-            <div key={i} className="card p-3 flex items-center justify-between gap-3 flex-wrap text-sm">
-              <div>{z.datum.split('-').reverse().join('.')} · Auftrag #{z.auftrag} · {z.maschine}</div>
-              <div className="text-ink-soft">{z.d.gesamt} h{(z.verpflegung || z.hotelkosten) ? ` · ${(z.verpflegung + z.hotelkosten).toFixed(2)} € Spesen` : ''}</div>
+            <div key={i} className="px-3.5 py-2.5 border-b border-line last:border-b-0">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="font-mono text-[13.5px] font-semibold">{z.datum.split('-').reverse().join('.')}</span>
+                <span className="font-mono text-[14px] font-semibold">{std(z.d.gesamt)}</span>
+              </div>
+              <div className="flex items-baseline justify-between gap-3 text-[13px] text-ink-soft mt-0.5">
+                <span>#{z.auftrag} · {z.maschine}</span>
+                {(z.verpflegung || z.hotelkosten) ? <span className="font-mono shrink-0">{euro(z.verpflegung + z.hotelkosten)} Spesen</span> : null}
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      <div className="border border-line bg-paper-2 p-3 grid grid-cols-3 gap-2 text-sm mt-2">
-        <div><b>{round2(sum.arbeitNormal)} h</b> Arbeit normal</div>
-        <div><b>{round2(sum.arbeitZuschlag50)} h</b> Arbeit +50%</div>
-        <div><b>{round2(sum.arbeitZuschlag100)} h</b> Arbeit +100%</div>
-        <div><b>{round2(sum.reiseNormal)} h</b> Reise normal</div>
-        <div><b>{round2(sum.reiseZuschlag50)} h</b> Reise +50%</div>
-        <div><b>{round2(sum.reiseZuschlag100)} h</b> Reise +100%</div>
-      </div>
-      <div className="border border-line bg-paper-2 p-3 grid grid-cols-3 gap-2 text-sm mt-2">
-        <div><b>{sum.verpflegung.toFixed(2)} €</b> Verpflegungsmehraufwand</div>
-        <div><b>{sum.hotel.toFixed(2)} €</b> Hotelkosten</div>
-        <div><b>{(sum.verpflegung + sum.hotel).toFixed(2)} €</b> Spesen gesamt</div>
-      </div>
-      <div className="border border-line bg-paper-2 p-3 grid grid-cols-4 gap-2 text-sm mt-2">
-        <div><b>{zaehleArt('Krank')}</b> Krankheitstage</div>
-        <div><b>{zaehleArt('Schulung')}</b> Schulungstage</div>
-        <div><b>{zaehleArt('Kurzarbeit')}</b> Kurzarbeitstage</div>
-        <div><b>{zaehleArt('Urlaub')}</b> Urlaubstage</div>
-      </div>
+      {tafel('Stunden', [
+        ['Arbeit normal', std(sum.arbeitNormal)],
+        ['Arbeit +50 %', std(sum.arbeitZuschlag50)],
+        ['Arbeit +100 %', std(sum.arbeitZuschlag100)],
+        ['Reise normal', std(sum.reiseNormal)],
+        ['Reise +50 %', std(sum.reiseZuschlag50)],
+        ['Reise +100 %', std(sum.reiseZuschlag100)],
+        ['Gesamt', std(stundenGesamt), true],
+      ])}
+      {tafel('Spesen', [
+        ['Verpflegung', euro(sum.verpflegung)],
+        ['Hotelkosten', euro(sum.hotel)],
+        ['Spesen gesamt', euro(sum.verpflegung + sum.hotel), true],
+      ])}
+      {tafel('Fehltage', [
+        ['Krankheit', String(zaehleArt('Krank'))],
+        ['Schulung', String(zaehleArt('Schulung'))],
+        ['Kurzarbeit', String(zaehleArt('Kurzarbeit'))],
+        ['Urlaub', String(zaehleArt('Urlaub'))],
+      ])}
 
       <div className="mt-5">
         <button
