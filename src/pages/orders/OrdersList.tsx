@@ -132,7 +132,9 @@ export function OrdersList() {
         </div>
       )}
 
-      <div role="tablist" className={`grid ${TABS.length === 4 ? 'grid-cols-4' : 'grid-cols-3'} border-b border-line mb-3`}>
+      {/* Vier Reiter passen am Handy nicht nebeneinander: die Leiste lässt sich seitlich wischen,
+          der gewählte Reiter rückt beim Antippen ins Bild. */}
+      <div role="tablist" className="flex overflow-x-auto border-b border-line mb-3 -mx-4 px-4 md:mx-0 md:px-0" style={{ scrollbarWidth: 'none' }}>
         {TABS.map((t) => {
           const aktiv = tab === t.key
           return (
@@ -140,8 +142,8 @@ export function OrdersList() {
               key={t.key}
               role="tab"
               aria-selected={aktiv}
-              onClick={() => setTab(t.key)}
-              className={`min-h-[52px] px-1 border-0 border-b-[3px] -mb-px bg-transparent cursor-pointer font-mono text-[12.5px] font-semibold uppercase tracking-[0.05em] ${aktiv ? 'border-ink text-ink' : 'border-transparent text-ink-soft'}`}
+              onClick={(e) => { setTab(t.key); e.currentTarget.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' }) }}
+              className={`shrink-0 whitespace-nowrap min-h-[52px] px-3 first:pl-1 last:pr-1 border-0 border-b-[3px] -mb-px bg-transparent cursor-pointer font-mono text-[12.5px] font-semibold uppercase tracking-[0.05em] ${aktiv ? 'border-ink text-ink' : 'border-transparent text-ink-soft'}`}
             >
               {t.label} <span className="font-normal">{counts[t.key]}</span>
             </button>
