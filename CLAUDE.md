@@ -18,14 +18,14 @@ Entwickler): auf Deutsch antworten, verständlich erklären, Ergebnisse knapp zu
 
 ## Zweige und Auslieferung (IONOS, per GitHub Action `.github/workflows/deploy-ionos.yml`)
 
-- `main` → https://lsd-maschinenservice-app.de/ (die App, die alle benutzen)
-- `redesign` → https://lsd-maschinenservice-app.de/neu/ (neues Design, Testphase)
-- Push genügt, die Action baut und lädt hoch (ca. 1–3 Minuten).
-- Umschalter „Bisher / Neu (Test)“ (`src/lib/designwahl.ts`, `DesignSchalter`) — Wahl wird pro
-  Gerät gemerkt. Neue Arbeit gehört auf `redesign`. Erst nach Manuels Freigabe `redesign` nach
-  `main` mergen und Umschalter + `/neu` entfernen. Dringende Fixes für alle einzeln auf `main`.
+- `main` → https://lsd-maschinenservice-app.de/ (die App, die alle benutzen). Push genügt, die
+  Action baut und lädt hoch (ca. 1–3 Minuten). Manuel will Änderungen nach dem Test direkt
+  gepusht haben.
+- Am 07.10.2026 freigegeben: `redesign` wurde nach `main` gemergt, Umschalter „Bisher / Neu“
+  entfernt. `/neu/` leitet auf `/` um (`public/neu/.htaccess`); `public/neu/sw.js` meldet den
+  alten /neu-Service-Worker auf den Geräten ab. Der Zweig `redesign` wird nicht mehr ausgeliefert.
 
-## Design (Zweig `redesign`)
+## Design
 
 - Handy zuerst für alle Seiten; die Plantafel ist für den Desktop (`PlantafelDesktop`), am Handy
   gibt es `PlantafelMobil`. Unterschrift ist fürs Tablet optimiert.

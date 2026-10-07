@@ -1,0 +1,13 @@
+# Das neue Design lief übergangsweise unter /neu/ und ist jetzt die Haupt-App unter /.
+# Alte Lesezeichen und Home-Bildschirm-Symbole landen per Umleitung auf derselben Seite der
+# Haupt-App. Nur sw.js bleibt hier: Sie meldet den alten /neu-Service-Worker auf den Geräten ab.
+<IfModule mod_headers.c>
+  <Files "sw.js">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </Files>
+</IfModule>
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^sw\.js$ - [L]
+  RewriteRule ^(.*)$ /$1 [R=302,L]
+</IfModule>

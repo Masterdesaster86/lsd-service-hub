@@ -1,12 +1,12 @@
 name: Deploy zu IONOS
 
 # Baut die App und laedt sie per SFTP ins Webspace-Verzeichnis (/public).
-#   main     -> bisherige App unter  /
-#   redesign -> neues Design unter   /neu/  (Testphase, Umschalter in der App)
-# Laeuft bei jedem Push auf einen der beiden Zweige und kann von Hand gestartet werden.
+#   main -> die App unter /  (seit 07.10.2026 mit dem neuen Design)
+# Die Testphase unter /neu/ ist beendet: /neu/ leitet per public/neu/.htaccess auf / um.
+# Laeuft bei jedem Push auf main und kann von Hand gestartet werden.
 on:
   push:
-    branches: [main, redesign]
+    branches: [main]
   workflow_dispatch:
 
 # Der Workflow braucht nur Lesezugriff aufs Repository.
