@@ -67,7 +67,9 @@ Entwickler): auf Deutsch antworten, verständlich erklären, Ergebnisse knapp zu
 
 ## Messprotokoll
 
-- Prüfpunkt-Kataloge (Schwenkkopf, H-Maschine) in `src/lib/messprotokoll.ts`. Eigene
+- Prüfpunkt-Kataloge (Schwenkkopf, H-Maschine, T-Maschine = Einbaurundtisch) in
+  `src/lib/messprotokoll.ts`. Neue Typen brauchen zusätzlich die DB-Prüfregel
+  `messprotokolle_typ_check` (CHECK auf `typ`) — sonst scheitert das Anlegen. Eigene
   Formulierungen — **keine Texte, Skizzen oder Formularnummern vom Hersteller übernehmen**.
 - Werte liegen in `messprotokolle.werte` (JSON): Messwert unter `key`, Bemerkung `key__bemerkung`,
   gewählte Toleranzstufe `key__stufe`, Ergebnis zum Protokoll `_ergebnis`.

@@ -6,7 +6,7 @@
 // nicht als Nachbau eines bestimmten Hersteller-Formulars. Toleranzwerte sind
 // als Richtwerte hinterlegt und im Einzelfall zu prüfen.
 
-export type MessprotokollTyp = 'schwenkkopf' | 'h_maschine'
+export type MessprotokollTyp = 'schwenkkopf' | 'h_maschine' | 't_maschine'
 
 export interface Messpunkt {
   /** Eindeutiger Schlüssel, unter dem der gemessene Wert gespeichert wird. */
@@ -128,6 +128,88 @@ export const MESSPROTOKOLL_TYPEN: Record<MessprotokollTyp, MessprotokollTypDefin
           { key: 'ref_13', nr: '13', bezeichnung: 'Abstand Frässpindel — Referenzpunkt Längsachse', pruefmittel: 'Messmittel n. Wahl', toleranz: '–' },
           { key: 'ref_14', nr: '14', bezeichnung: 'Abstand Frässpindelkonus — Referenzpunkt Querachse', pruefmittel: 'Messmittel n. Wahl', toleranz: '–' },
           { key: 'ref_15', nr: '15', bezeichnung: 'Abstand Frässpindel — Referenzpunkt Senkrechtachse', pruefmittel: 'Messmittel n. Wahl', toleranz: '–' },
+        ],
+      },
+    ],
+  },
+  t_maschine: {
+    label: 'Universalmaschine mit Einbaurundtisch (T-Maschine)',
+    kurzbeschreibung:
+      'Universal-Fräs-/Bohrmaschine mit NC-Einbaurundtisch und Starrtisch, z.B. DMU 60/80/100 T. ' +
+      'Messungen am Rundtisch, am Starrtisch und auf dem Tischaufsatz. Bei Fräskopf mit hydraulischer ' +
+      'Klemmung geklemmt und ungeklemmt messen; 19 und 20 nur bei Fräskopf mit Drehgeber.',
+    gruppen: [
+      {
+        titel: 'Rundtisch, Starrtisch und Aufsatz',
+        punkte: [
+          { key: 'planlauf_rundtisch', nr: '1a', bezeichnung: 'Planlauf der Aufspannfläche — Rundtisch', pruefmittel: 'Messuhr', toleranz: '0,02 mm bei Ø 500 mm' },
+          { key: 'planlauf_aufsatz', nr: '1a/A', bezeichnung: 'Planlauf der Aufspannfläche — Aufsatz', pruefmittel: 'Messuhr', toleranz: '0,02 mm bei Ø 500 mm' },
+          { key: 'rundlauf_zentrierbuchse_rundtisch', nr: '1b', bezeichnung: 'Rundlauf der Zentrierbuchse — Rundtisch', pruefmittel: 'Fühlhebelmessgerät', toleranz: '0,02 mm' },
+          { key: 'rundlauf_zentrierbuchse_aufsatz', nr: '1b/A', bezeichnung: 'Rundlauf der Zentrierbuchse — Aufsatz', pruefmittel: 'Fühlhebelmessgerät', toleranz: '0,02 mm' },
+          { key: 'parallel_referenznut_starrtisch', nr: '2a', bezeichnung: 'Parallelität der Referenznut zur Längsachse — Starrtisch', pruefmittel: 'Fühlhebelmessgerät', toleranz: '0,02 mm/500 mm' },
+          { key: 'parallel_referenznut_rundtisch', nr: '2b', bezeichnung: 'Parallelität der Referenznut zur Längsachse — Rundtisch', pruefmittel: 'Fühlhebelmessgerät', toleranz: '0,02 mm/500 mm' },
+          { key: 'parallel_referenznut_aufsatz', nr: '2b/A', bezeichnung: 'Parallelität der Referenznut zur Längsachse — Aufsatz', pruefmittel: 'Fühlhebelmessgerät', toleranz: '0,02 mm/500 mm' },
+          { key: 'parallel_aufspann_laengs_starrtisch', nr: '3a', bezeichnung: 'Parallelität der Aufspannfläche zur Längsachse — Starrtisch', pruefmittel: 'Messuhr', toleranz: '0,02 mm/500 mm — 0,03 mm/1000 mm' },
+          { key: 'parallel_aufspann_laengs_rundtisch', nr: '3b', bezeichnung: 'Parallelität der Aufspannfläche zur Längsachse — Rundtisch', pruefmittel: 'Messuhr', toleranz: '0,02 mm/500 mm — 0,03 mm/1000 mm' },
+          { key: 'parallel_aufspann_laengs_aufsatz', nr: '3b/A', bezeichnung: 'Parallelität der Aufspannfläche zur Längsachse — Aufsatz', pruefmittel: 'Messuhr', toleranz: '0,02 mm/500 mm — 0,03 mm/1000 mm' },
+          { key: 'parallel_aufspann_quer_starrtisch_a', nr: '4a', bezeichnung: 'Parallelität der Aufspannfläche zur Querachse — Starrtisch, vordere Position', pruefmittel: 'Messuhr', toleranz: '0,02 mm/500 mm — 0,03 mm/1000 mm' },
+          { key: 'parallel_aufspann_quer_rundtisch', nr: '4b', bezeichnung: 'Parallelität der Aufspannfläche zur Querachse — Rundtisch', pruefmittel: 'Messuhr', toleranz: '0,02 mm/500 mm — 0,03 mm/1000 mm' },
+          { key: 'parallel_aufspann_quer_aufsatz', nr: '4b/A', bezeichnung: 'Parallelität der Aufspannfläche zur Querachse — Aufsatz', pruefmittel: 'Messuhr', toleranz: '0,02 mm/500 mm — 0,03 mm/1000 mm' },
+          { key: 'parallel_aufspann_quer_starrtisch_c', nr: '4c', bezeichnung: 'Parallelität der Aufspannfläche zur Querachse — Starrtisch, hintere Position', pruefmittel: 'Messuhr', toleranz: '0,02 mm/500 mm — 0,03 mm/1000 mm' },
+          { key: 'rechtwinklig_senkr_quer_rundtisch', nr: '5a', bezeichnung: 'Rechtwinkligkeit der Aufspannfläche zur Senkrechtachse, Querrichtung — Rundtisch', pruefmittel: 'Messuhr, Messwinkel', toleranz: '0,02 mm/300 mm' },
+          { key: 'rechtwinklig_senkr_quer_aufsatz', nr: '5a/A', bezeichnung: 'Rechtwinkligkeit der Aufspannfläche zur Senkrechtachse, Querrichtung — Aufsatz', pruefmittel: 'Messuhr, Messwinkel', toleranz: '0,02 mm/300 mm' },
+          { key: 'rechtwinklig_senkr_laengs_rundtisch', nr: '5b', bezeichnung: 'Rechtwinkligkeit der Aufspannfläche zur Senkrechtachse, Längsrichtung — Rundtisch', pruefmittel: 'Messuhr, Messwinkel', toleranz: '0,02 mm/300 mm' },
+          { key: 'rechtwinklig_senkr_laengs_aufsatz', nr: '5b/A', bezeichnung: 'Rechtwinkligkeit der Aufspannfläche zur Senkrechtachse, Längsrichtung — Aufsatz', pruefmittel: 'Messuhr, Messwinkel', toleranz: '0,02 mm/300 mm' },
+          { key: 'rechtwinklig_quer_laengs_a', nr: '6a', bezeichnung: 'Rechtwinkligkeit Querachse zu Längsachse — Messwinkel längs ausgerichtet', pruefmittel: 'Messuhr, Messwinkel', toleranz: '0,02 mm/300 mm' },
+          { key: 'rechtwinklig_quer_laengs_b', nr: '6b', bezeichnung: 'Rechtwinkligkeit Querachse zu Längsachse — Messuhr am Messwinkel, quer verfahren', pruefmittel: 'Messuhr, Messwinkel', toleranz: '0,02 mm/300 mm' },
+        ],
+      },
+      {
+        titel: 'Arbeitsspindel',
+        punkte: [
+          { key: 'axialruhe_spindel', nr: '7', bezeichnung: 'Axialruhe der Arbeitsspindel', pruefmittel: 'Messuhr, Prüfdorn', toleranz: '0,01 mm' },
+          { key: 'rundlauf_innenkegel_nah', nr: '8a', bezeichnung: 'Rundlauf des Spindel-Innenkegels, nahe Spindelnase', pruefmittel: 'Messuhr, Prüfdorn', toleranz: '0,01 mm' },
+          { key: 'rundlauf_innenkegel_fern', nr: '8b', bezeichnung: 'Rundlauf des Spindel-Innenkegels, im Abstand 300 mm (150 mm bei HSK 32/40/50)', pruefmittel: 'Messuhr, Prüfdorn', toleranz: '0,02 mm (0,015 mm bei HSK 32/40/50)' },
+          { key: 'parallel_waag_spindel_laengs_a_geklemmt', nr: '9a', bezeichnung: 'Parallelität der waagrechten Arbeitsspindel zur Längsachse (Ebene A) — geklemmt', pruefmittel: 'Messuhr, Prüfdorn 300 mm', toleranz: '0,02 mm/300 mm' },
+          { key: 'parallel_waag_spindel_laengs_a_offen', nr: '9a/U', bezeichnung: 'Parallelität der waagrechten Arbeitsspindel zur Längsachse (Ebene A) — ungeklemmt', pruefmittel: 'Messuhr, Prüfdorn 300 mm', toleranz: '0,02 mm/300 mm' },
+          { key: 'parallel_waag_spindel_laengs_b_geklemmt', nr: '9b', bezeichnung: 'Parallelität der waagrechten Arbeitsspindel zur Längsachse (Ebene B) — geklemmt', pruefmittel: 'Messuhr, Prüfdorn 300 mm', toleranz: '0,02 mm/300 mm' },
+          { key: 'parallel_waag_spindel_laengs_b_offen', nr: '9b/U', bezeichnung: 'Parallelität der waagrechten Arbeitsspindel zur Längsachse (Ebene B) — ungeklemmt', pruefmittel: 'Messuhr, Prüfdorn 300 mm', toleranz: '0,02 mm/300 mm' },
+          { key: 'umschlag_waag_spindel_a_geklemmt', nr: '10a', bezeichnung: 'Umschlagmessung mit waagrechter Arbeitsspindel, Messleiste auf der Aufspannfläche — geklemmt', pruefmittel: 'Messuhr, Messleiste 500 mm, Umschlagarm 150 mm', toleranz: '0,02 mm/300 mm' },
+          { key: 'umschlag_waag_spindel_a_offen', nr: '10a/U', bezeichnung: 'Umschlagmessung mit waagrechter Arbeitsspindel, Messleiste auf der Aufspannfläche — ungeklemmt', pruefmittel: 'Messuhr, Messleiste 500 mm, Umschlagarm 150 mm', toleranz: '0,02 mm/300 mm' },
+          { key: 'umschlag_waag_spindel_b_geklemmt', nr: '10b', bezeichnung: 'Umschlagmessung mit waagrechter Arbeitsspindel, Fräskopf mittig zum Tisch — geklemmt', pruefmittel: 'Messuhr, Messleiste 500 mm, Umschlagarm 150 mm', toleranz: '0,02 mm/300 mm' },
+          { key: 'umschlag_waag_spindel_b_offen', nr: '10b/U', bezeichnung: 'Umschlagmessung mit waagrechter Arbeitsspindel, Fräskopf mittig zum Tisch — ungeklemmt', pruefmittel: 'Messuhr, Messleiste 500 mm, Umschlagarm 150 mm', toleranz: '0,02 mm/300 mm' },
+          { key: 'parallel_spindel_senkr_a_geklemmt', nr: '11a', bezeichnung: 'Parallelität der Arbeitsspindel zur Senkrechtachse (Ebene A) — geklemmt', pruefmittel: 'Messuhr, Prüfdorn 300 mm', toleranz: '0,02 mm/300 mm' },
+          { key: 'parallel_spindel_senkr_a_offen', nr: '11a/U', bezeichnung: 'Parallelität der Arbeitsspindel zur Senkrechtachse (Ebene A) — ungeklemmt', pruefmittel: 'Messuhr, Prüfdorn 300 mm', toleranz: '0,02 mm/300 mm' },
+          { key: 'parallel_spindel_senkr_b_geklemmt', nr: '11b', bezeichnung: 'Parallelität der Arbeitsspindel zur Senkrechtachse (Ebene B) — geklemmt', pruefmittel: 'Messuhr, Prüfdorn 300 mm', toleranz: '0,02 mm/300 mm' },
+          { key: 'parallel_spindel_senkr_b_offen', nr: '11b/U', bezeichnung: 'Parallelität der Arbeitsspindel zur Senkrechtachse (Ebene B) — ungeklemmt', pruefmittel: 'Messuhr, Prüfdorn 300 mm', toleranz: '0,02 mm/300 mm' },
+          { key: 'umschlag_rundtisch_laengs_geklemmt', nr: '12a', bezeichnung: 'Umschlagmessung Arbeitsspindel zum Rundtisch, Längsrichtung — geklemmt', pruefmittel: 'Messuhr, Umschlagarm 150 mm', toleranz: '0,02 mm bei Ø 300 mm' },
+          { key: 'umschlag_rundtisch_laengs_offen', nr: '12a/U', bezeichnung: 'Umschlagmessung Arbeitsspindel zum Rundtisch, Längsrichtung — ungeklemmt', pruefmittel: 'Messuhr, Umschlagarm 150 mm', toleranz: '0,02 mm bei Ø 300 mm' },
+          { key: 'umschlag_rundtisch_quer_geklemmt', nr: '12b', bezeichnung: 'Umschlagmessung Arbeitsspindel zum Rundtisch, Querrichtung — geklemmt', pruefmittel: 'Messuhr, Umschlagarm 150 mm', toleranz: '0,02 mm bei Ø 300 mm' },
+          { key: 'umschlag_rundtisch_quer_offen', nr: '12b/U', bezeichnung: 'Umschlagmessung Arbeitsspindel zum Rundtisch, Querrichtung — ungeklemmt', pruefmittel: 'Messuhr, Umschlagarm 150 mm', toleranz: '0,02 mm bei Ø 300 mm' },
+          { key: 'umschlag_aufsatz_laengs_geklemmt', nr: '12a/A', bezeichnung: 'Umschlagmessung Arbeitsspindel zum Aufsatz, Längsrichtung — geklemmt', pruefmittel: 'Messuhr, Umschlagarm 150 mm', toleranz: '0,02 mm bei Ø 300 mm' },
+          { key: 'umschlag_aufsatz_laengs_offen', nr: '12a/AU', bezeichnung: 'Umschlagmessung Arbeitsspindel zum Aufsatz, Längsrichtung — ungeklemmt', pruefmittel: 'Messuhr, Umschlagarm 150 mm', toleranz: '0,02 mm bei Ø 300 mm' },
+          { key: 'umschlag_aufsatz_quer_geklemmt', nr: '12b/A', bezeichnung: 'Umschlagmessung Arbeitsspindel zum Aufsatz, Querrichtung — geklemmt', pruefmittel: 'Messuhr, Umschlagarm 150 mm', toleranz: '0,02 mm bei Ø 300 mm' },
+          { key: 'umschlag_aufsatz_quer_offen', nr: '12b/AU', bezeichnung: 'Umschlagmessung Arbeitsspindel zum Aufsatz, Querrichtung — ungeklemmt', pruefmittel: 'Messuhr, Umschlagarm 150 mm', toleranz: '0,02 mm bei Ø 300 mm' },
+        ],
+      },
+      {
+        titel: 'Referenzmaße für die Programmierung',
+        punkte: [
+          { key: 'ref_13', nr: '13', bezeichnung: 'Abstand Frässpindel — Referenzpunkt Längsachse (Bezug Zentrierbuchse)', pruefmittel: 'Messmittel n. Wahl', toleranz: '–' },
+          { key: 'ref_13_aufsatz', nr: '13/A', bezeichnung: 'Abstand Frässpindel — Referenzpunkt Längsachse, Aufsatz', pruefmittel: 'Messmittel n. Wahl', toleranz: '–' },
+          { key: 'ref_14', nr: '14', bezeichnung: 'Abstand Frässpindel — Referenzpunkt Querachse (Bezug Zentrierbuchse)', pruefmittel: 'Messmittel n. Wahl', toleranz: '–' },
+          { key: 'ref_14_aufsatz', nr: '14/A', bezeichnung: 'Abstand Frässpindel — Referenzpunkt Querachse, Aufsatz', pruefmittel: 'Messmittel n. Wahl', toleranz: '–' },
+          { key: 'ref_15', nr: '15', bezeichnung: 'Abstand Frässpindelkonus — Referenzpunkt Senkrechtachse (Bezug Aufspannfläche nahe Zentrierbuchse)', pruefmittel: 'Messmittel n. Wahl', toleranz: '–' },
+          { key: 'ref_15_aufsatz', nr: '15/A', bezeichnung: 'Abstand Frässpindelkonus — Referenzpunkt Senkrechtachse, Aufsatz', pruefmittel: 'Messmittel n. Wahl', toleranz: '–' },
+          { key: 'ref_16', nr: '16', bezeichnung: 'Abstand Frässpindelkonus — Referenzpunkt Längsachse, Spindel waagrecht (Bezug Zentrierbuchse)', pruefmittel: 'Messmittel n. Wahl', toleranz: '–' },
+          { key: 'ref_16_aufsatz', nr: '16/A', bezeichnung: 'Abstand Frässpindelkonus — Referenzpunkt Längsachse, Spindel waagrecht, Aufsatz', pruefmittel: 'Messmittel n. Wahl', toleranz: '–' },
+          { key: 'ref_17', nr: '17', bezeichnung: 'Abstand Frässpindel — Referenzpunkt Querachse, Spindel waagrecht (Bezug Zentrierbuchse)', pruefmittel: 'Messmittel n. Wahl', toleranz: '–' },
+          { key: 'ref_17_aufsatz', nr: '17/A', bezeichnung: 'Abstand Frässpindel — Referenzpunkt Querachse, Spindel waagrecht, Aufsatz', pruefmittel: 'Messmittel n. Wahl', toleranz: '–' },
+          { key: 'ref_18', nr: '18', bezeichnung: 'Abstand Frässpindel — Referenzpunkt Senkrechtachse, Spindel waagrecht (Bezug Aufspannfläche nahe Zentrierbuchse)', pruefmittel: 'Messmittel n. Wahl', toleranz: '–' },
+          { key: 'ref_18_aufsatz', nr: '18/A', bezeichnung: 'Abstand Frässpindel — Referenzpunkt Senkrechtachse, Spindel waagrecht, Aufsatz', pruefmittel: 'Messmittel n. Wahl', toleranz: '–' },
+          { key: 'ref_19', nr: '19', bezeichnung: 'Abstand Frässpindelkonus — Schwenkachse des Fräskopfs (nur Fräskopf mit Drehgeber)', pruefmittel: 'Messmittel n. Wahl', toleranz: '–' },
+          { key: 'ref_20a', nr: '20a', bezeichnung: 'Versatz der Arbeitsspindelachse zur Schwenkachse, nach links (nur Fräskopf mit Drehgeber)', pruefmittel: 'Messmittel n. Wahl', toleranz: '–' },
+          { key: 'ref_20b', nr: '20b', bezeichnung: 'Versatz der Arbeitsspindelachse zur Schwenkachse, nach rechts (nur Fräskopf mit Drehgeber)', pruefmittel: 'Messmittel n. Wahl', toleranz: '–' },
         ],
       },
     ],
@@ -304,6 +386,34 @@ const SKIZZEN: Record<MessprotokollTyp, Record<string, string>> = {
     ref_14: 'h-maschine/14-abstand-spindelkonus-querachse.png',
     ref_15: 'h-maschine/15-abstand-fraesspindel-senkrechte-achse.png',
   },
+  // T-Maschine: eigene Skizzen in t-maschine/, Nummer = Prüfung; 12 hat je eine für Rundtisch und Aufsatz.
+  t_maschine: (() => {
+    const t = (datei: string) => `t-maschine/${datei}`
+    const je = (keys: string[], datei: string) => Object.fromEntries(keys.map((k) => [k, t(datei)]))
+    return {
+      ...je(['planlauf_rundtisch', 'planlauf_aufsatz', 'rundlauf_zentrierbuchse_rundtisch', 'rundlauf_zentrierbuchse_aufsatz'], '01-planlauf-rundlauf-aufspannflaeche.png'),
+      ...je(['parallel_referenznut_starrtisch', 'parallel_referenznut_rundtisch', 'parallel_referenznut_aufsatz'], '02-parallelitaet-referenznut-laengs.png'),
+      ...je(['parallel_aufspann_laengs_starrtisch', 'parallel_aufspann_laengs_rundtisch', 'parallel_aufspann_laengs_aufsatz'], '03-parallelitaet-aufspannflaeche-laengs.png'),
+      ...je(['parallel_aufspann_quer_starrtisch_a', 'parallel_aufspann_quer_rundtisch', 'parallel_aufspann_quer_aufsatz', 'parallel_aufspann_quer_starrtisch_c'], '04-parallelitaet-aufspannflaeche-quer.png'),
+      ...je(['rechtwinklig_senkr_quer_rundtisch', 'rechtwinklig_senkr_quer_aufsatz', 'rechtwinklig_senkr_laengs_rundtisch', 'rechtwinklig_senkr_laengs_aufsatz'], '05-rechtwinkligkeit-aufspannflaeche-senkrecht.png'),
+      ...je(['rechtwinklig_quer_laengs_a', 'rechtwinklig_quer_laengs_b'], '06-rechtwinkligkeit-quer-laengs.png'),
+      axialruhe_spindel: t('07-axialruhe-arbeitsspindel.png'),
+      ...je(['rundlauf_innenkegel_nah', 'rundlauf_innenkegel_fern'], '08-rundlauf-innenkegel-arbeitsspindel.png'),
+      ...je(['parallel_waag_spindel_laengs_a_geklemmt', 'parallel_waag_spindel_laengs_a_offen', 'parallel_waag_spindel_laengs_b_geklemmt', 'parallel_waag_spindel_laengs_b_offen'], '09-parallelitaet-waagrechte-spindel-laengs.png'),
+      ...je(['umschlag_waag_spindel_a_geklemmt', 'umschlag_waag_spindel_a_offen', 'umschlag_waag_spindel_b_geklemmt', 'umschlag_waag_spindel_b_offen'], '10-umschlagmessung-waagrechte-spindel.png'),
+      ...je(['parallel_spindel_senkr_a_geklemmt', 'parallel_spindel_senkr_a_offen', 'parallel_spindel_senkr_b_geklemmt', 'parallel_spindel_senkr_b_offen'], '11-parallelitaet-spindel-senkrecht.png'),
+      ...je(['umschlag_rundtisch_laengs_geklemmt', 'umschlag_rundtisch_laengs_offen', 'umschlag_rundtisch_quer_geklemmt', 'umschlag_rundtisch_quer_offen'], '12-umschlagmessung-rundtisch.png'),
+      ...je(['umschlag_aufsatz_laengs_geklemmt', 'umschlag_aufsatz_laengs_offen', 'umschlag_aufsatz_quer_geklemmt', 'umschlag_aufsatz_quer_offen'], '12-umschlagmessung-aufsatz.png'),
+      ...je(['ref_13', 'ref_13_aufsatz'], '13-abstand-fraesspindel-laengsachse.png'),
+      ...je(['ref_14', 'ref_14_aufsatz'], '14-abstand-fraesspindel-querachse.png'),
+      ...je(['ref_15', 'ref_15_aufsatz'], '15-abstand-spindelkonus-senkrechte-achse.png'),
+      ...je(['ref_16', 'ref_16_aufsatz'], '16-abstand-spindelkonus-laengsachse.png'),
+      ...je(['ref_17', 'ref_17_aufsatz'], '17-abstand-fraesspindel-querachse.png'),
+      ...je(['ref_18', 'ref_18_aufsatz'], '18-abstand-fraesspindel-senkrechte-achse.png'),
+      ref_19: t('19-abstand-spindelkonus-schwenkachse.png'),
+      ...je(['ref_20a', 'ref_20b'], '20-versatz-spindelachse-schwenkachse.png'),
+    }
+  })(),
 }
 
 /** Adresse der Skizze zu einem Prüfpunkt (berücksichtigt den Unterordner /neu/) — oder null. */
