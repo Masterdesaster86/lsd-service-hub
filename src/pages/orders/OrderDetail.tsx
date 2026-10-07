@@ -97,7 +97,7 @@ export function OrderDetail() {
       <p className="eyebrow">Serviceauftrag</p>
       <div className="flex items-start justify-between gap-3">
         <h1>#{order.id}</h1>
-        <OrderStatusTag status={order.status} />
+        <OrderStatusTag status={employee?.role === 'Techniker' && order.status === 'abgerechnet' ? 'erledigt' : order.status} />
       </div>
       <div className="font-semibold text-[18px] leading-snug mt-1.5">{order.einsatzkunde?.name || '–'}</div>
 
@@ -179,7 +179,7 @@ export function OrderDetail() {
                     {b.bericht_nummer}
                     {b.ist_nachtrag && <span className="ml-2 px-1.5 py-0.5 border border-dashed border-ink font-mono text-[11px] uppercase tracking-[0.08em]">Nachtrag</span>}
                   </span>
-                  <BerichtStatusTag status={b.status} abgerechnet={b.abgerechnet} />
+                  <BerichtStatusTag status={b.status} abgerechnet={employee?.role !== 'Techniker' && b.abgerechnet} />
                 </div>
                 <div className="font-semibold text-[16.5px] leading-snug mt-1.5">{b.machines?.bezeichnung || '–'} · {b.employees?.name || '–'}</div>
                 <div className="font-mono text-[12.5px] text-ink-soft mt-1">Nr. {b.machines?.nummer || '–'} · Kunden-Nr. {b.machines?.kunden_maschinennummer || '–'}</div>

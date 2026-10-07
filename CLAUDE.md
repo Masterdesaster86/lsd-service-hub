@@ -41,6 +41,16 @@ Entwickler): auf Deutsch antworten, verständlich erklären, Ergebnisse knapp zu
   (`src/assets/bigShouldersFont.ts`, TTF als Base64, aus @fontsource per zlib entpackt). Bewusst
   ohne Messbedingungen, Unterschriften und Hersteller-Hinweis (Manuels Entscheidung).
 
+## Auftragsstatus (seit 07.10.2026)
+
+- Der Status wird in der DB berechnet (`compute_order_status`, Trigger auf orders/serviceberichte/
+  servicebericht_tage): `abgerechnet` wenn alle Berichte abgerechnet, `erledigt` (= „Abgeschlossen“)
+  wenn alle Berichte abgeschlossen — **unabhängig von der Rückreise** (`bericht_ist_vollstaendig`).
+  Rückreise kann per Nachtrag ergänzt werden, solange nicht abgerechnet; ein offener Nachtrag setzt
+  den Auftrag so lange auf „in Arbeit“.
+- Auftragsliste: Büro (Admin/Disposition/CEO) hat die Reiter Neu / In Arbeit / Abgeschlossen /
+  Abgerechnet; Techniker nur Neu / In Arbeit / Abgeschlossen und sehen nirgends „Abgerechnet“.
+
 ## Offline-Modus (seit 06.10.2026 auf `redesign`)
 
 - `src/lib/offline.ts` ist die `global.fetch` des Supabase-Clients: GET/rpc werden in IndexedDB

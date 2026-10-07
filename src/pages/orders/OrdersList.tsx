@@ -9,12 +9,21 @@ import { OrderFormModal } from './OrderFormModal'
 import { Icon } from '../../components/ui/Icon'
 import { WOCHENTAGE, formatDMY } from '../../lib/zeit'
 
-type Tab = 'neu' | 'in Arbeit' | 'erledigt'
+type Tab = 'neu' | 'in Arbeit' | 'erledigt' | 'abgerechnet'
 
-const TABS: { key: Tab; label: string }[] = [
+// Büro (Admin, Disposition, CEO) trennt Abgeschlossen und Abgerechnet — die Buchhaltung sieht so,
+// was noch zu berechnen ist. Den Techniker geht die Abrechnung nichts an: bei ihm bleibt alles
+// Abgeschlossene in einem Reiter, auch wenn es längst abgerechnet ist.
+const TABS_BUERO: { key: Tab; label: string }[] = [
   { key: 'neu', label: 'Neu' },
   { key: 'in Arbeit', label: 'In Arbeit' },
-  { key: 'erledigt', label: 'Erledigt' },
+  { key: 'erledigt', label: 'Abgeschlossen' },
+  { key: 'abgerechnet', label: 'Abgerechnet' },
+]
+const TABS_TECHNIKER: { key: Tab; label: string }[] = [
+  { key: 'neu', label: 'Neu' },
+  { key: 'in Arbeit', label: 'In Arbeit' },
+  { key: 'erledigt', label: 'Abgeschlossen' },
 ]
 
 type SortMode = 'einsatz_auf' | 'einsatz_ab' | 'erstellt_ab'
@@ -71,18 +80,23 @@ export function OrdersList() {
     return list.filter((o) => o.techniker.some((t) => t.id === employee?.id))
   }, [orders, kannUmschalten, nurMeine, employee?.id])
 
-  const counts = useMemo(() => ({
-    neu: sichtbar.filter((o) => o.status === 'neu').length,
-    'in Arbeit': sichtbar.filter((o) => o.status === 'in Arbeit').length,
-    erledigt: sichtbar.filter((o) => o.status === 'erledigt' || o.status === 'abgerechnet').length,
-  }), [sichtbar])
+  const istTechniker = employee?.role === 'Techniker'
+  const TABS = istTechniker ? TABS_TECHNIKER : TABS_BUERO
+  // Welcher Reiter einen Auftrag zeigt: beim Techniker zählt Abgerechnetes als Abgeschlossen.
+  const reiterFuer = (status: string): Tab => (istTechniker && status === 'abgerechnet' ? 'erledigt' : (status as Tab))
+
+  const counts = useMemo(() => {
+    const c: Record<Tab, number> = { neu: 0, 'in Arbeit': 0, erledigt: 0, abgerechnet: 0 }
+    sichtbar.forEach((o) => { c[reiterFuer(o.status)]++ })
+    return c
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sichtbar, istTechniker])
 
   const filtered = useMemo(() => {
-    const liste = tab === 'erledigt'
-      ? sichtbar.filter((o) => o.status === 'erledigt' || o.status === 'abgerechnet')
-      : sichtbar.filter((o) => o.status === tab)
+    const liste = sichtbar.filter((o) => reiterFuer(o.status) === tab)
     return [...liste].sort((a, b) => vergleicheAuftraege(a, b, sortMode))
-  }, [sichtbar, tab, sortMode])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sichtbar, tab, sortMode, istTechniker])
 
   const roleNote = employee?.role === 'Techniker'
     ? `Gefiltert auf deine eigenen Aufträge (${employee.name})`
@@ -118,7 +132,7 @@ export function OrdersList() {
         </div>
       )}
 
-      <div role="tablist" className="grid grid-cols-3 border-b border-line mb-3">
+      <div role="tablist" className={`grid ${TABS.length === 4 ? 'grid-cols-4' : 'grid-cols-3'} border-b border-line mb-3`}>
         {TABS.map((t) => {
           const aktiv = tab === t.key
           return (
@@ -159,7 +173,7 @@ export function OrdersList() {
                   #{o.id}
                   {o.einsatzbeginn && <span className="font-normal text-ink-soft"> · {o.einsatzbeginn.split('-').reverse().join('.')}</span>}
                 </span>
-                <OrderStatusTag status={o.status} />
+                <OrderStatusTag status={istTechniker && o.status === 'abgerechnet' ? 'erledigt' : o.status} />
               </div>
               <div className="font-semibold text-[17px] leading-snug mt-2">{o.einsatzkunde?.name || '–'}</div>
               {o.machines.length > 0 && (

@@ -1,7 +1,7 @@
 const ORDER_STATUS_MAP: Record<string, [string, string]> = {
   neu: ['tag-neu', 'Neu'],
   'in Arbeit': ['tag-arbeit', 'In Arbeit'],
-  erledigt: ['tag-geplant', 'Erledigt'],
+  erledigt: ['tag-geplant', 'Abgeschlossen'],
   abgerechnet: ['tag-unterwegs', 'Abgerechnet'],
 }
 
