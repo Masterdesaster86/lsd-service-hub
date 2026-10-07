@@ -264,6 +264,35 @@ export function calcTagesspesen(tage: ServiceberichtTag[]): SpesenZeile[] {
   })
 }
 
+/**
+ * Verpflegungsmehraufwand pro KALENDERTAG über alle Serviceberichte des Technikers (`kontext`
+ * wie bei `calcTagMitKontext`). Die 8h-Grenze gilt für den ganzen Arbeitstag, nicht je Bericht —
+ * zwei Berichte mit 7 h und 2,5 h am selben Tag ergeben sonst fälschlich keine Spesen. Die
+ * Pauschale wird nur einmal je Tag vergeben: beim zeitlich ersten Eintrag des Tages. Übernachtung
+ * zählt, wenn irgendein Bericht des Tages bzw. des Vortags sie vermerkt. Hotelkosten bleiben je Eintrag.
+ */
+export function calcTagesspesenMitKontext(tage: ServiceberichtTag[], kontext: Tageskontext): SpesenZeile[] {
+  const reihenfolge = (a: ServiceberichtTag, b: ServiceberichtTag) =>
+    (a.hinreise_von || a.arbeitsbeginn || '').localeCompare(b.hinreise_von || b.arbeitsbeginn || '') || a.id.localeCompare(b.id)
+  const vortag = (datum: string) => {
+    const d = new Date(datum + 'T12:00:00')
+    d.setDate(d.getDate() - 1)
+    return d.toISOString().slice(0, 10)
+  }
+  const uebernachtungAm = (datum: string) => (kontext[datum] || []).some((t) => !!t.uebernachtung)
+  return tage.map((tag) => {
+    const alleHeute = [...(kontext[tag.datum] || [tag])].sort(reihenfolge)
+    const erster = alleHeute[0]?.id === tag.id
+    const gesamtTag = alleHeute.reduce((s, t) => s + calcDay(t).gesamt, 0)
+    const vorherUeb = uebernachtungAm(vortag(tag.datum))
+    const jetztUeb = uebernachtungAm(tag.datum)
+    let satz = 0
+    if (jetztUeb || vorherUeb) satz = vorherUeb && jetztUeb ? SPESENSATZ_VOLLTAG : SPESENSATZ_TEILTAG
+    else if (gesamtTag > 8) satz = SPESENSATZ_TEILTAG
+    return { datum: tag.datum, verpflegung: erster ? satz : 0, hotelkosten: tag.hotelkosten || 0, uebernachtung: !!tag.uebernachtung }
+  })
+}
+
 export function calcBerichtSpesen(tage: ServiceberichtTag[]) {
   const zeilen = calcTagesspesen(tage)
   const verpflegungGesamt = zeilen.reduce((s, z) => s + z.verpflegung, 0)

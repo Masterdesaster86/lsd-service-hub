@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import { useToast } from '../../components/ui/Toast'
-import { calcTagMitKontext, calcTagesspesen, type DayTotals, type Tageskontext } from '../../lib/zeit'
+import { calcTagMitKontext, calcTagesspesenMitKontext, type DayTotals, type Tageskontext } from '../../lib/zeit'
 import { buildNachweisPdf } from '../../lib/pdf'
 import type { ServiceberichtTag } from '../../lib/types'
 
@@ -53,7 +53,8 @@ export function Monatsnachweis({ monatWert, onBack }: { monatWert: string; onBac
 
         const rows: Zeile[] = []
         berichte.forEach((b) => {
-          const spesen = calcTagesspesen(b.tage)
+          // Spesen ebenfalls je Kalendertag über alle Berichte: die 8h-Grenze gilt für den ganzen Tag.
+          const spesen = calcTagesspesenMitKontext(b.tage, kontext)
           b.tage.forEach((tag, i) => {
             const [ty, tm] = tag.datum.split('-').map(Number)
             if (ty !== jahr || tm !== monat) return
