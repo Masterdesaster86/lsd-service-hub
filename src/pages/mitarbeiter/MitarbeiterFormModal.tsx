@@ -34,6 +34,9 @@ export function MitarbeiterFormModal({ employee: editEmployee, onClose, onSaved 
   const [name, setName] = useState(editEmployee?.name || '')
   const [email, setEmail] = useState(editEmployee?.email || '')
   const [role, setRole] = useState<Role>((editEmployee?.role as Role) || 'Techniker')
+  // Überstundenregel für den Monats-Stundennachweis (Kundenabrechnung bleibt bei 10 h)
+  const [ueberAb, setUeberAb] = useState(String(editEmployee?.ueberstunden_ab_stunden ?? 10).replace('.', ','))
+  const [ueberProzent, setUeberProzent] = useState(String(editEmployee?.ueberstunden_zuschlag_prozent ?? 50))
   const [passwort, setPasswort] = useState('')
   const [passwortWdh, setPasswortWdh] = useState('')
   const [saving, setSaving] = useState(false)
@@ -49,8 +52,12 @@ export function MitarbeiterFormModal({ employee: editEmployee, onClose, onSaved 
       if (passwort !== passwortWdh) { toast('Die beiden Passwörter stimmen nicht überein.'); return }
     }
 
+    const ab = Number(ueberAb.replace(',', '.'))
+    const prozent = Number(ueberProzent)
+    if (!(ab > 0 && ab <= 24) || !(prozent >= 0 && prozent <= 200)) { toast('Überstundenregel prüfen: ab 1–24 Stunden, Zuschlag 0–200 %.'); return }
+
     setSaving(true)
-    const payload = { name: name.trim(), email: email.trim(), role }
+    const payload = { name: name.trim(), email: email.trim(), role, ueberstunden_ab_stunden: ab, ueberstunden_zuschlag_prozent: Math.round(prozent) }
     const { data: gespeichert, error } = editing
       ? await supabase.from('employees').update(payload).eq('id', editEmployee!.id).select('id').single()
       : await supabase.from('employees').insert(payload).select('id').single()
@@ -88,6 +95,17 @@ export function MitarbeiterFormModal({ employee: editEmployee, onClose, onSaved 
         <div className="col-span-2"><label>Name</label><input value={name} onChange={(e) => setName(e.target.value)} /></div>
         <div className="col-span-2"><label>E-Mail</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vorname.nachname@lsd-maschinenservice.de" /></div>
         <div><label>Rolle</label><select value={role} onChange={(e) => setRole(e.target.value as Role)}>{ROLES.map((r) => <option key={r} value={r}>{r}</option>)}</select></div>
+      </div>
+
+      <div className="border-t border-line mt-4 pt-3.5">
+        <div className="abschnitt mb-2">Überstunden im Stundennachweis</div>
+        <div className="grid grid-cols-2 gap-3.5">
+          <div><label>Zuschlag ab Stunde (pro Tag)</label><input inputMode="decimal" value={ueberAb} onChange={(e) => setUeberAb(e.target.value)} /></div>
+          <div><label>Zuschlag in %</label><input inputMode="numeric" value={ueberProzent} onChange={(e) => setUeberProzent(e.target.value)} /></div>
+        </div>
+        <p className="text-[13px] text-ink-soft mt-2">
+          Werktags, Reise und Arbeit zusammen. Gilt nur für den Monats-Stundennachweis des Mitarbeiters — die Abrechnung mit dem Kunden bleibt bei der 10-Stunden-Regel. Samstag +50 % und Sonn-/Feiertag +100 % bleiben für alle gleich.
+        </p>
       </div>
 
       <div className="border-t border-line mt-4 pt-3.5">

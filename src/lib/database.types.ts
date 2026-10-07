@@ -147,6 +147,8 @@ export type Database = {
           id: string
           name: string
           role: string
+          ueberstunden_ab_stunden: number
+          ueberstunden_zuschlag_prozent: number
         }
         Insert: {
           aktiv?: boolean
@@ -155,6 +157,8 @@ export type Database = {
           id?: string
           name: string
           role: string
+          ueberstunden_ab_stunden?: number
+          ueberstunden_zuschlag_prozent?: number
         }
         Update: {
           aktiv?: boolean
@@ -163,6 +167,8 @@ export type Database = {
           id?: string
           name?: string
           role?: string
+          ueberstunden_ab_stunden?: number
+          ueberstunden_zuschlag_prozent?: number
         }
         Relationships: []
       }

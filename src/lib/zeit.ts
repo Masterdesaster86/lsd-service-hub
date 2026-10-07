@@ -129,7 +129,8 @@ function rundeDayTotals(t: RohTotals): DayTotals {
  * Rechnet danach pro `quelle` zurück, wie viel Normal-/Zuschlagzeit auf sie
  * entfällt, plus die Summe über alle Quellen.
  */
-function verteileSegmente(segs: Segment[], datum: string): { proQuelle: Map<string, RohTotals>; gesamt: RohTotals } {
+function verteileSegmente(segs: Segment[], datum: string, schwelleMin: number = THRESHOLD_MIN): { proQuelle: Map<string, RohTotals>; gesamt: RohTotals } {
+  const THRESHOLD_MIN = schwelleMin
   const proQuelle = new Map<string, RohTotals>()
   const gesamt = leereRohTotals()
 
@@ -196,9 +197,11 @@ export function calcDay(tag: ServiceberichtTag): DayTotals {
  * enthalten. Die 10h-Schwelle wird einmal über den ganzen echten Arbeitstag
  * angewendet, das Ergebnis aber nur für `zielTag` zurückgegeben.
  */
-export function calcTagMitKontext(zielTag: ServiceberichtTag, tageAmSelbenTag: ServiceberichtTag[]): DayTotals {
+export function calcTagMitKontext(zielTag: ServiceberichtTag, tageAmSelbenTag: ServiceberichtTag[], ueberstundenAbStunden?: number): DayTotals {
   const segs = buildKombinierteSegmente(tageAmSelbenTag)
-  const { proQuelle } = verteileSegmente(segs, zielTag.datum)
+  // Ohne Angabe gilt die Kundenregel (10 h). Für den Stundennachweis eines Mitarbeiters kann
+  // seine eigene Schwelle übergeben werden (Mitarbeiter-Einstellung ueberstunden_ab_stunden).
+  const { proQuelle } = verteileSegmente(segs, zielTag.datum, ueberstundenAbStunden ? Math.round(ueberstundenAbStunden * 60) : undefined)
   return rundeDayTotals(proQuelle.get(zielTag.id) || leereRohTotals())
 }
 

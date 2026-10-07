@@ -1235,10 +1235,12 @@ export async function buildNachweisPdf(args: {
   technikerName: string
   monatLabel: string
   zeilen: NachweisZeile[]
-  sum: { arbeitNormal: number; arbeitZuschlag50: number; arbeitZuschlag100: number; reiseNormal: number; reiseZuschlag50: number; reiseZuschlag100: number; verpflegung: number; hotel: number }
+  sum: { arbeitNormal: number; arbeitUeber: number; arbeitSamstag: number; arbeitZuschlag100: number; reiseNormal: number; reiseUeber: number; reiseSamstag: number; reiseZuschlag100: number; verpflegung: number; hotel: number }
+  /** Überstundenregel des Mitarbeiters: ab `ab` Stunden pro Werktag `prozent` % Zuschlag. */
+  regel: { ab: number; prozent: number }
   fehltage: { krank: number; schulung: number; kurzarbeit: number; urlaub: number }
 }): Promise<jsPDF> {
-  const { technikerName, monatLabel, zeilen, sum, fehltage } = args
+  const { technikerName, monatLabel, zeilen, sum, regel, fehltage } = args
   const [logo, hintergrund] = await Promise.all([logoAlsDataUrl(), bildAlsDataUrl(PDF_HINTERGRUND_URL)])
   const doc = neuesPdf()
   setupPage(doc, hintergrund)
@@ -1265,14 +1267,18 @@ export async function buildNachweisPdf(args: {
     margin: { left: MARGIN, right: MARGIN },
     styles: { fontSize: 8, textColor: INK, lineColor: LINE },
     headStyles: { fillColor: GRAPHITE, textColor: '#ffffff' },
-    head: [['', 'Normal', '+50%', '+100%']],
+    head: [['', 'Normal', `Überstunden +${regel.prozent} %`, 'Samstag +50 %', 'Sonn-/Feiertag +100 %']],
     body: [
-      ['Arbeit', `${fmt(sum.arbeitNormal)} h`, `${fmt(sum.arbeitZuschlag50)} h`, `${fmt(sum.arbeitZuschlag100)} h`],
-      ['Reise', `${fmt(sum.reiseNormal)} h`, `${fmt(sum.reiseZuschlag50)} h`, `${fmt(sum.reiseZuschlag100)} h`],
+      ['Arbeit', `${fmt(sum.arbeitNormal)} h`, `${fmt(sum.arbeitUeber)} h`, `${fmt(sum.arbeitSamstag)} h`, `${fmt(sum.arbeitZuschlag100)} h`],
+      ['Reise', `${fmt(sum.reiseNormal)} h`, `${fmt(sum.reiseUeber)} h`, `${fmt(sum.reiseSamstag)} h`, `${fmt(sum.reiseZuschlag100)} h`],
     ],
   })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  y = (doc as any).lastAutoTable.finalY + 8
+  y = (doc as any).lastAutoTable.finalY + 5
+  doc.setFontSize(7.5)
+  doc.setTextColor(INK_SOFT)
+  doc.text(`Überstunden: werktags ab ${String(regel.ab).replace('.', ',')} Stunden pro Tag (Reise und Arbeit zusammen).`, MARGIN, y)
+  y += 7
 
   doc.setFontSize(9)
   doc.setTextColor(INK)

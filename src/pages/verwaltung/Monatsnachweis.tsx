@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import { useToast } from '../../components/ui/Toast'
-import { calcTagMitKontext, calcTagesspesenMitKontext, type DayTotals, type Tageskontext } from '../../lib/zeit'
+import { calcTagMitKontext, calcTagesspesenMitKontext, istSamstag, istSonnOderFeiertag, type DayTotals, type Tageskontext } from '../../lib/zeit'
 import { buildNachweisPdf } from '../../lib/pdf'
 import type { ServiceberichtTag } from '../../lib/types'
 
@@ -30,12 +30,20 @@ export function Monatsnachweis({ monatWert, onBack }: { monatWert: string; onBac
   const toast = useToast()
   const [zeilen, setZeilen] = useState<Zeile[] | null>(null)
   const [fehlzeiten, setFehlzeiten] = useState<{ art: string; von: string; bis: string }[]>([])
+  // Überstundenregel dieses Mitarbeiters (Standard 10 h / +50 %, z. B. Daniel 8 h / +35 %)
+  const [regel, setRegel] = useState<{ ab: number; prozent: number } | null>(null)
 
   const [jahrStr, monatStr] = monatWert.split('-')
   const jahr = Number(jahrStr), monat = Number(monatStr)
 
   useEffect(() => {
     if (!employee) return
+    supabase.from('employees').select('ueberstunden_ab_stunden, ueberstunden_zuschlag_prozent').eq('id', employee.id).maybeSingle()
+      .then(({ data }) => setRegel({ ab: Number(data?.ueberstunden_ab_stunden ?? 10), prozent: Number(data?.ueberstunden_zuschlag_prozent ?? 50) }))
+  }, [employee])
+
+  useEffect(() => {
+    if (!employee || !regel) return
     supabase
       .from('serviceberichte')
       .select('id, auftrag_id, maschine_id, machines(bezeichnung), tage:servicebericht_tage(*)')
@@ -62,7 +70,7 @@ export function Monatsnachweis({ monatWert, onBack }: { monatWert: string; onBac
               datum: tag.datum,
               auftrag: b.auftrag_id,
               maschine: b.machines?.bezeichnung || b.maschine_id,
-              d: calcTagMitKontext(tag, kontext[tag.datum] || [tag]),
+              d: calcTagMitKontext(tag, kontext[tag.datum] || [tag], regel.ab),
               verpflegung: spesen[i].verpflegung,
               hotelkosten: spesen[i].hotelkosten,
             })
@@ -72,20 +80,28 @@ export function Monatsnachweis({ monatWert, onBack }: { monatWert: string; onBac
         setZeilen(rows)
       })
     supabase.from('abwesenheiten').select('art, von, bis').eq('techniker_id', employee.id).then(({ data }) => setFehlzeiten(data || []))
-  }, [employee, jahr, monat])
+  }, [employee, jahr, monat, regel])
 
-  if (zeilen === null) return <div className="text-sm text-ink-soft">Lädt…</div>
+  if (zeilen === null || regel === null) return <div className="text-sm text-ink-soft">Lädt…</div>
 
-  const sum = zeilen.reduce((s, z) => ({
-    arbeitNormal: s.arbeitNormal + z.d.arbeitNormal,
-    arbeitZuschlag50: s.arbeitZuschlag50 + z.d.arbeitZuschlag50,
-    arbeitZuschlag100: s.arbeitZuschlag100 + z.d.arbeitZuschlag100,
-    reiseNormal: s.reiseNormal + z.d.reiseNormal,
-    reiseZuschlag50: s.reiseZuschlag50 + z.d.reiseZuschlag50,
-    reiseZuschlag100: s.reiseZuschlag100 + z.d.reiseZuschlag100,
-    verpflegung: s.verpflegung + z.verpflegung,
-    hotel: s.hotel + z.hotelkosten,
-  }), { arbeitNormal: 0, arbeitZuschlag50: 0, arbeitZuschlag100: 0, reiseNormal: 0, reiseZuschlag50: 0, reiseZuschlag100: 0, verpflegung: 0, hotel: 0 })
+  // Der "+50 %"-Topf der Berechnung enthält werktags die Überstunden, samstags die Samstagszeit.
+  // Für den Nachweis getrennt: Überstunden (mit dem Satz des Mitarbeiters) und Samstag (+50 %).
+  const sum = zeilen.reduce((s, z) => {
+    const samstag = istSamstag(z.datum) && !istSonnOderFeiertag(z.datum)
+    return {
+      arbeitNormal: s.arbeitNormal + z.d.arbeitNormal,
+      arbeitUeber: s.arbeitUeber + (samstag ? 0 : z.d.arbeitZuschlag50),
+      arbeitSamstag: s.arbeitSamstag + (samstag ? z.d.arbeitZuschlag50 : 0),
+      arbeitZuschlag100: s.arbeitZuschlag100 + z.d.arbeitZuschlag100,
+      reiseNormal: s.reiseNormal + z.d.reiseNormal,
+      reiseUeber: s.reiseUeber + (samstag ? 0 : z.d.reiseZuschlag50),
+      reiseSamstag: s.reiseSamstag + (samstag ? z.d.reiseZuschlag50 : 0),
+      reiseZuschlag100: s.reiseZuschlag100 + z.d.reiseZuschlag100,
+      verpflegung: s.verpflegung + z.verpflegung,
+      hotel: s.hotel + z.hotelkosten,
+    }
+  }, { arbeitNormal: 0, arbeitUeber: 0, arbeitSamstag: 0, arbeitZuschlag100: 0, reiseNormal: 0, reiseUeber: 0, reiseSamstag: 0, reiseZuschlag100: 0, verpflegung: 0, hotel: 0 })
+  const ueberLabel = `Überstunden +${regel.prozent} %`
   const round2 = (n: number) => Math.round(n * 100) / 100
 
   const zaehleArt = (art: string) => fehlzeiten.filter((a) => {
@@ -111,7 +127,7 @@ export function Monatsnachweis({ monatWert, onBack }: { monatWert: string; onBac
       </div>
     </div>
   )
-  const stundenGesamt = sum.arbeitNormal + sum.arbeitZuschlag50 + sum.arbeitZuschlag100 + sum.reiseNormal + sum.reiseZuschlag50 + sum.reiseZuschlag100
+  const stundenGesamt = sum.arbeitNormal + sum.arbeitUeber + sum.arbeitSamstag + sum.arbeitZuschlag100 + sum.reiseNormal + sum.reiseUeber + sum.reiseSamstag + sum.reiseZuschlag100
 
   return (
     <div>
@@ -140,13 +156,15 @@ export function Monatsnachweis({ monatWert, onBack }: { monatWert: string; onBac
         </div>
       )}
 
-      {tafel('Stunden', [
+      {tafel(`Stunden · Überstunden ab ${regel.ab.toLocaleString('de-DE')} h/Tag`, [
         ['Arbeit normal', std(sum.arbeitNormal)],
-        ['Arbeit +50 %', std(sum.arbeitZuschlag50)],
-        ['Arbeit +100 %', std(sum.arbeitZuschlag100)],
+        [`Arbeit ${ueberLabel}`, std(sum.arbeitUeber)],
+        ['Arbeit Samstag +50 %', std(sum.arbeitSamstag)],
+        ['Arbeit Sonn-/Feiertag +100 %', std(sum.arbeitZuschlag100)],
         ['Reise normal', std(sum.reiseNormal)],
-        ['Reise +50 %', std(sum.reiseZuschlag50)],
-        ['Reise +100 %', std(sum.reiseZuschlag100)],
+        [`Reise ${ueberLabel}`, std(sum.reiseUeber)],
+        ['Reise Samstag +50 %', std(sum.reiseSamstag)],
+        ['Reise Sonn-/Feiertag +100 %', std(sum.reiseZuschlag100)],
         ['Gesamt', std(stundenGesamt), true],
       ])}
       {tafel('Spesen', [
@@ -169,7 +187,8 @@ export function Monatsnachweis({ monatWert, onBack }: { monatWert: string; onBac
               technikerName: employee?.name || '–',
               monatLabel: `${MONATSNAMEN[monat - 1]} ${jahr}`,
               zeilen,
-              sum: { arbeitNormal: sum.arbeitNormal, arbeitZuschlag50: sum.arbeitZuschlag50, arbeitZuschlag100: sum.arbeitZuschlag100, reiseNormal: sum.reiseNormal, reiseZuschlag50: sum.reiseZuschlag50, reiseZuschlag100: sum.reiseZuschlag100, verpflegung: sum.verpflegung, hotel: sum.hotel },
+              sum,
+              regel,
               fehltage: { krank: zaehleArt('Krank'), schulung: zaehleArt('Schulung'), kurzarbeit: zaehleArt('Kurzarbeit'), urlaub: zaehleArt('Urlaub') },
             })
             pdf.save(`Stundennachweis-${employee?.name?.replace(/\s+/g, '_') || 'Techniker'}-${monatWert}.pdf`)
