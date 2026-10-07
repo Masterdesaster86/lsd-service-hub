@@ -3,8 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../lib/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { fetchOrder, fetchTageskontext } from '../../lib/queries'
-import type { Messprotokoll, OrderWithRelations, Servicebericht, ServiceberichtTag } from '../../lib/types'
+import type { Messprotokoll, OrderWithRelations, Servicebericht, ServiceberichtTag, Wartungsprotokoll } from '../../lib/types'
 import { MessprotokollListe } from '../messprotokoll/MessprotokollListe'
+import { WartungsprotokollListe } from '../wartung/WartungsprotokollListe'
 import { OrderStatusTag, BerichtStatusTag } from '../../components/ui/StatusTag'
 import { customerAddress, mapsLink, telHref, formatDateDE } from '../../lib/format'
 import { calcBerichtTotalsMitKontext, type Tageskontext } from '../../lib/zeit'
@@ -31,6 +32,7 @@ export function OrderDetail() {
   const [berichte, setBerichte] = useState<BerichtRow[] | null>(null)
   const [kontexteProTechniker, setKontexteProTechniker] = useState<Record<string, Tageskontext>>({})
   const [messprotokolle, setMessprotokolle] = useState<Messprotokoll[]>([])
+  const [wartungsprotokolle, setWartungsprotokolle] = useState<Wartungsprotokoll[]>([])
   const [showEdit, setShowEdit] = useState(false)
   const [showNewBericht, setShowNewBericht] = useState(false)
 
@@ -47,6 +49,8 @@ export function OrderDetail() {
     setBerichte(rows)
     const { data: mp } = await supabase.from('messprotokolle').select('*').eq('auftrag_id', id).order('erstellt_am')
     setMessprotokolle(mp || [])
+    const { data: wp } = await supabase.from('wartungsprotokolle').select('*').eq('auftrag_id', id).order('erstellt_am')
+    setWartungsprotokolle(wp || [])
 
     // Für die korrekte 10h-Schwelle: pro Techniker auch die Zeiten seiner
     // anderen Serviceberichte an denselben Kalendertagen laden (z.B. wenn an
@@ -194,6 +198,15 @@ export function OrderDetail() {
           <div className="abschnitt mt-6 mb-2">Messprotokolle</div>
           <MessprotokollListe
             protokolle={messprotokolle}
+            maschinen={Object.fromEntries(order.machines.map((m) => [m.id, m.bezeichnung]))}
+          />
+        </>
+      )}
+      {wartungsprotokolle.length > 0 && (
+        <>
+          <div className="abschnitt mt-6 mb-2">Wartungsprotokolle</div>
+          <WartungsprotokollListe
+            protokolle={wartungsprotokolle}
             maschinen={Object.fromEntries(order.machines.map((m) => [m.id, m.bezeichnung]))}
           />
         </>

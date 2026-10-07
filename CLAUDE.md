@@ -65,6 +65,18 @@ Entwickler): auf Deutsch antworten, verständlich erklären, Ergebnisse knapp zu
   gleich ist.
 - Am 06.10.2026 von Manuel mit echtem Login getestet (Bericht + 2 Tage offline angelegt, mit Netz korrekt hochgeladen).
 
+## Wartungsprotokoll (Inspektionscheckliste, seit 07.10.2026)
+
+- Checkliste in `src/lib/wartung.ts` (9 Gruppen mit Abschnitten, eigene Formulierungen). Je Punkt in
+  `werte`: Status (`geprueft`/`nicht_moeglich`/`entfaellt`), `__ergebnis` 1–3, `__reparatur`,
+  `__angebot`, `__bemerkung`; `_bemerkung` fürs Protokoll. „Geprüft“ belegt Ergebnis 1 vor.
+- Seite `pages/wartung/WartungsprotokollDetail.tsx`: gruppenweise ausfüllen, Zusammenfassung,
+  Abschluss mit Unterschrift Techniker + Kunde (Storage `signatures/wartung/<id>/…`, nur Anlegen
+  erlaubt → Dateiname mit Zeitstempel). Tabelle `wartungsprotokolle` wie `messprotokolle` (RLS gleich),
+  zusätzlich Unterschrift-URLs. Anlegen direkt aus dem Servicebericht (ein offenes je Bericht).
+- PDF `buildWartungPdf` in `pdf.ts`, gleiche Formensprache wie das Messprotokoll, mit Hinweistext
+  (`WARTUNG_HINWEIS`) und Unterschriftsblock. Bewusst ohne Hersteller-Hinweis im Fuß.
+
 ## Messprotokoll
 
 - Prüfpunkt-Kataloge (Schwenkkopf, H-Maschine, T-Maschine = Einbaurundtisch) in

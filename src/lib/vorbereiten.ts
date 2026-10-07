@@ -62,15 +62,16 @@ export async function datenstand(ich: Employee): Promise<string> {
   const maschinen = [...new Set(relevant.flatMap((o) => o.machines.map((m) => m.id)))]
   const kunden = [...new Set(relevant.flatMap((o) => (o.einsatzkunde_id ? [o.einsatzkunde_id] : [])))]
   const leer = { data: [] as unknown[] }
-  const [berichte, protokolle, masch, kund, ansprech] = ids.length
+  const [berichte, protokolle, masch, kund, ansprech, wartung] = ids.length
     ? await Promise.all([
         supabase.from('serviceberichte').select('*').in('auftrag_id', ids).order('id'),
         supabase.from('messprotokolle').select('*').in('auftrag_id', ids).order('id'),
         maschinen.length ? supabase.from('machines').select('*').in('id', maschinen).order('id') : leer,
         kunden.length ? supabase.from('customers').select('*').in('id', kunden).order('id') : leer,
         kunden.length ? supabase.from('ansprechpartner').select('*').in('kunde_id', kunden).order('id') : leer,
+        supabase.from('wartungsprotokolle').select('*').in('auftrag_id', ids).order('id'),
       ])
-    : [leer, leer, leer, leer, leer]
+    : [leer, leer, leer, leer, leer, leer]
   const berichtIds = ((berichte.data || []) as { id: string }[]).map((b) => b.id)
   const [tage, teile] = berichtIds.length
     ? await Promise.all([
@@ -78,7 +79,7 @@ export async function datenstand(ich: Employee): Promise<string> {
         supabase.from('servicebericht_ersatzteile').select('*').in('servicebericht_id', berichtIds).order('id'),
       ])
     : [leer, leer]
-  return hash(JSON.stringify([relevant, berichte.data, protokolle.data, masch.data, kund.data, ansprech.data, tage.data, teile.data]))
+  return hash(JSON.stringify([relevant, berichte.data, protokolle.data, masch.data, kund.data, ansprech.data, tage.data, teile.data, wartung.data]))
 }
 
 // --- Laufender Durchgang (für Knopf und Dialog) -------------------------------
@@ -154,12 +155,13 @@ async function ablauf(ich: Employee, melden: (f: Fortschritt) => void): Promise<
   const relevant = await relevanteAuftraege(ich)
   const ids = relevant.map((o) => o.id)
 
-  const [{ data: berichte }, { data: protokolle }] = ids.length
+  const [{ data: berichte }, { data: protokolle }, { data: wartungen }] = ids.length
     ? await Promise.all([
         supabase.from('serviceberichte').select('id').in('auftrag_id', ids),
         supabase.from('messprotokolle').select('id').in('auftrag_id', ids),
+        supabase.from('wartungsprotokolle').select('id').in('auftrag_id', ids),
       ])
-    : [{ data: [] }, { data: [] }]
+    : [{ data: [] }, { data: [] }, { data: [] }]
 
   const maschinen = new Set<string>()
   const kunden = new Set<string>()
@@ -175,6 +177,7 @@ async function ablauf(ich: Employee, melden: (f: Fortschritt) => void): Promise<
     ...relevant.map((o): [string, string] => [`/auftraege/${o.id}`, `Auftrag #${o.id}`]),
     ...(berichte || []).map((b): [string, string] => [`/berichte/${b.id}`, 'Servicebericht']),
     ...(protokolle || []).map((p): [string, string] => [`/messprotokolle/${p.id}`, 'Messprotokoll']),
+    ...(wartungen || []).map((w): [string, string] => [`/wartungsprotokolle/${w.id}`, 'Wartungsprotokoll']),
     ...[...maschinen].map((id): [string, string] => [`/maschinen/${id}`, 'Maschine']),
     ...[...kunden].map((id): [string, string] => [`/kunden/${id}`, 'Kunde']),
   ]

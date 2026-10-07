@@ -3,8 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../lib/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { fetchOrder, fetchTageskontext } from '../../lib/queries'
-import type { Employee, Machine, Messprotokoll, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from '../../lib/types'
+import type { Employee, Machine, Messprotokoll, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag, Wartungsprotokoll } from '../../lib/types'
 import { MessprotokollListe } from '../messprotokoll/MessprotokollListe'
+import { WartungsprotokollListe } from '../wartung/WartungsprotokollListe'
 import { Icon } from '../../components/ui/Icon'
 import { Typenschild } from '../../components/ui/Typenschild'
 import { BerichtStatusTag } from '../../components/ui/StatusTag'
@@ -36,6 +37,8 @@ export function BerichtDetail() {
   const [techniker, setTechniker] = useState<Employee | null>(null)
   const [hasNachtrag, setHasNachtrag] = useState(false)
   const [messprotokolle, setMessprotokolle] = useState<Messprotokoll[]>([])
+  const [wartungsprotokolle, setWartungsprotokolle] = useState<Wartungsprotokoll[]>([])
+  const [legeWartungAn, setLegeWartungAn] = useState(false)
 
   const [mode, setMode] = useState<'view' | 'sign'>('view')
   const [showTagForm, setShowTagForm] = useState(false)
@@ -54,7 +57,7 @@ export function BerichtDetail() {
     const { data: b } = await supabase.from('serviceberichte').select('*').eq('id', id).maybeSingle()
     if (!b) { setBericht(null); return }
     setBericht(b)
-    const [o, { data: t }, { data: e }, { data: m }, { data: tech }, { data: nachtraege }, { data: mp }] = await Promise.all([
+    const [o, { data: t }, { data: e }, { data: m }, { data: tech }, { data: nachtraege }, { data: mp }, { data: wp }] = await Promise.all([
       fetchOrder(b.auftrag_id),
       supabase.from('servicebericht_tage').select('*').eq('servicebericht_id', b.id).order('datum'),
       supabase.from('servicebericht_ersatzteile').select('*').eq('servicebericht_id', b.id),
@@ -62,8 +65,10 @@ export function BerichtDetail() {
       supabase.from('employees').select('*').eq('id', b.techniker_id).maybeSingle(),
       supabase.from('serviceberichte').select('id').eq('nachtrag_zu', b.id),
       supabase.from('messprotokolle').select('*').eq('servicebericht_id', b.id).order('erstellt_am'),
+      supabase.from('wartungsprotokolle').select('*').eq('servicebericht_id', b.id).order('erstellt_am'),
     ])
     setMessprotokolle(mp || [])
+    setWartungsprotokolle(wp || [])
     setOrder(o)
     setTage(t || [])
     setErsatzteile(e || [])
@@ -307,6 +312,37 @@ export function BerichtDetail() {
       {messprotokolle.length === 0
         ? <div className="text-sm text-ink-soft mb-4">Noch kein Messprotokoll zu diesem Bericht.</div>
         : <MessprotokollListe protokolle={messprotokolle} />}
+
+      {/* ------------------------------------------------ Wartungsprotokoll */}
+      <div className="flex items-center justify-between gap-2 mt-6 mb-2">
+        <div className="abschnitt">Wartungsprotokoll</div>
+        {isOwner && (
+          <button
+            className="btn btn-outline btn-sm"
+            disabled={legeWartungAn}
+            onClick={async () => {
+              // Ein offenes Protokoll zu diesem Bericht wird weiter benutzt statt ein zweites anzulegen.
+              const offenes = wartungsprotokolle.find((w) => w.status === 'offen')
+              if (offenes) { navigate(`/wartungsprotokolle/${offenes.id}`); return }
+              if (!employee) return
+              setLegeWartungAn(true)
+              const { data, error } = await supabase
+                .from('wartungsprotokolle')
+                .insert({ auftrag_id: order.id, maschine_id: bericht.maschine_id, servicebericht_id: bericht.id, techniker_id: employee.id })
+                .select('id')
+                .single()
+              setLegeWartungAn(false)
+              if (error || !data) { toast('Fehler beim Anlegen: ' + error?.message); return }
+              navigate(`/wartungsprotokolle/${data.id}`)
+            }}
+          >
+            <Icon name="hinzufuegen" size={16} /> Wartungsprotokoll
+          </button>
+        )}
+      </div>
+      {wartungsprotokolle.length === 0
+        ? <div className="text-sm text-ink-soft mb-4">Noch kein Wartungsprotokoll zu diesem Bericht.</div>
+        : <WartungsprotokollListe protokolle={wartungsprotokolle} />}
 
       {/* ------------------------------------------------ Ersatzteile */}
       <div className="flex items-center justify-between gap-2 mt-6 mb-2">

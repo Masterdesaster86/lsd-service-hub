@@ -404,6 +404,80 @@ export type Database = {
           },
         ]
       }
+      wartungsprotokolle: {
+        Row: {
+          abgeschlossen_am: string | null
+          abnehmer: string | null
+          auftrag_id: string
+          erstellt_am: string
+          id: string
+          kunde_unterschrift_url: string | null
+          maschine_id: string
+          servicebericht_id: string | null
+          status: string
+          techniker_id: string
+          techniker_unterschrift_url: string | null
+          werte: Json
+        }
+        Insert: {
+          abgeschlossen_am?: string | null
+          abnehmer?: string | null
+          auftrag_id: string
+          erstellt_am?: string
+          id?: string
+          kunde_unterschrift_url?: string | null
+          maschine_id: string
+          servicebericht_id?: string | null
+          status?: string
+          techniker_id: string
+          techniker_unterschrift_url?: string | null
+          werte?: Json
+        }
+        Update: {
+          abgeschlossen_am?: string | null
+          abnehmer?: string | null
+          auftrag_id?: string
+          erstellt_am?: string
+          id?: string
+          kunde_unterschrift_url?: string | null
+          maschine_id?: string
+          servicebericht_id?: string | null
+          status?: string
+          techniker_id?: string
+          techniker_unterschrift_url?: string | null
+          werte?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wartungsprotokolle_auftrag_id_fkey"
+            columns: ["auftrag_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wartungsprotokolle_maschine_id_fkey"
+            columns: ["maschine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wartungsprotokolle_servicebericht_id_fkey"
+            columns: ["servicebericht_id"]
+            isOneToOne: false
+            referencedRelation: "serviceberichte"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wartungsprotokolle_techniker_id_fkey"
+            columns: ["techniker_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_machines: {
         Row: {
           machine_id: string

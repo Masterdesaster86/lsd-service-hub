@@ -16,6 +16,7 @@ export type ServiceberichtErsatzteil = Tables<'servicebericht_ersatzteile'>
 export type Abwesenheit = Tables<'abwesenheiten'>
 export type Urlaubsantrag = Tables<'urlaubsantraege'>
 export type Messprotokoll = Tables<'messprotokolle'>
+export type Wartungsprotokoll = Tables<'wartungsprotokolle'>
 
 export type Role = 'Administrator' | 'Disposition' | 'Techniker' | 'CEO'
 

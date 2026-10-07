@@ -23,7 +23,7 @@ const MAX_ALTER_MS = 45 * 24 * 3600 * 1000
 
 /** Tabellen, deren neue Datensätze eine UUID auf dem Gerät bekommen. */
 const UUID_TABELLEN = new Set([
-  'serviceberichte', 'servicebericht_tage', 'servicebericht_ersatzteile', 'messprotokolle',
+  'serviceberichte', 'servicebericht_tage', 'servicebericht_ersatzteile', 'messprotokolle', 'wartungsprotokolle',
   'machines', 'ansprechpartner', 'customers',
 ])
 
@@ -195,6 +195,7 @@ const TITEL: Record<string, string> = {
   servicebericht_tage: 'Arbeitstag',
   servicebericht_ersatzteile: 'Ersatzteil',
   messprotokolle: 'Messprotokoll',
+  wartungsprotokolle: 'Wartungsprotokoll',
   machines: 'Maschine',
   ansprechpartner: 'Ansprechpartner',
   customers: 'Kunde',

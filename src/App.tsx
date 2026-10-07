@@ -14,6 +14,7 @@ import { Verwaltung } from './pages/verwaltung/Verwaltung'
 import { Mitarbeiter } from './pages/mitarbeiter/Mitarbeiter'
 import { WissensSuche } from './pages/wissen/WissensSuche'
 import { MessprotokollDetail } from './pages/messprotokoll/MessprotokollDetail'
+import { WartungsprotokollDetail } from './pages/wartung/WartungsprotokollDetail'
 
 function RequireRole({ roles, children }: { roles: string[]; children: React.ReactNode }) {
   const { employee } = useAuth()
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/auftraege/:id" element={<OrderDetail />} />
         <Route path="/berichte/:id" element={<BerichtDetail />} />
         <Route path="/messprotokolle/:id" element={<MessprotokollDetail />} />
+        <Route path="/wartungsprotokolle/:id" element={<WartungsprotokollDetail />} />
         <Route path="/kunden" element={<CustomersList />} />
         <Route path="/kunden/:id" element={<CustomerDetail />} />
         <Route path="/maschinen" element={<MachinesList />} />

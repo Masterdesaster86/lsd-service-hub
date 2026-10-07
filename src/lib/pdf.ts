@@ -4,11 +4,15 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { LOGO_SCHRIFTZUG, PDF_HINTERGRUND_URL } from './branding'
-import type { Ansprechpartner, Customer, Employee, Machine, Messprotokoll, Order, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag } from './types'
+import type { Ansprechpartner, Customer, Employee, Machine, Messprotokoll, Order, OrderWithRelations, Servicebericht, ServiceberichtErsatzteil, ServiceberichtTag, Wartungsprotokoll } from './types'
 import { calcBerichtTotalsMitKontext, calcTagMitKontext, type DayTotals, type Tageskontext } from './zeit'
 import { formatDateDE, hhmm } from './format'
 import { wartendesBild } from './offline'
 import { BIG_SHOULDERS_800_TTF } from '../assets/bigShouldersFont'
+import {
+  WARTUNG_BEMERKUNG_KEY, WARTUNG_ERGEBNIS_TEXT, WARTUNG_GRUPPEN, WARTUNG_HINWEIS, alleWartungspunkte,
+  wAngebotKey, wBemerkungKey, wReparaturKey, wartungErgebnis, wartungStatus, type WartungErgebnis, type WartungStatus,
+} from './wartung'
 import { ERGEBNIS_KEY, MESSPROTOKOLL_TYPEN, bemerkungKey, bewerte, gewaehlteStufe, grenzeFuer, messwertZahl, skizzeUrl, type Messpunkt, type MessprotokollTyp } from './messprotokoll'
 
 const GRAPHITE = '#1B1F24'
@@ -886,6 +890,296 @@ export async function buildMessprotokollPdf(input: MessprotokollPdfInput): Promi
       y += h
     }
   }
+
+  mpFuss(doc)
+  return doc
+}
+
+// --- Wartungsprotokoll (Inspektionscheckliste) -------------------------------
+// Gleiche Formensprache wie das Messprotokoll: dunkler Kopfblock, Raster, Gruppen mit
+// Abschnitten, je Punkt Status, Reparatur, Ergebnis 1–3 und Angebot; am Ende Bemerkungen,
+// Hinweis und die beiden Unterschriften.
+
+export function wartungPdfFilename(protokoll: Wartungsprotokoll): string {
+  return `Wartungsprotokoll-${protokoll.auftrag_id}-${protokoll.id.slice(0, 8)}.pdf`
+}
+
+export interface WartungPdfInput {
+  protokoll: Wartungsprotokoll
+  machine: Machine | null
+  kunde: Customer | null
+  techniker: Employee | null
+  abnehmer: string
+  werte: Record<string, string>
+  technikerSignatureDataUrl?: string | null
+  kundeSignatureDataUrl?: string | null
+}
+
+const WP_SPALTEN = { punkt: 100, status: 26, reparatur: 20, ergebnis: 20, angebot: 16 }
+
+const WP_STATUS_TEXT: Record<WartungStatus, string> = { geprueft: 'Geprüft', nicht_moeglich: 'Nicht möglich', entfaellt: 'Entfällt' }
+
+export async function buildWartungPdf(input: WartungPdfInput): Promise<jsPDF> {
+  const { protokoll, machine, kunde, techniker, abnehmer, werte } = input
+  const logo = await logoAlsDataUrl()
+  const doc = neuesPdf()
+  bigShouldersLaden(doc)
+
+  const datum = formatDateDE((protokoll.abgeschlossen_am || protokoll.erstellt_am || '').slice(0, 10))
+  const maschineName = machine?.bezeichnung || protokoll.maschine_id
+  const kurzzeile = `Wartungsprotokoll · Auftrag #${protokoll.auftrag_id} · ${maschineName}${machine?.nummer ? ' · ' + machine.nummer : ''}`
+
+  // Kopfblock
+  doc.setFillColor(MP.papier)
+  doc.rect(0, 0, PAGE_W, 30, 'F')
+  doc.setFillColor(MP.tinte)
+  doc.rect(0, 0, 138, 30, 'F')
+  doc.triangle(138, 0, 150, 0, 138, 30, 'F')
+  doc.setFillColor(MP.akzent)
+  doc.rect(MARGIN, 8.6, 5, 0.7, 'F')
+  mpLabel(doc, 'Wartung · Inspektion', MARGIN + 7, 9.6, MP.hell, 6.3)
+  doc.setFont('BigShoulders', 'normal')
+  doc.setFontSize(27)
+  doc.setTextColor('#ffffff')
+  doc.text('WARTUNGSPROTOKOLL', MARGIN, 20.6)
+  mpLabel(doc, `Auftrag #${protokoll.auftrag_id} · ${maschineName} · ${datum}`, MARGIN, 26, '#c9d0d4', 6.8)
+  const logoH = 9, logoW = logoH * LOGO_RATIO
+  doc.addImage(logo, 'PNG', PAGE_W - MARGIN - logoW, 10.5, logoW, logoH, undefined, 'FAST')
+
+  // Stammdaten
+  let y = 37
+  y = mpRaster(doc, y, [
+    ['Kunde', kunde?.name || '–'],
+    ['Maschine', maschineName],
+    ['Maschinennummer', machine?.nummer || '–'],
+    ['Auftragsnummer', `#${protokoll.auftrag_id}`],
+  ])
+  y = mpRaster(doc, y, [
+    ['Techniker', techniker?.name || '–'],
+    ['Erstellt am', formatDateDE(protokoll.erstellt_am?.slice(0, 10))],
+    ['Abgeschlossen am', protokoll.abgeschlossen_am ? formatDateDE(protokoll.abgeschlossen_am.slice(0, 10)) : '–'],
+    ['Abnehmer', abnehmer || '–'],
+  ])
+  y += 6
+
+  // Legende
+  {
+    const h = 17
+    doc.setDrawColor(MP.linie)
+    doc.setLineWidth(0.3)
+    doc.rect(MARGIN, y, CONTENT_W, h)
+    doc.setLineWidth(0.2)
+    mpLabel(doc, 'Ergebnis', MARGIN + 3, y + 5)
+    ;(['1', '2', '3'] as WartungErgebnis[]).forEach((e, i) => {
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(7.5)
+      doc.setTextColor(MP.tinte)
+      doc.text(e, MARGIN + 24, y + 5 + i * 4)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(7.3)
+      doc.text(WARTUNG_ERGEBNIS_TEXT[e], MARGIN + 28, y + 5 + i * 4)
+    })
+    y += h + 7
+  }
+
+  // Tabelle
+  const S = WP_SPALTEN
+  const x = {
+    punkt: MARGIN,
+    status: MARGIN + S.punkt,
+    reparatur: MARGIN + S.punkt + S.status,
+    ergebnis: MARGIN + S.punkt + S.status + S.reparatur,
+    angebot: MARGIN + S.punkt + S.status + S.reparatur + S.ergebnis,
+  }
+  const tabellenkopf = (yy: number): number => {
+    mpLabel(doc, 'Prüfpunkt', x.punkt, yy + 3.5)
+    mpLabel(doc, 'Status', x.status, yy + 3.5)
+    mpLabel(doc, 'Reparatur', x.reparatur, yy + 3.5)
+    mpLabel(doc, 'Ergebnis', x.ergebnis, yy + 3.5)
+    mpLabel(doc, 'Angebot', x.angebot, yy + 3.5)
+    doc.setDrawColor(MP.tinte)
+    doc.setLineWidth(0.4)
+    doc.line(MARGIN, yy + 5.2, PAGE_W - MARGIN, yy + 5.2)
+    doc.setLineWidth(0.2)
+    return yy + 6.5
+  }
+  const neueSeite = () => { y = mpFolgeseite(doc, logo, kurzzeile); y = tabellenkopf(y) }
+
+  const alle = alleWartungspunkte()
+  const bearbeitet = alle.filter((p) => wartungStatus(werte, p.key))
+  let nummer = 0
+  for (const g of WARTUNG_GRUPPEN) {
+    const inGruppe = g.abschnitte.flatMap((a) => a.punkte).filter((p) => wartungStatus(werte, p.key))
+    if (!inGruppe.length) continue
+    nummer++
+    if (y + 26 > MP_SEITENENDE) y = mpFolgeseite(doc, logo, kurzzeile)
+    y = mpAbschnitt(doc, `${String(nummer).padStart(2, '0')} · ${g.titel}`, y + 2)
+    y = tabellenkopf(y)
+    for (const a of g.abschnitte) {
+      const punkte = a.punkte.filter((p) => wartungStatus(werte, p.key))
+      if (!punkte.length) continue
+      if (a.titel) {
+        if (y + 12 > MP_SEITENENDE) neueSeite()
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(8)
+        doc.setTextColor(MP.tinte)
+        doc.text(a.titel, x.punkt, y + 4.2)
+        doc.setDrawColor(MP.linie)
+        doc.line(MARGIN, y + 6, PAGE_W - MARGIN, y + 6)
+        y += 6
+      }
+      for (const p of punkte) {
+        const status = wartungStatus(werte, p.key)!
+        const ergebnis = wartungErgebnis(werte, p.key)
+        const bemerkung = (werte[wBemerkungKey(p.key)] || '').trim()
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8)
+        const zeilen = doc.splitTextToSize(p.bezeichnung, S.punkt - 4) as string[]
+        doc.setFontSize(6.8)
+        const bemZeilen = bemerkung ? (doc.splitTextToSize(bemerkung, S.punkt - 6) as string[]) : []
+        const h = Math.max(6.6, 2.4 + zeilen.length * 3.4 + bemZeilen.length * 3 + 1.6)
+        if (y + h > MP_SEITENENDE) neueSeite()
+        const mitte = y + h / 2
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8)
+        doc.setTextColor(MP.tinte)
+        doc.text(zeilen, x.punkt + (a.titel ? 3 : 0), y + 4.4)
+        if (bemZeilen.length) {
+          doc.setFontSize(6.8)
+          doc.setTextColor(MP.weich)
+          doc.text(bemZeilen, x.punkt + (a.titel ? 5 : 2), y + 4.4 + zeilen.length * 3.4)
+        }
+        // Status
+        if (status === 'geprueft') {
+          doc.setFillColor(MP.tinte)
+          doc.rect(x.status, mitte - 0.9, 1.8, 1.8, 'F')
+        } else {
+          doc.setDrawColor(MP.weich)
+          doc.rect(x.status, mitte - 0.9, 1.8, 1.8)
+        }
+        mpLabel(doc, p.art === 'erledigt' && status === 'geprueft' ? 'Erledigt' : WP_STATUS_TEXT[status], x.status + 3.2, mitte + 1, status === 'geprueft' ? MP.tinte : MP.weich, 5.8)
+        // Reparatur / Angebot
+        const ja = (xx: number, an: boolean) => {
+          doc.setFont('helvetica', an ? 'bold' : 'normal')
+          doc.setFontSize(7)
+          doc.setTextColor(an ? MP.tinte : MP.weich)
+          doc.text(an ? 'JA' : '–', xx + 6, mitte + 1, { align: 'center' })
+        }
+        if (status === 'geprueft' && p.art !== 'erledigt') {
+          ja(x.reparatur, werte[wReparaturKey(p.key)] === '1')
+          ja(x.angebot, werte[wAngebotKey(p.key)] === '1')
+          // Ergebnis: drei Kästchen, das gewählte gefüllt (3 in Akzentfarbe)
+          ;(['1', '2', '3'] as WartungErgebnis[]).forEach((e, i) => {
+            const bx = x.ergebnis + i * 4.6, by = mitte - 2, k = 3.8
+            const aktiv = ergebnis === e
+            if (aktiv) {
+              doc.setFillColor(e === '3' ? MP.akzent : MP.tinte)
+              doc.rect(bx, by, k, k, 'F')
+            } else {
+              doc.setDrawColor(MP.linie)
+              doc.rect(bx, by, k, k)
+            }
+            doc.setFont('helvetica', 'bold')
+            doc.setFontSize(6)
+            doc.setTextColor(aktiv ? '#ffffff' : MP.linie)
+            doc.text(e, bx + k / 2, by + 2.8, { align: 'center' })
+          })
+        } else if (status === 'geprueft') {
+          doc.setFillColor(MP.tinte)
+          doc.rect(x.ergebnis + 4.6, mitte - 2, 3.8, 3.8, 'F')
+          doc.setFont('helvetica', 'bold')
+          doc.setFontSize(6)
+          doc.setTextColor('#ffffff')
+          doc.text('1', x.ergebnis + 4.6 + 1.9, mitte + 0.8, { align: 'center' })
+        }
+        doc.setDrawColor(MP.linie)
+        doc.line(MARGIN, y + h, PAGE_W - MARGIN, y + h)
+        y += h
+      }
+    }
+    y += 3
+  }
+
+  if (!bearbeitet.length) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(MP.weich)
+    doc.text('Keine Prüfpunkte bearbeitet.', MARGIN, y + 4)
+    y += 12
+  }
+
+  // Bemerkungen
+  const eintraege: string[] = []
+  bearbeitet.forEach((p) => {
+    const e = wartungErgebnis(werte, p.key)
+    if (e === '2' || e === '3') {
+      const text = e === '2' ? 'erste Verschleißspuren, Austausch kurzfristig empfohlen' : 'Verschleißgrenze erreicht, Austausch schnellstmöglich erforderlich'
+      const ort = p.abschnitt ? `${p.abschnitt}, ` : `${p.gruppe}, `
+      eintraege.push(`${ort}${p.bezeichnung}: ${text}.${werte[wAngebotKey(p.key)] === '1' ? ' Angebot gewünscht.' : ''}${werte[wReparaturKey(p.key)] === '1' ? ' Reparatur / Tausch durchgeführt.' : ''}`)
+    } else if (werte[wReparaturKey(p.key)] === '1' || werte[wAngebotKey(p.key)] === '1') {
+      eintraege.push(`${p.abschnitt ? p.abschnitt + ', ' : ''}${p.bezeichnung}:${werte[wReparaturKey(p.key)] === '1' ? ' Reparatur / Tausch durchgeführt.' : ''}${werte[wAngebotKey(p.key)] === '1' ? ' Angebot gewünscht.' : ''}`)
+    }
+  })
+  const bemerkung = (werte[WARTUNG_BEMERKUNG_KEY] || '').trim()
+  if (bemerkung) eintraege.push(bemerkung)
+  if (eintraege.length) {
+    if (y + 20 > MP_SEITENENDE) y = mpFolgeseite(doc, logo, kurzzeile)
+    y = mpAbschnitt(doc, 'Bemerkungen', y + 2)
+    doc.setDrawColor(MP.tinte)
+    doc.setLineWidth(0.4)
+    doc.line(MARGIN, y - 1, PAGE_W - MARGIN, y - 1)
+    doc.setLineWidth(0.2)
+    for (const text of eintraege) {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      const zeilen = doc.splitTextToSize(text, CONTENT_W - 8) as string[]
+      const h = zeilen.length * 3.6 + 4.5
+      if (y + h > MP_SEITENENDE) y = mpFolgeseite(doc, logo, kurzzeile)
+      doc.setFillColor(MP.tinte)
+      doc.rect(MARGIN, y + 3.4, 3, 0.5, 'F')
+      doc.setTextColor(MP.tinte)
+      doc.text(zeilen, MARGIN + 6, y + 4.6)
+      doc.setDrawColor(MP.linie)
+      doc.line(MARGIN, y + h, PAGE_W - MARGIN, y + h)
+      y += h
+    }
+  }
+
+  // Hinweis
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(6.8)
+  const hinweis = doc.splitTextToSize(WARTUNG_HINWEIS, CONTENT_W - 16) as string[]
+  if (y + hinweis.length * 3 + 8 > MP_SEITENENDE) y = mpFolgeseite(doc, logo, kurzzeile)
+  y += 5
+  mpLabel(doc, 'Hinweis', MARGIN, y + 2.6, MP.tinte, 6)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(6.8)
+  doc.setTextColor(MP.weich)
+  doc.text(hinweis, MARGIN + 16, y + 2.6)
+  y += hinweis.length * 3 + 6
+
+  // Unterschriften
+  const sigH = 20
+  if (y + sigH + 18 > MP_SEITENENDE) y = mpFolgeseite(doc, logo, kurzzeile)
+  y += 4
+  const spalteW = (CONTENT_W - 10) / 2
+  const abgeschlossen = protokoll.abgeschlossen_am ? new Date(protokoll.abgeschlossen_am) : null
+  const zeitText = abgeschlossen ? `${formatDateDE(protokoll.abgeschlossen_am!.slice(0, 10))} · ${abgeschlossen.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}` : ''
+  const unterschrift = (xx: number, bild: string | null | undefined, rolle: string, name: string) => {
+    if (bild) {
+      const { width, height } = doc.getImageProperties(bild)
+      const f = Math.min((spalteW - 4) / width, sigH / height)
+      doc.addImage(bild, 'PNG', xx + 2, y + sigH - height * f, width * f, height * f)
+    }
+    doc.setDrawColor(MP.tinte)
+    doc.setLineWidth(0.4)
+    doc.line(xx, y + sigH + 1, xx + spalteW, y + sigH + 1)
+    doc.setLineWidth(0.2)
+    mpLabel(doc, `${rolle} · ${name || '–'}`, xx, y + sigH + 5)
+    if (bild && zeitText) mpLabel(doc, `Digital signiert · ${zeitText}`, xx, y + sigH + 8.5, MP.weich, 5.6)
+  }
+  unterschrift(MARGIN, input.technikerSignatureDataUrl, 'Techniker', techniker?.name || '')
+  unterschrift(MARGIN + spalteW + 10, input.kundeSignatureDataUrl, 'Auftraggeber', [kunde?.name, abnehmer].filter(Boolean).join(' · '))
 
   mpFuss(doc)
   return doc
