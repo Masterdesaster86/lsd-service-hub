@@ -9,7 +9,7 @@ import { WartungsprotokollListe } from '../wartung/WartungsprotokollListe'
 import { Icon } from '../../components/ui/Icon'
 import { Typenschild } from '../../components/ui/Typenschild'
 import { BerichtStatusTag } from '../../components/ui/StatusTag'
-import { WOCHENTAGE, calcBerichtSpesen, calcBerichtTotalsMitKontext, calcTagMitKontext, istSamstag, istSonnOderFeiertag, type Tageskontext } from '../../lib/zeit'
+import { WOCHENTAGE, calcBerichtTotalsMitKontext, calcTagMitKontext, istSamstag, istSonnOderFeiertag, type Tageskontext } from '../../lib/zeit'
 import { hhmm } from '../../lib/format'
 import { berichtPdfFilename, buildBerichtPdf, sharePdf, urlToDataUrl } from '../../lib/pdf'
 import { adresseInZwischenablage, berichtMailBetreff, berichtMailText, berichtMailtoUrl } from '../../lib/berichtMail'
@@ -88,7 +88,6 @@ export function BerichtDetail() {
   const isOwner = employee?.id === bericht.techniker_id
   const editable = bericht.status === 'offen' && isOwner
   const totals = calcBerichtTotalsMitKontext(tage, tageskontext)
-  const spesen = calcBerichtSpesen(tage)
   const letzterTag = tage[tage.length - 1]
   // Die Rückreise darf per Nachtrag ergänzt werden, solange der Bericht nicht abgerechnet ist.
   const letzteRueckreiseFehlt = tage.length > 0 && bericht.status === 'abgeschlossen' && !bericht.abgerechnet && !letzterTag.rueckreise_bis && !hasNachtrag
@@ -382,9 +381,8 @@ export function BerichtDetail() {
           ['Reise +50 %', <span className="font-mono">{h(totals.reiseZuschlag50)}</span>],
           totals.reiseZuschlag100 > 0 && ['Reise +100 %', <span className="font-mono">{h(totals.reiseZuschlag100)}</span>],
           ['Gesamt', <span className="font-mono font-bold">{h(totals.gesamt)}</span>],
-          tage.length > 0 && ['Verpflegung', <span className="font-mono">{euro(spesen.verpflegungGesamt)}</span>],
-          tage.length > 0 && ['Hotelkosten', <span className="font-mono">{euro(spesen.hotelGesamt)}</span>],
-          tage.length > 0 && ['Spesen gesamt', <span className="font-mono font-bold">{euro(spesen.gesamt)}</span>],
+          // Keine Spesen im Servicebericht: der Kunde bekommt eine Pauschale, die Spesen des
+          // Technikers stehen im Monats-Stundennachweis (dort je Kalendertag gerechnet).
         ]}
       />
 
