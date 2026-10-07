@@ -9,20 +9,28 @@ const ORDER_SELECT = `
   einsatzkunde:customers!orders_einsatzkunde_id_fkey(*),
   ansprechpartner:ansprechpartner(*),
   order_machines(machines(*)),
-  order_techniker(employees(*))
+  order_techniker(employees(*)),
+  serviceberichte(abgeschlossen_am, abgerechnet_am)
 `
 
 type RawOrder = Record<string, unknown> & {
   order_machines: { machines: unknown }[]
   order_techniker: { employees: unknown }[]
+  serviceberichte?: { abgeschlossen_am: string | null; abgerechnet_am: string | null }[]
 }
 
+const spaetestes = (werte: (string | null)[]) => werte.filter((w): w is string => !!w).sort().pop() ?? null
+
 function mapOrder(raw: RawOrder): OrderWithRelations {
-  const { order_machines, order_techniker, ...rest } = raw
+  const { order_machines, order_techniker, serviceberichte, ...rest } = raw
+  const berichte = serviceberichte || []
   return {
     ...(rest as unknown as OrderWithRelations),
     machines: order_machines.map((r) => r.machines).filter(Boolean) as OrderWithRelations['machines'],
     techniker: order_techniker.map((r) => r.employees).filter(Boolean) as OrderWithRelations['techniker'],
+    // Für die Sortierung der abgeschlossenen/abgerechneten Aufträge: der jüngste Abschluss bzw. die jüngste Abrechnung.
+    zuletzt_abgeschlossen: spaetestes(berichte.map((b) => b.abgeschlossen_am)),
+    zuletzt_abgerechnet: spaetestes(berichte.map((b) => b.abgerechnet_am)),
   }
 }
 

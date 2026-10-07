@@ -92,11 +92,17 @@ export function OrdersList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sichtbar, istTechniker])
 
+  // Abgeschlossene und abgerechnete Aufträge: was zuletzt abgeschlossen bzw. abgerechnet wurde, steht oben.
+  const nachAbschluss = tab === 'erledigt' || tab === 'abgerechnet'
   const filtered = useMemo(() => {
     const liste = sichtbar.filter((o) => reiterFuer(o.status) === tab)
+    if (nachAbschluss) {
+      const zeit = (o: OrderWithRelations) => (tab === 'abgerechnet' ? o.zuletzt_abgerechnet : o.zuletzt_abgeschlossen) || o.zuletzt_abgeschlossen || ''
+      return [...liste].sort((a, b) => zeit(b).localeCompare(zeit(a)) || vergleicheAuftraege(a, b, 'einsatz_ab'))
+    }
     return [...liste].sort((a, b) => vergleicheAuftraege(a, b, sortMode))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sichtbar, tab, sortMode, istTechniker])
+  }, [sichtbar, tab, sortMode, istTechniker, nachAbschluss])
 
   const roleNote = employee?.role === 'Techniker'
     ? `Gefiltert auf deine eigenen Aufträge (${employee.name})`
@@ -153,9 +159,13 @@ export function OrdersList() {
 
       <div className="flex items-center gap-3 mb-4">
         <label className="!mb-0 shrink-0" htmlFor="sortierung">Sortierung</label>
-        <select id="sortierung" className="sm:max-w-[300px]" value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)}>
-          {SORT_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-        </select>
+        {nachAbschluss ? (
+          <span className="text-[14px] text-ink-soft">{tab === 'abgerechnet' ? 'Zuletzt abgerechnet zuerst' : 'Zuletzt abgeschlossen zuerst'}</span>
+        ) : (
+          <select id="sortierung" className="sm:max-w-[300px]" value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)}>
+            {SORT_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+          </select>
+        )}
       </div>
 
       {orders === null ? (

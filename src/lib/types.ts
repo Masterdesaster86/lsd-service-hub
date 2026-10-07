@@ -34,4 +34,7 @@ export interface OrderWithRelations extends Order {
   ansprechpartner: Ansprechpartner | null
   machines: Machine[]
   techniker: Employee[]
+  /** Jüngster Berichtsabschluss bzw. jüngste Abrechnung (nur über fetchOrders/fetchOrder gefüllt). */
+  zuletzt_abgeschlossen?: string | null
+  zuletzt_abgerechnet?: string | null
 }
