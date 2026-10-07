@@ -50,6 +50,8 @@ Entwickler): auf Deutsch antworten, verständlich erklären, Ergebnisse knapp zu
 - Neue Zeilen in `serviceberichte`, `servicebericht_tage`, `servicebericht_ersatzteile`,
   `messprotokolle` bekommen ihre UUID auf dem Gerät (doppeltes Hochladen → 23505 = erledigt).
 - `public/sw.js` + `precache.json` (Vite-Plugin in `vite.config.ts`): App startet ohne Netz.
+  Das Manifest nutzt **relative** Pfade (`./auftraege`, `./`), weil es unter `/neu/` sonst auf die
+  alte App an der Wurzel zeigte — Kaltstart vom Home-Bildschirm scheiterte dann offline.
 - Anzeige/Dialog: `components/OfflineStatus.tsx`; „Für Einsatz vorbereiten“ (`lib/vorbereiten.ts`)
   öffnet die relevanten Seiten in unsichtbaren iframes, damit ihre Abfragen gespeichert werden.
 - AuthContext nutzt offline die gespeicherte Anmeldung, auch wenn das Token abgelaufen ist.
