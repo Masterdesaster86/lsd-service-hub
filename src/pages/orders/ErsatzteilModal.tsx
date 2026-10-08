@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import { Modal, ModalActions, ModalTitle } from '../../components/ui/Modal'
@@ -23,6 +23,26 @@ export function ErsatzteilModal({ berichtId, onClose, onSaved }: { berichtId: st
   const [verkauf, setVerkauf] = useState('')
   const [artikelnummer, setArtikelnummer] = useState('')
   const [saving, setSaving] = useState(false)
+  // Suche im easybill-Katalog (nur Büro): ein Tipp übernimmt Bezeichnung, Nummer und Verkaufspreis
+  const [suche, setSuche] = useState('')
+  const [treffer, setTreffer] = useState<{ id: number; nummer: string | null; bezeichnung: string; preis: number | null }[] | null>(null)
+  const [gewaehlt, setGewaehlt] = useState<number | null>(null)
+  useEffect(() => {
+    if (!mitPreisen || suche.trim().length < 2) { setTreffer(null); return }
+    const t = setTimeout(async () => {
+      try { setTreffer((await easybillAufruf<{ treffer: typeof treffer }>({ aktion: 'artikel_suchen', suche })).treffer) }
+      catch { setTreffer([]) }
+    }, 400)
+    return () => clearTimeout(t)
+  }, [suche, mitPreisen]) // eslint-disable-line react-hooks/exhaustive-deps
+  function uebernehmen(t: NonNullable<typeof treffer>[number]) {
+    if (!bezeichnung.trim()) setBezeichnung(t.bezeichnung)
+    setArtikelnummer(t.nummer || '')
+    if (t.preis != null) setVerkauf(text(t.preis))
+    setGewaehlt(t.id)
+    setSuche(''); setTreffer(null)
+    toast(`easybill-Artikel ${t.nummer || ''} übernommen.`)
+  }
 
   // Verkaufspreis = Einkauf + 50 %, solange nichts anderes eingetragen wurde
   function einkaufAendern(wert: string) {
@@ -43,7 +63,7 @@ export function ErsatzteilModal({ berichtId, onClose, onSaved }: { berichtId: st
       id_nummer: idNummer.trim() || null,
       bezeichnung: bezeichnung.trim(),
       menge,
-      ...(mitPreisen ? { einkaufspreis: ek, verkaufspreis: vk, artikelnummer: artikelnummer.trim() || null } : {}),
+      ...(mitPreisen ? { einkaufspreis: ek, verkaufspreis: vk, artikelnummer: artikelnummer.trim() || null, easybill_position_id: gewaehlt } : {}),
     }).select('id').single()
     if (error || !data) { setSaving(false); toast('Fehler: ' + error?.message); return }
 
@@ -75,6 +95,22 @@ export function ErsatzteilModal({ berichtId, onClose, onSaved }: { berichtId: st
       {mitPreisen && (
         <div className="border-t border-line mt-4 pt-3.5">
           <div className="abschnitt mb-2">Für die Rechnung (optional)</div>
+          <div className="mb-3">
+            <label>In easybill suchen</label>
+            <input value={suche} onChange={(e) => setSuche(e.target.value)} placeholder="Bezeichnung oder Artikelnummer" />
+            {treffer && (
+              <div className="bg-white border border-line mt-1.5 max-h-[220px] overflow-y-auto">
+                {treffer.length === 0 ? <div className="p-2.5 text-sm text-ink-soft">Kein passender Artikel in easybill.</div>
+                  : treffer.map((t) => (
+                    <button key={t.id} type="button" onClick={() => uebernehmen(t)}
+                      className="w-full text-left px-3 py-2 border-b border-line last:border-b-0 bg-transparent border-x-0 border-t-0 cursor-pointer hover:bg-paper">
+                      <div className="text-[14.5px]">{t.bezeichnung}</div>
+                      <div className="font-mono text-[12px] text-ink-soft">{t.nummer || '–'} · {t.preis == null ? '–' : `${text(t.preis)} €`}</div>
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
           <div className="grid grid-cols-3 gap-3.5 max-sm:grid-cols-1">
             <div><label>Einkauf netto (€)</label><input inputMode="decimal" value={einkauf} onChange={(e) => einkaufAendern(e.target.value)} placeholder="z.B. 6,00" /></div>
             <div><label>Verkauf netto (€)</label><input inputMode="decimal" value={verkauf} onChange={(e) => setVerkauf(e.target.value)} placeholder="Einkauf + 50 %" /></div>
