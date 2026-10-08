@@ -114,24 +114,33 @@ export type Database = {
       }
       customers: {
         Row: {
+          easybill_id: number | null
           id: string
+          kundennummer: string | null
           name: string
+          preisstufe: string | null
           ort: string | null
           plz: string | null
           rechnungs_email: string | null
           strasse: string | null
         }
         Insert: {
+          easybill_id?: number | null
           id?: string
+          kundennummer?: string | null
           name: string
+          preisstufe?: string | null
           ort?: string | null
           plz?: string | null
           rechnungs_email?: string | null
           strasse?: string | null
         }
         Update: {
+          easybill_id?: number | null
           id?: string
+          kundennummer?: string | null
           name?: string
+          preisstufe?: string | null
           ort?: string | null
           plz?: string | null
           rechnungs_email?: string | null

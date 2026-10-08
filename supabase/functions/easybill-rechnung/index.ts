@@ -314,6 +314,74 @@ Deno.serve(async (req: Request) => {
       return antwort({ ok: true })
     }
 
+    // ---------- Kunden und Auftraege in easybill anlegen ----------
+
+    type AppKunde = { id: string; name: string; strasse: string | null; plz: string | null; ort: string | null; rechnungs_email: string | null; easybill_id: number | null; kundennummer: string | null; preisstufe: string | null }
+    const kundenFelder = (k: AppKunde) => {
+      const plz = (k.plz || '').trim()
+      const oesterreich = /^A-?\s*\d/i.test(plz)
+      return {
+        company_name: k.name,
+        personal: false,
+        street: k.strasse || '',
+        zip_code: plz.replace(/^A-?\s*/i, ''),
+        city: k.ort || '',
+        country: oesterreich ? 'AT' : 'DE',
+        sale_price_level: k.preisstufe && k.preisstufe !== 'SALEPRICE' ? k.preisstufe : null,
+        emails: k.rechnungs_email ? [k.rechnungs_email] : [],
+      }
+    }
+    /** Sorgt dafuer, dass der App-Kunde in easybill existiert; legt ihn sonst an. */
+    async function kundeSicherstellen(customerId: string): Promise<{ easybill_id: number; kundennummer: string; angelegt: boolean }> {
+      const { data: k } = await admin.from('customers').select('*').eq('id', customerId).maybeSingle()
+      if (!k) throw new Error('Kunde in der App nicht gefunden.')
+      const kunde = k as AppKunde
+      if (kunde.easybill_id) return { easybill_id: kunde.easybill_id, kundennummer: kunde.kundennummer || '', angelegt: false }
+      const neu = await eb('/customers', { method: 'POST', body: JSON.stringify(kundenFelder(kunde)) })
+      await admin.from('customers').update({ easybill_id: neu.id, kundennummer: neu.number }).eq('id', customerId)
+      return { easybill_id: neu.id, kundennummer: neu.number, angelegt: true }
+    }
+
+    // --- Kunde in easybill anlegen (nach dem Anlegen in der App) ---
+    if (aktion === 'kunde_anlegen') {
+      return antwort(await kundeSicherstellen(String(body.customer_id)))
+    }
+
+    // --- Kundendaten (Name, Adresse, Preisstufe, Rechnungs-E-Mail) nach easybill uebertragen ---
+    if (aktion === 'kunde_aktualisieren') {
+      const { data: k } = await admin.from('customers').select('*').eq('id', String(body.customer_id)).maybeSingle()
+      if (!k) return antwort({ fehler: 'Kunde nicht gefunden.' }, 404)
+      const kunde = k as AppKunde
+      if (!kunde.easybill_id) return antwort(await kundeSicherstellen(kunde.id))
+      await eb(`/customers/${kunde.easybill_id}`, { method: 'PUT', body: JSON.stringify(kundenFelder(kunde)) })
+      return antwort({ ok: true, easybill_id: kunde.easybill_id, kundennummer: kunde.kundennummer })
+    }
+
+    // --- Bestehende App-Kunden ueber die easybill-Kundennummer verknuepfen ---
+    if (aktion === 'kunden_verknuepfen') {
+      const liste = (body.zuordnung || []) as { customer_id: string; kundennummer: string }[]
+      const ergebnis: { customer_id: string; kundennummer: string; ok: boolean; name?: string; fehler?: string }[] = []
+      for (const z of liste) {
+        const r = await eb(`/customers?number=${encodeURIComponent(z.kundennummer)}&limit=5`)
+        const treffer = (r.items || []).find((c: { number: string }) => c.number === z.kundennummer)
+        if (!treffer) { ergebnis.push({ ...z, ok: false, fehler: 'Kundennummer nicht in easybill gefunden' }); continue }
+        const { error } = await admin.from('customers').update({ easybill_id: treffer.id, kundennummer: treffer.number, preisstufe: treffer.sale_price_level || null }).eq('id', z.customer_id)
+        ergebnis.push({ ...z, ok: !error, name: treffer.company_name || treffer.display_name, fehler: error?.message })
+      }
+      return antwort({ ergebnis })
+    }
+
+    // --- Serviceauftrag in easybill anlegen; easybill vergibt die Auftragsnummer ---
+    if (aktion === 'auftrag_anlegen') {
+      const auftraggeber = await kundeSicherstellen(String(body.auftraggeber_id))
+      const neu = await eb('/documents', { method: 'POST', body: JSON.stringify({ type: 'CHARGE', customer_id: auftraggeber.easybill_id, pdf_template: '90602', text_prefix: '<br>', text: '<br>' }) })
+      // Erst mit dem Abschliessen bekommt der Auftrag seine Nummer
+      await eb(`/documents/${neu.id}/done`, { method: 'PUT' })
+      const fertig = await eb(`/documents/${neu.id}`)
+      if (!fertig.number) return antwort({ fehler: 'easybill hat keine Auftragsnummer vergeben.' }, 502)
+      return antwort({ nummer: String(fertig.number), easybill_id: neu.id, kunde_angelegt: auftraggeber.angelegt })
+    }
+
     return antwort({ fehler: 'Unbekannte Aktion.' }, 400)
   } catch (e) {
     const status = e instanceof EasybillFehler ? (e.status >= 500 ? 502 : 400) : 500

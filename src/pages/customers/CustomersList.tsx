@@ -5,6 +5,7 @@ import type { Customer, Machine } from '../../lib/types'
 import { CustomerFormModal } from './CustomerFormModal'
 import { Icon } from '../../components/ui/Icon'
 import { Suchfeld, passtZurSuche } from '../../components/ui/Suchfeld'
+import { useAuth } from '../../lib/AuthContext'
 
 type SortMode = 'name' | 'ort'
 
@@ -17,6 +18,7 @@ const SORT_SPEICHER_KEY = 'lsd-kunden-sortierung'
 
 export function CustomersList() {
   const navigate = useNavigate()
+  const { employee } = useAuth()
   const [customers, setCustomers] = useState<Customer[] | null>(null)
   const [machines, setMachines] = useState<Machine[]>([])
   const [showNew, setShowNew] = useState(false)
@@ -61,7 +63,9 @@ export function CustomersList() {
           <p className="eyebrow">Firmenstamm</p>
           <h1>Kunden</h1>
         </div>
-        <button className="btn btn-amber max-sm:w-full" onClick={() => setShowNew(true)}><Icon name="hinzufuegen" size={20} /> Neuer Kunde</button>
+        {employee?.role !== 'Techniker' && (
+          <button className="btn btn-amber max-sm:w-full" onClick={() => setShowNew(true)}><Icon name="hinzufuegen" size={20} /> Neuer Kunde</button>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2 mb-3">

@@ -6,7 +6,7 @@ import { darfStammdatenAendern } from '../../lib/rechte'
 import type { Ansprechpartner, Customer, Machine } from '../../lib/types'
 import { useConfirm } from '../../components/ui/ConfirmProvider'
 import { useToast } from '../../components/ui/Toast'
-import { CustomerFormModal } from './CustomerFormModal'
+import { CustomerFormModal, preisstufeLabel } from './CustomerFormModal'
 import { AnsprechpartnerFormModal } from './AnsprechpartnerFormModal'
 import { MachineFormModal } from '../machines/MachineFormModal'
 import { Icon } from '../../components/ui/Icon'
@@ -89,6 +89,8 @@ export function CustomerDetail() {
         zeilen={[
           ['Adresse', <a href={mapsLink(adresse)} target="_blank" rel="noreferrer" className="text-steel">{adresse}</a>],
           ['Rechnungen an', customer.rechnungs_email ? <a href={`mailto:${customer.rechnungs_email}`} className="text-steel break-all">{customer.rechnungs_email}</a> : '–'],
+          ['easybill-Kundennr.', <span className="font-mono">{customer.kundennummer || 'noch nicht verknüpft'}</span>],
+          darfAendern && ['Preisstufe', preisstufeLabel(customer.preisstufe)],
         ]}
       />
       {darfAendern && (

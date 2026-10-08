@@ -7,6 +7,7 @@ import { useToast } from '../../components/ui/Toast'
 import { CustomerFormModal } from '../customers/CustomerFormModal'
 import { AnsprechpartnerFormModal } from '../customers/AnsprechpartnerFormModal'
 import { MachineFormModal } from '../machines/MachineFormModal'
+import { easybillAufruf } from '../../lib/easybillRechnung'
 
 interface Props {
   order?: OrderWithRelations
@@ -23,7 +24,6 @@ export function OrderFormModal({ order, onClose, onSaved }: Props) {
   const [ansprechpartner, setAnsprechpartner] = useState<Ansprechpartner[]>([])
   const [saving, setSaving] = useState(false)
 
-  const [nr, setNr] = useState(order?.id || '')
   const [auftraggeberId, setAuftraggeberId] = useState(order?.auftraggeber_id || '')
   const [einsatzkundeId, setEinsatzkundeId] = useState(order?.einsatzkunde_id || '')
   const [einsatzbeginn, setEinsatzbeginn] = useState(order?.einsatzbeginn || '')
@@ -88,7 +88,6 @@ export function OrderFormModal({ order, onClose, onSaved }: Props) {
   }
 
   async function handleSave() {
-    if (!editing && !nr.trim()) { toast('Bitte die Auftragsnummer aus easybill eintragen.'); return }
     if (!auftraggeberId || !einsatzkundeId) { toast('Bitte Auftraggeber und Einsatzkunde wählen.'); return }
     setSaving(true)
     try {
@@ -114,6 +113,9 @@ export function OrderFormModal({ order, onClose, onSaved }: Props) {
         toast('Auftrag aktualisiert.')
         onSaved(order!.id)
       } else {
+        // Die Auftragsnummer vergibt easybill: Serviceauftrag dort anlegen, Nummer übernehmen.
+        const angelegt = await easybillAufruf<{ nummer: string; kunde_angelegt: boolean }>({ aktion: 'auftrag_anlegen', auftraggeber_id: auftraggeberId, einsatzkunde_id: einsatzkundeId })
+        const nr = angelegt.nummer
         const { error } = await supabase.from('orders').insert({
           id: nr.trim(),
           auftraggeber_id: auftraggeberId,
@@ -134,7 +136,7 @@ export function OrderFormModal({ order, onClose, onSaved }: Props) {
         }
         if (technikerIds.length) await supabase.from('order_techniker').insert(technikerIds.map((techniker_id) => ({ order_id: nr.trim(), techniker_id })))
         if (machineIds.length) await supabase.from('order_machines').insert(machineIds.map((machine_id) => ({ order_id: nr.trim(), machine_id })))
-        toast('Auftrag angelegt.')
+        toast(`Auftrag ${nr} in easybill und in der App angelegt.${angelegt.kunde_angelegt ? ' Der Auftraggeber wurde dabei in easybill neu angelegt.' : ''}`)
         onSaved(nr.trim())
       }
     } catch (e) {
@@ -147,15 +149,9 @@ export function OrderFormModal({ order, onClose, onSaved }: Props) {
   return (
     <Modal onClose={onClose} width={640}>
       <ModalTitle>{editing ? `Auftrag #${order!.id} bearbeiten` : 'Neuer Serviceauftrag'}</ModalTitle>
-      {!editing && <p className="text-sm text-ink-soft -mt-1 mb-4">Auftragsnummer kommt aus easybill und wird nach dem Anlegen gesperrt.</p>}
+      {!editing && <p className="text-sm text-ink-soft -mt-1 mb-4">Beim Anlegen entsteht der Serviceauftrag auch in easybill, die Auftragsnummer kommt von dort.</p>}
 
       <div className="grid grid-cols-2 gap-3.5 max-sm:grid-cols-1">
-        {!editing && (
-          <div>
-            <label>Auftragsnummer (easybill) *</label>
-            <input value={nr} onChange={(e) => setNr(e.target.value)} placeholder="z.B. 456123" />
-          </div>
-        )}
         <div>
           <label>Einsatzbeginn (geplant)</label>
           <input type="date" value={einsatzbeginn} onChange={(e) => setEinsatzbeginn(e.target.value)} />
