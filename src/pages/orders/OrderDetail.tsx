@@ -87,17 +87,26 @@ export function OrderDetail() {
   // — unabhängig von der Rolle (Techniker wie CEO).
   const istEingeplant = order.techniker.some((t) => t.id === employee?.id)
 
-  async function handleDelete() {
-    if ((berichte?.length || 0) > 0) {
-      toast('Zu diesem Auftrag gibt es bereits Serviceberichte. Diese müssten erst entfernt werden, bevor der Auftrag gelöscht werden kann.')
+  // Stornieren statt löschen: so bleiben App und easybill gleich (die Auftragsnummer bleibt vergeben).
+  async function handleStornieren() {
+    if ((berichte || []).some((b) => b.status === 'abgeschlossen' || b.abgerechnet)) {
+      toast('Zu diesem Auftrag gibt es schon einen abgeschlossenen Bericht. Stornieren geht dann nicht mehr.')
       return
     }
-    const ok = await confirm({ message: `Auftrag #${order!.id} (${order!.einsatzkunde?.name}) wirklich unwiderruflich löschen?`, danger: true, confirmLabel: 'Löschen' })
+    const offene = (berichte || []).length
+    const ok = await confirm({
+      message: `Auftrag #${order!.id} (${order!.einsatzkunde?.name}) in der App und in easybill stornieren?${offene ? ` ${offene} offener Bericht${offene === 1 ? '' : 'e'} bleibt am stornierten Auftrag hängen.` : ''} Das lässt sich nicht rückgängig machen.`,
+      danger: true,
+      confirmLabel: 'Stornieren',
+    })
     if (!ok) return
-    const { error } = await supabase.from('orders').delete().eq('id', order!.id)
-    if (error) { toast('Fehler: ' + error.message); return }
-    toast('Auftrag gelöscht.')
-    navigate('/auftraege')
+    try {
+      await easybillAufruf({ aktion: 'auftrag_stornieren', auftrag_id: order!.id })
+      toast(`Auftrag #${order!.id} storniert.`)
+      navigate('/auftraege')
+    } catch (e) {
+      toast((e as Error).message)
+    }
   }
 
   const adresse = customerAddress(order.einsatzkunde)
@@ -164,7 +173,7 @@ export function OrderDetail() {
           {!isTechniker && (
             <div className="grid grid-cols-2 gap-2">
               <button className="btn btn-outline" onClick={() => setShowEdit(true)}><Icon name="bearbeiten" size={18} /> Bearbeiten</button>
-              <button className="btn btn-danger" onClick={handleDelete}><Icon name="loeschen" size={18} /> Löschen</button>
+              {order.status !== 'storniert' && <button className="btn btn-danger" onClick={handleStornieren}><Icon name="loeschen" size={18} /> Stornieren</button>}
             </div>
           )}
         </div>

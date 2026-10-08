@@ -302,6 +302,8 @@ label {
 .tag-geplant::before { border-color: var(--color-ink); background: var(--color-ink); }
 .tag-unterwegs { color: var(--color-ink-soft); }
 .tag-unterwegs::before { border-color: var(--color-ink-soft); background: var(--color-ink-soft); }
+.tag-storniert { color: var(--color-ink-soft); text-decoration: line-through; }
+.tag-storniert::before { border-color: var(--color-ink-soft); background: transparent; }
 .tag-offen::before { border-color: var(--color-amber); background: transparent; }
 .tag-abgeschlossen {
   background: var(--color-ink);

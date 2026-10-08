@@ -386,10 +386,17 @@ Deno.serve(async (req: Request) => {
     if (aktion === 'auftrag_stornieren') {
       const auftrag = await auftragSuchen(String(body.auftrag_id))
       if (!auftrag) return antwort({ fehler: `In easybill gibt es keinen Serviceauftrag mit der Nummer ${body.auftrag_id}.` }, 404)
-      if (auftrag.status === 'CANCEL') return antwort({ ok: true, schon: true })
-      await eb(`/documents/${auftrag.id}`, { method: 'PUT', body: JSON.stringify({ status: 'CANCEL' }) })
-      const danach = await eb(`/documents/${auftrag.id}`)
-      if (danach.status !== 'CANCEL') return antwort({ fehler: 'easybill hat den Auftrag nicht auf storniert gesetzt.' }, 502)
+      // Nur solange nichts abgeschlossen oder abgerechnet ist
+      const { data: fertige } = await admin.from('serviceberichte').select('bericht_nummer').eq('auftrag_id', String(body.auftrag_id)).or('status.eq.abgeschlossen,abgerechnet.eq.true')
+      if (fertige && fertige.length) return antwort({ fehler: `Nicht möglich: ${fertige.map((b: { bericht_nummer: string }) => b.bericht_nummer).join(', ')} ist schon abgeschlossen.` }, 400)
+      if (auftrag.status !== 'CANCEL') {
+        await eb(`/documents/${auftrag.id}`, { method: 'PUT', body: JSON.stringify({ status: 'CANCEL' }) })
+        const danach = await eb(`/documents/${auftrag.id}`)
+        if (danach.status !== 'CANCEL') return antwort({ fehler: 'easybill hat den Auftrag nicht auf storniert gesetzt.' }, 502)
+      }
+      // In der App: storniert_am setzen, der Status-Trigger macht daraus „storniert“
+      const { error } = await admin.from('orders').update({ storniert_am: new Date().toISOString() }).eq('id', String(body.auftrag_id))
+      if (error) return antwort({ fehler: 'In easybill storniert, aber in der App nicht: ' + error.message }, 500)
       return antwort({ ok: true })
     }
 

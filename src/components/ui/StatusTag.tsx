@@ -3,6 +3,7 @@ const ORDER_STATUS_MAP: Record<string, [string, string]> = {
   'in Arbeit': ['tag-arbeit', 'In Arbeit'],
   erledigt: ['tag-geplant', 'Abgeschlossen'],
   abgerechnet: ['tag-unterwegs', 'Abgerechnet'],
+  storniert: ['tag-storniert', 'Storniert'],
 }
 
 const BERICHT_STATUS_MAP: Record<string, [string, string]> = {

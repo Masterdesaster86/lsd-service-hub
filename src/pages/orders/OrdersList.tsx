@@ -9,7 +9,7 @@ import { OrderFormModal } from './OrderFormModal'
 import { Icon } from '../../components/ui/Icon'
 import { WOCHENTAGE, formatDMY } from '../../lib/zeit'
 
-type Tab = 'neu' | 'in Arbeit' | 'erledigt' | 'abgerechnet'
+type Tab = 'neu' | 'in Arbeit' | 'erledigt' | 'abgerechnet' | 'storniert'
 
 // Büro (Admin, Disposition, CEO) trennt Abgeschlossen und Abgerechnet — die Buchhaltung sieht so,
 // was noch zu berechnen ist. Den Techniker geht die Abrechnung nichts an: bei ihm bleibt alles
@@ -19,6 +19,7 @@ const TABS_BUERO: { key: Tab; label: string }[] = [
   { key: 'in Arbeit', label: 'In Arbeit' },
   { key: 'erledigt', label: 'Abgeschlossen' },
   { key: 'abgerechnet', label: 'Abgerechnet' },
+  { key: 'storniert', label: 'Storniert' },
 ]
 const TABS_TECHNIKER: { key: Tab; label: string }[] = [
   { key: 'neu', label: 'Neu' },
@@ -75,10 +76,11 @@ export function OrdersList() {
   // zwischen "alle" und "nur meine" umschalten.
   const kannUmschalten = employee?.role === 'CEO'
   const sichtbar = useMemo(() => {
-    const list = orders || []
+    // Stornierte Aufträge gehen den Techniker nichts mehr an.
+    const list = (orders || []).filter((o) => o.status !== 'storniert' || employee?.role !== 'Techniker')
     if (!kannUmschalten || nurMeine === false) return list
     return list.filter((o) => o.techniker.some((t) => t.id === employee?.id))
-  }, [orders, kannUmschalten, nurMeine, employee?.id])
+  }, [orders, kannUmschalten, nurMeine, employee?.id, employee?.role])
 
   const istTechniker = employee?.role === 'Techniker'
   const TABS = istTechniker ? TABS_TECHNIKER : TABS_BUERO
@@ -86,7 +88,7 @@ export function OrdersList() {
   const reiterFuer = (status: string): Tab => (istTechniker && status === 'abgerechnet' ? 'erledigt' : (status as Tab))
 
   const counts = useMemo(() => {
-    const c: Record<Tab, number> = { neu: 0, 'in Arbeit': 0, erledigt: 0, abgerechnet: 0 }
+    const c: Record<Tab, number> = { neu: 0, 'in Arbeit': 0, erledigt: 0, abgerechnet: 0, storniert: 0 }
     sichtbar.forEach((o) => { c[reiterFuer(o.status)]++ })
     return c
     // eslint-disable-next-line react-hooks/exhaustive-deps

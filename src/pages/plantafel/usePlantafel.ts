@@ -70,7 +70,7 @@ export function usePlantafelDaten() {
       supabase.from('serviceberichte').select('auftrag_id, techniker_id, status'),
     ])
     setTechnicians(emp || [])
-    setOrders(all.filter((o) => o.status !== 'erledigt' && o.status !== 'abgerechnet'))
+    setOrders(all.filter((o) => o.status !== 'erledigt' && o.status !== 'abgerechnet' && o.status !== 'storniert'))
     setAbwesenheiten(abw || [])
     setAntraege(ant || [])
     setBerichte(ber || [])

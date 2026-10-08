@@ -20,7 +20,7 @@ export type Wartungsprotokoll = Tables<'wartungsprotokolle'>
 
 export type Role = 'Administrator' | 'Disposition' | 'Techniker' | 'CEO'
 
-export type OrderStatus = 'neu' | 'in Arbeit' | 'erledigt' | 'abgerechnet'
+export type OrderStatus = 'neu' | 'in Arbeit' | 'erledigt' | 'abgerechnet' | 'storniert'
 export type BerichtStatus = 'offen' | 'abgeschlossen'
 export type ArbeitStatus = 'offen' | 'abgeschlossen'
 export type AbwesenheitArt = 'Urlaub' | 'Krank' | 'Schulung' | 'Kurzarbeit'
