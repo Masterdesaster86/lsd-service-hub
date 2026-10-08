@@ -682,28 +682,37 @@ export type Database = {
       }
       servicebericht_ersatzteile: {
         Row: {
+          artikelnummer: string | null
           bezeichnung: string
           easybill_position_id: number | null
+          einkaufspreis: number | null
           id: string
           id_nummer: string | null
           menge: number
           servicebericht_id: string
+          verkaufspreis: number | null
         }
         Insert: {
+          artikelnummer?: string | null
           bezeichnung: string
           easybill_position_id?: number | null
+          einkaufspreis?: number | null
           id?: string
           id_nummer?: string | null
           menge?: number
           servicebericht_id: string
+          verkaufspreis?: number | null
         }
         Update: {
+          artikelnummer?: string | null
           bezeichnung?: string
           easybill_position_id?: number | null
+          einkaufspreis?: number | null
           id?: string
           id_nummer?: string | null
           menge?: number
           servicebericht_id?: string
+          verkaufspreis?: number | null
         }
         Relationships: [
           {

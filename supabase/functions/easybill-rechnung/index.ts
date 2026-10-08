@@ -314,6 +314,40 @@ Deno.serve(async (req: Request) => {
       return antwort({ ok: true })
     }
 
+    // --- Ersatzteil mit Preis in easybill anlegen bzw. ueber die Artikelnummer verknuepfen ---
+    // Laeuft nach dem Speichern (wenn online) oder spaetestens beim Rechnung-Anlegen.
+    if (aktion === 'ersatzteil_easybill') {
+      const { data: teil } = await admin.from('servicebericht_ersatzteile').select('*').eq('id', String(body.ersatzteil_id)).maybeSingle()
+      if (!teil) return antwort({ fehler: 'Ersatzteil nicht gefunden.' }, 404)
+      if (teil.easybill_position_id) return antwort({ ok: true, position_id: teil.easybill_position_id, angelegt: false })
+      const nummer = String(teil.artikelnummer || '').trim()
+      // Vorhandenen Artikel ueber die Nummer finden
+      if (nummer) {
+        const r = await eb(`/positions?number=${encodeURIComponent(nummer)}&limit=5`)
+        const treffer = (r.items || []).find((a: EbPosition) => a.number === nummer && !a.archived)
+        if (treffer) {
+          await admin.from('servicebericht_ersatzteile').update({ easybill_position_id: treffer.id }).eq('id', teil.id)
+          return antwort({ ok: true, position_id: treffer.id, nummer: treffer.number, angelegt: false })
+        }
+      }
+      if (teil.verkaufspreis == null) return antwort({ ok: false, grund: 'kein Preis' })
+      // Neu anlegen: naechste freie Nummer ab 2400011
+      const alle = await alleArtikel()
+      const nummern = alle.map((a) => Number(a.number)).filter((n) => Number.isInteger(n) && n >= 2400000 && n <= 2499999)
+      const naechste = String(Math.max(2400010, ...nummern) + 1)
+      const bezeichnung = `${teil.bezeichnung}${teil.id_nummer ? ' ' + teil.id_nummer : ''}`.trim()
+      const neu = await eb('/positions', {
+        method: 'POST',
+        body: JSON.stringify({
+          number: naechste, description: bezeichnung, type: 'PRODUCT', unit: 'Stück', vat_percent: 19,
+          sale_price: Math.round(Number(teil.verkaufspreis) * 100),
+          cost_price: teil.einkaufspreis != null ? Math.round(Number(teil.einkaufspreis) * 100) : null,
+        }),
+      })
+      await admin.from('servicebericht_ersatzteile').update({ easybill_position_id: neu.id }).eq('id', teil.id)
+      return antwort({ ok: true, position_id: neu.id, nummer: neu.number, angelegt: true })
+    }
+
     // ---------- Kunden und Auftraege in easybill anlegen ----------
 
     type AppKunde = { id: string; name: string; strasse: string | null; plz: string | null; ort: string | null; rechnungs_email: string | null; easybill_id: number | null; kundennummer: string | null; preisstufe: string | null }

@@ -41,6 +41,18 @@ export function EasybillRechnungModal({ order, onClose, onAngelegt }: { order: O
         .eq('auftrag_id', order.id)
       const rows = ((data || []) as unknown as (Servicebericht & { tage: ServiceberichtTag[]; ersatzteile: ServiceberichtErsatzteil[]; machine: Machine | null; techniker: Employee | null })[])
         .map((b) => ({ ...b, tage: [...b.tage].sort((x, y) => x.datum.localeCompare(y.datum)) })) as BerichtMitDaten[]
+      // Ersatzteile mit Preis oder Artikelnummer, die (z. B. weil offline erfasst) noch keinen
+      // easybill-Artikel haben: jetzt nachholen, dann die Zuordnung übernehmen.
+      const nachholen = rows.flatMap((b) => b.ersatzteile.filter((t) => !t.easybill_position_id && (t.verkaufspreis != null || t.artikelnummer)))
+      if (nachholen.length) {
+        setLaeuft('Ersatzteile werden in easybill angelegt…')
+        for (const t of nachholen) {
+          try {
+            const r = await easybillAufruf<{ ok: boolean; position_id?: number }>({ aktion: 'ersatzteil_easybill', ersatzteil_id: t.id })
+            if (r.ok && r.position_id) t.easybill_position_id = r.position_id
+          } catch { /* bleibt offen und wird unten als nicht zugeordnet angezeigt */ }
+        }
+      }
       const technikerIds = [...new Set(rows.map((b) => b.techniker_id))]
       const kontexte: Record<string, Tageskontext> = {}
       await Promise.all(technikerIds.map(async (tid) => { kontexte[tid] = await fetchTageskontext(tid, rows.filter((b) => b.techniker_id === tid).flatMap((b) => b.tage.map((t) => t.datum))) }))
