@@ -624,6 +624,7 @@ export type Database = {
           kundenreferenznr: string | null
           meldetext: string | null
           status: string
+          storniert_am: string | null
         }
         Insert: {
           ansprechpartner_id?: string | null
@@ -638,6 +639,7 @@ export type Database = {
           kundenreferenznr?: string | null
           meldetext?: string | null
           status?: string
+          storniert_am?: string | null
         }
         Update: {
           ansprechpartner_id?: string | null
@@ -652,6 +654,7 @@ export type Database = {
           kundenreferenznr?: string | null
           meldetext?: string | null
           status?: string
+          storniert_am?: string | null
         }
         Relationships: [
           {

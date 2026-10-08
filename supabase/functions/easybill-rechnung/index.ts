@@ -386,9 +386,9 @@ Deno.serve(async (req: Request) => {
     if (aktion === 'auftrag_stornieren') {
       const auftrag = await auftragSuchen(String(body.auftrag_id))
       if (!auftrag) return antwort({ fehler: `In easybill gibt es keinen Serviceauftrag mit der Nummer ${body.auftrag_id}.` }, 404)
-      // Nur solange nichts abgeschlossen oder abgerechnet ist
-      const { data: fertige } = await admin.from('serviceberichte').select('bericht_nummer').eq('auftrag_id', String(body.auftrag_id)).or('status.eq.abgeschlossen,abgerechnet.eq.true')
-      if (fertige && fertige.length) return antwort({ fehler: `Nicht möglich: ${fertige.map((b: { bericht_nummer: string }) => b.bericht_nummer).join(', ')} ist schon abgeschlossen.` }, 400)
+      // Nur solange noch kein Servicebericht angelegt ist (Manuels Regel vom 09.10.2026)
+      const { data: berichte } = await admin.from('serviceberichte').select('bericht_nummer').eq('auftrag_id', String(body.auftrag_id))
+      if (berichte && berichte.length) return antwort({ fehler: `Nicht möglich: zu diesem Auftrag gibt es schon ${berichte.map((b: { bericht_nummer: string }) => b.bericht_nummer).join(', ')}.` }, 400)
       if (auftrag.status !== 'CANCEL') {
         await eb(`/documents/${auftrag.id}`, { method: 'PUT', body: JSON.stringify({ status: 'CANCEL' }) })
         const danach = await eb(`/documents/${auftrag.id}`)

@@ -89,13 +89,12 @@ export function OrderDetail() {
 
   // Stornieren statt löschen: so bleiben App und easybill gleich (die Auftragsnummer bleibt vergeben).
   async function handleStornieren() {
-    if ((berichte || []).some((b) => b.status === 'abgeschlossen' || b.abgerechnet)) {
-      toast('Zu diesem Auftrag gibt es schon einen abgeschlossenen Bericht. Stornieren geht dann nicht mehr.')
+    if ((berichte || []).length > 0) {
+      toast('Zu diesem Auftrag gibt es schon einen Servicebericht. Stornieren geht nur, solange noch kein Bericht angelegt ist.')
       return
     }
-    const offene = (berichte || []).length
     const ok = await confirm({
-      message: `Auftrag #${order!.id} (${order!.einsatzkunde?.name}) in der App und in easybill stornieren?${offene ? ` ${offene} offener Bericht${offene === 1 ? '' : 'e'} bleibt am stornierten Auftrag hängen.` : ''} Das lässt sich nicht rückgängig machen.`,
+      message: `Auftrag #${order!.id} (${order!.einsatzkunde?.name}) in der App und in easybill stornieren? Das lässt sich nicht rückgängig machen.`,
       danger: true,
       confirmLabel: 'Stornieren',
     })
@@ -173,7 +172,7 @@ export function OrderDetail() {
           {!isTechniker && (
             <div className="grid grid-cols-2 gap-2">
               <button className="btn btn-outline" onClick={() => setShowEdit(true)}><Icon name="bearbeiten" size={18} /> Bearbeiten</button>
-              {order.status !== 'storniert' && <button className="btn btn-danger" onClick={handleStornieren}><Icon name="loeschen" size={18} /> Stornieren</button>}
+              {order.status !== 'storniert' && (berichte || []).length === 0 && <button className="btn btn-danger" onClick={handleStornieren}><Icon name="loeschen" size={18} /> Stornieren</button>}
             </div>
           )}
         </div>
