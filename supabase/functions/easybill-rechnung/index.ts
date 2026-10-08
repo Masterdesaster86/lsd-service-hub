@@ -382,6 +382,17 @@ Deno.serve(async (req: Request) => {
       return antwort({ nummer: String(fertig.number), easybill_id: neu.id, kunde_angelegt: auftraggeber.angelegt })
     }
 
+    // --- Serviceauftrag in easybill stornieren (Status CANCEL; bleibt dort sichtbar) ---
+    if (aktion === 'auftrag_stornieren') {
+      const auftrag = await auftragSuchen(String(body.auftrag_id))
+      if (!auftrag) return antwort({ fehler: `In easybill gibt es keinen Serviceauftrag mit der Nummer ${body.auftrag_id}.` }, 404)
+      if (auftrag.status === 'CANCEL') return antwort({ ok: true, schon: true })
+      await eb(`/documents/${auftrag.id}`, { method: 'PUT', body: JSON.stringify({ status: 'CANCEL' }) })
+      const danach = await eb(`/documents/${auftrag.id}`)
+      if (danach.status !== 'CANCEL') return antwort({ fehler: 'easybill hat den Auftrag nicht auf storniert gesetzt.' }, 502)
+      return antwort({ ok: true })
+    }
+
     return antwort({ fehler: 'Unbekannte Aktion.' }, 400)
   } catch (e) {
     const status = e instanceof EasybillFehler ? (e.status >= 500 ? 502 : 400) : 500
