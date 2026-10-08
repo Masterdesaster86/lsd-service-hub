@@ -121,6 +121,12 @@ Entwickler): auf Deutsch antworten, verständlich erklären, Ergebnisse knapp zu
   Berichte auf abgerechnet, sobald die Rechnung in easybill eine Nummer hat (läuft beim Öffnen
   des Auftrags im Büro). Ersatzteil-Artikel werden über die Funktion gesucht/angelegt (Nummern 24xxxxx).
 - Die Rechnung bleibt immer Entwurf; abschließen und versenden macht Manuel in easybill.
+- Kunden und Aufträge (seit 09.10.2026): `customers.easybill_id`, `kundennummer`, `preisstufe`
+  (SALEPRICE2…7, leer = Standard; Auswahl im Formular über den Stundensatz). „Neuer Kunde“ legt den
+  Kunden per Funktion in easybill an (nur Büro-Rollen, auch per RLS). „Neuer Auftrag“ legt den
+  Serviceauftrag (Typ CHARGE, Vorlage 90602) auf den **Auftraggeber** in easybill an, schließt ihn ab
+  und übernimmt die vergebene Nummer als `orders.id`. Bestehende Kunden wurden am 09.10. über die
+  Kundennummer verknüpft; Bosch Horb ist in easybill Kunde 10132.
 
 ## Regeln
 
