@@ -17,7 +17,13 @@ self.addEventListener('install', (event) => {
     try {
       const liste = await (await fetch(`${BASIS}precache.json`, { cache: 'reload' })).json()
       // Einzeln, damit eine fehlende Datei nicht alles abbricht.
-      await Promise.all(liste.map((p) => cache.add(new Request(BASIS + p, { cache: 'reload' })).catch(() => {})))
+      await Promise.all(liste.map(async (p) => {
+        try {
+          const req = new Request(BASIS + p, { cache: 'reload' })
+          const res = await fetch(req)
+          if (res.ok && !istSeite(res)) await cache.put(req, res)
+        } catch { /* fehlt noch, wird beim Benutzen nachgeladen */ }
+      }))
     } catch { /* ohne Liste wird beim Benutzen nachgeladen */ }
     await self.skipWaiting()
   })())
@@ -30,6 +36,16 @@ self.addEventListener('activate', (event) => {
     await self.clients.claim()
   })())
 })
+
+// Während die Auslieferung läuft, liefert der Server für eine noch fehlende Datei die
+// Startseite (SPA-Weiche in .htaccess). So eine Antwort darf nie als Skript oder Stil
+// gespeichert werden, sonst startet die App bis zum Löschen der Website-Daten nicht mehr.
+function istSeite(res) {
+  return (res.headers.get('content-type') || '').toLowerCase().includes('text/html')
+}
+function erwartetSeite(req) {
+  return req.mode === 'navigate' || req.destination === 'document' || req.destination === ''
+}
 
 function mitTimeout(promise, ms) {
   return Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))])
@@ -60,9 +76,12 @@ self.addEventListener('fetch', (event) => {
     event.respondWith((async () => {
       const cache = await caches.open(APP_CACHE)
       const treffer = await cache.match(req, { ignoreSearch: true, ignoreVary: true })
-      if (treffer) return treffer
+      // Eine versehentlich gespeicherte Startseite statt der Datei: verwerfen und neu holen.
+      const falsch = (res) => istSeite(res) && !erwartetSeite(req)
+      if (treffer && !falsch(treffer)) return treffer
+      if (treffer) await cache.delete(req, { ignoreSearch: true, ignoreVary: true })
       const res = await fetch(req)
-      if (res.ok) cache.put(req, res.clone())
+      if (res.ok && !falsch(res)) cache.put(req, res.clone())
       return res
     })())
     return
