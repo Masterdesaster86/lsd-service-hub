@@ -15,6 +15,8 @@ import { Typenschild } from '../../components/ui/Typenschild'
 import { NewBerichtModal } from './NewBerichtModal'
 import { useConfirm } from '../../components/ui/ConfirmProvider'
 import { useToast } from '../../components/ui/Toast'
+import { EasybillRechnungModal } from './EasybillRechnungModal'
+import { easybillAufruf } from '../../lib/easybillRechnung'
 
 interface BerichtRow extends Servicebericht {
   tage: ServiceberichtTag[]
@@ -35,6 +37,7 @@ export function OrderDetail() {
   const [wartungsprotokolle, setWartungsprotokolle] = useState<Wartungsprotokoll[]>([])
   const [showEdit, setShowEdit] = useState(false)
   const [showNewBericht, setShowNewBericht] = useState(false)
+  const [showRechnung, setShowRechnung] = useState(false)
 
   async function load() {
     if (!id) return
@@ -47,6 +50,16 @@ export function OrderDetail() {
       .order('bericht_nummer')
     const rows = (data as BerichtRow[]) || []
     setBerichte(rows)
+    // Büro: Hat easybill einen Entwurf dieses Auftrags inzwischen abgeschlossen? Dann setzt die
+    // Serverfunktion die Berichte auf abgerechnet — hier nur nachsehen und ggf. neu laden.
+    if (employee && employee.role !== 'Techniker' && rows.some((b) => b.status === 'abgeschlossen' && !b.abgerechnet)) {
+      easybillAufruf<{ abgeschlossen: { nummer: string | null }[] }>({ aktion: 'abgleichen', auftrag_id: id })
+        .then((r) => {
+          const nummern = (r.abgeschlossen || []).map((x) => x.nummer).filter(Boolean)
+          if (nummern.length) { toast(`Rechnung ${nummern.join(', ')} ist abgeschlossen – Berichte auf abgerechnet gesetzt.`); load() }
+        })
+        .catch(() => { /* kein Schlüssel hinterlegt oder easybill nicht erreichbar: still bleiben */ })
+    }
     const { data: mp } = await supabase.from('messprotokolle').select('*').eq('auftrag_id', id).order('erstellt_am')
     setMessprotokolle(mp || [])
     const { data: wp } = await supabase.from('wartungsprotokolle').select('*').eq('auftrag_id', id).order('erstellt_am')
@@ -159,7 +172,12 @@ export function OrderDetail() {
 
       <div className="flex items-center justify-between gap-2 mb-1">
         <div className="abschnitt">Serviceberichte</div>
-        {istEingeplant && <button className="btn btn-amber btn-sm" onClick={() => setShowNewBericht(true)}>+ Servicebericht</button>}
+        <div className="flex gap-2">
+          {!isTechniker && (berichte || []).some((b) => b.status === 'abgeschlossen' && !b.abgerechnet) && (
+            <button className="btn btn-outline btn-sm" onClick={() => setShowRechnung(true)}>Rechnung in easybill</button>
+          )}
+          {istEingeplant && <button className="btn btn-amber btn-sm" onClick={() => setShowNewBericht(true)}>+ Servicebericht</button>}
+        </div>
       </div>
       <p className="text-sm text-ink-soft mb-2.5">{isTechniker ? 'Nur deine eigenen Berichte für diesen Auftrag.' : 'Alle Berichte aller Techniker für diesen Auftrag.'}</p>
 
@@ -212,6 +230,7 @@ export function OrderDetail() {
         </>
       )}
 
+      {showRechnung && <EasybillRechnungModal order={order} onClose={() => setShowRechnung(false)} onAngelegt={() => load()} />}
       {showEdit && <OrderFormModal order={order} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); load() }} />}
       {showNewBericht && (
         <NewBerichtModal

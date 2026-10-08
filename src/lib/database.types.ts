@@ -139,6 +139,63 @@ export type Database = {
         }
         Relationships: []
       }
+      easybill_rechnungen: {
+        Row: {
+          abgeschlossen_am: string | null
+          auftrag_id: string
+          bericht_ids: string[]
+          easybill_auftrag_id: number
+          easybill_rechnung_id: number
+          erstellt_am: string
+          erstellt_von: string | null
+          id: string
+          netto_cent: number | null
+          rechnung_nummer: string | null
+          verworfen_am: string | null
+        }
+        Insert: {
+          abgeschlossen_am?: string | null
+          auftrag_id: string
+          bericht_ids?: string[]
+          easybill_auftrag_id: number
+          easybill_rechnung_id: number
+          erstellt_am?: string
+          erstellt_von?: string | null
+          id?: string
+          netto_cent?: number | null
+          rechnung_nummer?: string | null
+          verworfen_am?: string | null
+        }
+        Update: {
+          abgeschlossen_am?: string | null
+          auftrag_id?: string
+          bericht_ids?: string[]
+          easybill_auftrag_id?: number
+          easybill_rechnung_id?: number
+          erstellt_am?: string
+          erstellt_von?: string | null
+          id?: string
+          netto_cent?: number | null
+          rechnung_nummer?: string | null
+          verworfen_am?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "easybill_rechnungen_auftrag_id_fkey"
+            columns: ["auftrag_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "easybill_rechnungen_erstellt_von_fkey"
+            columns: ["erstellt_von"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           aktiv: boolean
@@ -614,6 +671,7 @@ export type Database = {
       servicebericht_ersatzteile: {
         Row: {
           bezeichnung: string
+          easybill_position_id: number | null
           id: string
           id_nummer: string | null
           menge: number
@@ -621,6 +679,7 @@ export type Database = {
         }
         Insert: {
           bezeichnung: string
+          easybill_position_id?: number | null
           id?: string
           id_nummer?: string | null
           menge?: number
@@ -628,6 +687,7 @@ export type Database = {
         }
         Update: {
           bezeichnung?: string
+          easybill_position_id?: number | null
           id?: string
           id_nummer?: string | null
           menge?: number
