@@ -102,6 +102,26 @@ Entwickler): auf Deutsch antworten, verständlich erklären, Ergebnisse knapp zu
   Manuel zeichnet sie selbst, Quellen liegen in `D:\lsd-protokoll\skizzen`. Format PNG 2400×1440.
 - Beim Blättern zwischen Messungen wird automatisch gespeichert (echte Datenbank!).
 
+## Rechnung in easybill (seit 09.10.2026)
+
+- Knopf „Rechnung in easybill“ im Auftrag (nur Administrator, Disposition, CEO; nur wenn ein
+  abgeschlossener, nicht abgerechneter Bericht existiert). Öffnet `EasybillRechnungModal`.
+- Regeln aus dem Regelwerk „Rechnung aus Servicebericht“ (Claude-Doc) sind in
+  `src/lib/easybillRechnung.ts` umgesetzt: je Bericht Textzeile, Arbeits-/Reisezeit je Techniker
+  und Zuschlag (eigene easybill-Artikel, IDs in `docs/easybill-artikel.md`), km, Aufwandspauschale
+  je Techniker und Einsatztag, Hotelkosten (Artikel „Kosten Hotel“ mit echtem Betrag), Ersatzteile
+  über `servicebericht_ersatzteile.easybill_position_id`. Sonderregeln Carl Walther (Pauschalen
+  statt Reise/km) und Metalltechnik Vils (keine Fahrt; anderer Techniker 100 € je Tag).
+- Zeiten rechnen wie im Servicebericht (`zeit.ts`): Reise und Arbeit zusammen, ab 10 h +50 %,
+  Samstag +50 %, Sonn-/Feiertag +100 %. Manuel hat das am 08.10.2026 so bestätigt.
+- Serverfunktion `supabase/functions/easybill-rechnung` (Secret `EASYBILL_API_KEY`): sucht den
+  easybill-Auftrag (Typ CHARGE, Nummer = `orders.id`), liest die Preisstufe des Kunden, wandelt
+  per API in einen Rechnungsentwurf um (Vorlage 90597, 14 Tage, Leistungszeitraum), hängt die
+  Bericht-PDFs an, merkt sich den Entwurf in `easybill_rechnungen`. Aktion `abgleichen` setzt
+  Berichte auf abgerechnet, sobald die Rechnung in easybill eine Nummer hat (läuft beim Öffnen
+  des Auftrags im Büro). Ersatzteil-Artikel werden über die Funktion gesucht/angelegt (Nummern 24xxxxx).
+- Die Rechnung bleibt immer Entwurf; abschließen und versenden macht Manuel in easybill.
+
 ## Regeln
 
 - Nie Passwörter oder Schlüssel eintippen oder im Chat ausgeben — das macht Manuel selbst.
