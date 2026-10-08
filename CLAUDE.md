@@ -127,6 +127,10 @@ Entwickler): auf Deutsch antworten, verständlich erklären, Ergebnisse knapp zu
   Serviceauftrag (Typ CHARGE, Vorlage 90602) auf den **Auftraggeber** in easybill an, schließt ihn ab
   und übernimmt die vergebene Nummer als `orders.id`. Bestehende Kunden wurden am 09.10. über die
   Kundennummer verknüpft; Bosch Horb ist in easybill Kunde 10132.
+- Stornieren (seit 09.10.2026): Knopf „Stornieren“ im Auftrag ersetzt „Löschen“ (nur Büro-Rollen,
+  nur solange kein Servicebericht existiert). Funktion setzt in easybill Status CANCEL und
+  `orders.storniert_am`; der Trigger macht daraus Status „storniert“ (eigener Reiter fürs Büro,
+  Techniker sehen stornierte Aufträge nicht). Nicht umkehrbar.
 
 ## Regeln
 
