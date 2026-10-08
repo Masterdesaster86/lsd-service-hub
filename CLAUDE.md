@@ -131,6 +131,12 @@ Entwickler): auf Deutsch antworten, verständlich erklären, Ergebnisse knapp zu
   nur solange kein Servicebericht existiert). Funktion setzt in easybill Status CANCEL und
   `orders.storniert_am`; der Trigger macht daraus Status „storniert“ (eigener Reiter fürs Büro,
   Techniker sehen stornierte Aufträge nicht). Nicht umkehrbar.
+- Ersatzteile (seit 09.10.2026): Büro/CEO tragen im Ersatzteil-Formular optional Einkaufspreis,
+  Verkaufspreis (vorbelegt Einkauf + 50 %) und easybill-Artikelnummer ein (`servicebericht_ersatzteile`).
+  Funktion `ersatzteil_easybill`: Artikelnummer vorhanden → verknüpfen, sonst mit Verkaufspreis neu
+  anlegen (Nummer ab 2400011, Einkauf als cost_price). Läuft direkt nach dem Speichern und beim
+  Rechnung-Anlegen für alles, was noch fehlt (Offline-Fall). Ohne Preis bleibt die Zuordnung in der
+  Rechnungsvorschau.
 
 ## Regeln
 
