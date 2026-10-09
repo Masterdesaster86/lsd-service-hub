@@ -53,10 +53,19 @@ Auftragsbestätigung (Schritt 5).
 1. **easybill zuerst**, weil easybill die Auftragsnummer vergibt: Serviceauftrag (Typ CHARGE) auf
    den Auftraggeber, Vorlage 90602, Kopftext fett mit den Zeilen, die vorhanden sind:
    „Ihre Bestellnummer: …“, „Kundenreferenznummer: …“, „Auftragsnummer Kunde: …“. Dann abschließen.
-   - Sobald die Datenbankfunktion `easybill_auftrag_anlegen(...)` existiert (geplant ab 09.10.2026),
-     damit per SQL anlegen; sie liefert die Nummer.
-   - Solange sie fehlt: Manuel bitten, den Auftrag in easybill anzulegen bzw. abzuschließen und die
-     Nummer zu nennen. Niemals selbst eine Nummer ausdenken.
+   - Das macht die Datenbankfunktion, aufgerufen per Supabase-Connector (SQL ausführen):
+     ```sql
+     select public.easybill_auftrag_anlegen(
+       '<uuid des Auftraggebers aus customers>',
+       '<Bestellnummer oder null>', '<Kundenreferenznummer oder null>', '<Auftragsnummer Kunde oder null>'
+     );
+     ```
+     Antwort: `{"nummer": "10112", "easybill_id": …, "kunde_easybill_id": …}`. Die `nummer` ist die
+     Auftragsnummer. Fehlt der Kunde in easybill, legt die Funktion ihn dort mit an.
+   - Der easybill-Connector selbst kann das nicht (er legt nur Entwürfe ohne Nummer an); deshalb
+     nie den Auftrag über `create_document` anlegen. Niemals selbst eine Nummer ausdenken.
+   - Schlägt die Funktion fehl (z. B. „Schlüssel fehlt im Vault“): Manuel sagen, was fehlt, und
+     ihn um die Nummer aus easybill bitten.
 2. **App**: `orders` mit `id` = easybill-Nummer (Text), `auftraggeber_id`, `einsatzkunde_id`,
    `bestellnummer`, `kundenreferenznr`, `auftragsnr_kunde`, `einsatzbeginn`, `dauer_tage`,
    `meldetext`, `ansprechpartner_id`. Den Status setzt ein Trigger, nicht selbst setzen.
