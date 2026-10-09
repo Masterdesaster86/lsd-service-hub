@@ -4,3 +4,5 @@
 -- p_kundenreferenz, p_auftragsnr_kunde) legt den Serviceauftrag (CHARGE, Vorlage 90602) auf den Kunden an,
 -- schließt ihn ab und liefert {nummer, easybill_id}. Beide nur für Service-Role/Postgres (Claude per SQL),
 -- für anon/authenticated widerrufen.
+-- Nachtrag 09.10.2026: easybill_anfrage schickt bei PUT/POST ohne Body ein leeres JSON (http-Extension verlangt Inhalt);
+-- easybill_auftrag_stornieren(p_nummer) setzt den Auftrag in easybill auf CANCEL und orders.storniert_am (nur ohne Serviceberichte).

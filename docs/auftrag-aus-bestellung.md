@@ -73,6 +73,14 @@ Auftragsbestätigung (Schritt 5).
 3. **Zurückmelden**: Auftragsnummer, Auftraggeber/Einsatzkunde, Maschine, Termin, Techniker,
    und was noch fehlt.
 
+### Auftrag stornieren (nur ohne Servicebericht, nicht umkehrbar)
+
+```sql
+select public.easybill_auftrag_stornieren('<Auftragsnummer>');
+```
+Setzt den Auftrag in easybill auf storniert und in der App auf Status „storniert“ (die Nummer
+bleibt vergeben). Nur auf Manuels ausdrückliche Bitte.
+
 ## 4. Nachfragen statt raten
 
 - Unklar: Einsatzkunde, Maschine nicht im Stamm, Termin, Preisstufe eines neuen Kunden,
