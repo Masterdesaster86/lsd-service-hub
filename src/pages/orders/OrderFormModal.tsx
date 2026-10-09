@@ -114,7 +114,10 @@ export function OrderFormModal({ order, onClose, onSaved }: Props) {
         onSaved(order!.id)
       } else {
         // Die Auftragsnummer vergibt easybill: Serviceauftrag dort anlegen, Nummer übernehmen.
-        const angelegt = await easybillAufruf<{ nummer: string; kunde_angelegt: boolean }>({ aktion: 'auftrag_anlegen', auftraggeber_id: auftraggeberId, einsatzkunde_id: einsatzkundeId })
+        const angelegt = await easybillAufruf<{ nummer: string; kunde_angelegt: boolean }>({
+          aktion: 'auftrag_anlegen', auftraggeber_id: auftraggeberId, einsatzkunde_id: einsatzkundeId,
+          bestellnummer: bestellnummer.trim() || null, kundenreferenznr: kundenreferenznr.trim() || null, auftragsnr_kunde: auftragsnrKunde.trim() || null,
+        })
         const nr = angelegt.nummer
         const { error } = await supabase.from('orders').insert({
           id: nr.trim(),

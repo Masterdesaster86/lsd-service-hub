@@ -408,7 +408,14 @@ Deno.serve(async (req: Request) => {
     // --- Serviceauftrag in easybill anlegen; easybill vergibt die Auftragsnummer ---
     if (aktion === 'auftrag_anlegen') {
       const auftraggeber = await kundeSicherstellen(String(body.auftraggeber_id))
-      const neu = await eb('/documents', { method: 'POST', body: JSON.stringify({ type: 'CHARGE', customer_id: auftraggeber.easybill_id, pdf_template: '90602', text_prefix: '<br>', text: '<br>' }) })
+      // Bestell-, Referenz- und Kundenauftragsnummer stehen fett im Kopf des easybill-Auftrags
+      const zeilen = [
+        body.bestellnummer ? `Ihre Bestellnummer: ${body.bestellnummer}` : '',
+        body.kundenreferenznr ? `Kundenreferenznummer: ${body.kundenreferenznr}` : '',
+        body.auftragsnr_kunde ? `Auftragsnummer Kunde: ${body.auftragsnr_kunde}` : '',
+      ].filter(Boolean)
+      const kopf = zeilen.length ? `<strong>${zeilen.join('<br>')}</strong>` : '<br>'
+      const neu = await eb('/documents', { method: 'POST', body: JSON.stringify({ type: 'CHARGE', customer_id: auftraggeber.easybill_id, pdf_template: '90602', text_prefix: kopf, text: '<br>' }) })
       // Erst mit dem Abschliessen bekommt der Auftrag seine Nummer
       await eb(`/documents/${neu.id}/done`, { method: 'PUT' })
       const fertig = await eb(`/documents/${neu.id}`)

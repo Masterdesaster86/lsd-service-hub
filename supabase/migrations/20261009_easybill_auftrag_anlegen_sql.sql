@@ -1,0 +1,6 @@
+-- Angewendet am 09.10.2026 (Migration easybill_auftrag_anlegen). Inhalt siehe Supabase-Migrationsverlauf:
+-- easybill_anfrage(p_methode, p_pfad, p_body) ruft die easybill-REST-API mit dem Schlüssel aus dem Vault
+-- ('easybill_api_key') über die http-Extension auf; easybill_auftrag_anlegen(p_kunde_id, p_bestellnummer,
+-- p_kundenreferenz, p_auftragsnr_kunde) legt den Serviceauftrag (CHARGE, Vorlage 90602) auf den Kunden an,
+-- schließt ihn ab und liefert {nummer, easybill_id}. Beide nur für Service-Role/Postgres (Claude per SQL),
+-- für anon/authenticated widerrufen.
