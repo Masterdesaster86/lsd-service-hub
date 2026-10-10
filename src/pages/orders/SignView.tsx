@@ -199,10 +199,23 @@ export function SignView({ bericht, tage, tageskontext, ersatzteile, machine, te
                 <span className={`text-right ${label === 'Gesamt' ? 'font-bold' : 'font-medium'}`}>{wert}</span>
               </div>
             ))}
+            {/* Vor der Unterschrift muss der Kunde alles lesen können — deshalb hier nichts kürzen. */}
+            {bericht.fehlerbeschreibung && (
+              <div className="px-3.5 py-2.5 border-b border-line">
+                <span className="font-mono text-[11.5px] uppercase tracking-[0.06em] text-ink-soft block mb-1">Fehlerbeschreibung</span>
+                <span className="text-[14.5px] whitespace-pre-line break-words">{bericht.fehlerbeschreibung}</span>
+              </div>
+            )}
             <div className="px-3.5 py-2.5 border-b border-line">
               <span className="font-mono text-[11.5px] uppercase tracking-[0.06em] text-ink-soft block mb-1">Durchgeführte Arbeiten</span>
-              <span className="text-[14.5px] whitespace-pre-line max-lg:line-clamp-5">{bericht.durchgefuehrte_arbeiten || '–'}</span>
+              <span className="text-[14.5px] whitespace-pre-line break-words">{bericht.durchgefuehrte_arbeiten || '–'}</span>
             </div>
+            {bericht.empfehlung && (
+              <div className="px-3.5 py-2.5 border-b border-line">
+                <span className="font-mono text-[11.5px] uppercase tracking-[0.06em] text-ink-soft block mb-1">Empfehlung</span>
+                <span className="text-[14.5px] whitespace-pre-line break-words">{bericht.empfehlung}</span>
+              </div>
+            )}
             <div className="px-3.5 py-2.5">
               <span className="font-mono text-[11.5px] uppercase tracking-[0.06em] text-ink-soft block mb-1">Ersatzteile</span>
               {ersatzteile.length === 0 ? <span className="text-[14.5px]">–</span> : (
