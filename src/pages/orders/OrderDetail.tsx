@@ -162,6 +162,7 @@ export function OrderDetail() {
                 ['Typ', <span className="font-mono">{m.bezeichnung}</span>],
                 ['Maschinennr.', <span className="font-mono">{m.nummer || '–'}</span>],
                 ['Kunden-Nr.', <span className="font-mono">{m.kunden_maschinennummer || '–'}</span>],
+                ['Steuerung', m.steuerung || '–'],
               ]}
             />
           ))}

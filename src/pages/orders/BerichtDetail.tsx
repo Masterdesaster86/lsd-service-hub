@@ -221,7 +221,10 @@ export function BerichtDetail() {
         <BerichtStatusTag status={bericht.status} abgerechnet={employee?.role !== 'Techniker' && bericht.abgerechnet} />
       </div>
       <div className="font-semibold text-[17px] leading-snug mt-1.5">{machine?.bezeichnung || bericht.maschine_id}</div>
-      <div className="text-ink-soft text-[14px] mb-5">{order.einsatzkunde?.name || '–'} · {techniker?.name || '–'}</div>
+      <div className="text-ink-soft text-[14px] mb-5">
+        {order.einsatzkunde?.name || '–'} · {techniker?.name || '–'}
+        {machine?.steuerung && <><br />Steuerung: {machine.steuerung}</>}
+      </div>
 
       <div className="grid grid-cols-2 gap-3 mb-3.5">
         <div>
