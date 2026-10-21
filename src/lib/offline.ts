@@ -38,17 +38,56 @@ interface GespeicherteAntwort {
   zeit: number
 }
 
+/**
+ * Datei (Unterschrift, Foto) als reine Bytes. iOS/Safari verliert Blobs in IndexedDB
+ * gelegentlich (nach Neustart der App kommen sie leer zurück → „No content provided“),
+ * deshalb werden Dateien nicht als Blob, sondern als ArrayBuffer gespeichert.
+ */
+interface DateiBytes { bytes: ArrayBuffer; typ: string; name?: string }
+
+function istDatei(v: unknown): v is DateiBytes {
+  return !!v && typeof v === 'object' && (v as DateiBytes).bytes instanceof ArrayBuffer
+}
+
+async function alsBytes(b: Blob): Promise<DateiBytes> {
+  return { bytes: await b.arrayBuffer(), typ: b.type, name: b instanceof File ? b.name : undefined }
+}
+
+function alsBlob(d: DateiBytes): Blob {
+  return d.name ? new File([d.bytes], d.name, { type: d.typ }) : new Blob([d.bytes], { type: d.typ })
+}
+
+/** Ist die gespeicherte Datei leer bzw. nicht mehr lesbar? */
+async function dateiLeer(b: unknown): Promise<boolean> {
+  const pruefe = async (v: unknown) => {
+    if (istDatei(v)) return v.bytes.byteLength === 0
+    if (v instanceof Blob) {
+      try { return v.size === 0 || (await v.slice(0, 1).arrayBuffer()).byteLength === 0 } catch { return true }
+    }
+    return false
+  }
+  if (istForm(b)) {
+    for (const [, v] of b.formdata) if (await pruefe(v)) return true
+    return false
+  }
+  return pruefe(b)
+}
+
 /** FormData (z.B. Bild-Upload) in speicherbarer Form. */
-interface FormEintraege { formdata: [string, string | Blob][] }
+interface FormEintraege { formdata: [string, string | Blob | DateiBytes][] }
 
 function istForm(b: unknown): b is FormEintraege {
   return !!b && typeof b === 'object' && Array.isArray((b as FormEintraege).formdata)
 }
 
 function alsSendeBody(b: WarteEintrag['body']): BodyInit | null {
+  if (istDatei(b)) return alsBlob(b)
   if (!istForm(b)) return b
   const fd = new FormData()
-  b.formdata.forEach(([k, v]) => fd.append(k, v))
+  b.formdata.forEach(([k, v]) => {
+    if (istDatei(v)) fd.append(k, alsBlob(v), v.name)
+    else fd.append(k, v)
+  })
   return fd
 }
 
@@ -57,7 +96,7 @@ export interface WarteEintrag {
   method: string
   url: string
   headers: Record<string, string>
-  body: string | Blob | FormEintraege | null
+  body: string | Blob | DateiBytes | FormEintraege | null
   zeit: number
   /** Kurzbeschreibung für die Anzeige, z.B. "Servicebericht ändern". */
   titel: string
@@ -372,11 +411,13 @@ async function schreiben(input: RequestInfo | URL, init: RequestInit | undefined
   const method = (init?.method || 'GET').toUpperCase()
   let body: WarteEintrag['body'] = null
   if (typeof init?.body === 'string') body = init.body
-  else if (init?.body instanceof Blob) body = init.body
-  else if (init?.body instanceof ArrayBuffer) body = new Blob([init.body], { type: headers['content-type'] })
+  else if (init?.body instanceof Blob) body = await alsBytes(init.body)
+  else if (init?.body instanceof ArrayBuffer) body = { bytes: init.body.slice(0), typ: headers['content-type'] || '' }
   else if (init?.body instanceof FormData) {
-    const eintraege: [string, string | Blob][] = []
-    init.body.forEach((v, k) => eintraege.push([k, v]))
+    const roh: [string, FormDataEntryValue][] = []
+    init.body.forEach((v, k) => roh.push([k, v]))
+    const eintraege: [string, string | DateiBytes][] = []
+    for (const [k, v] of roh) eintraege.push([k, typeof v === 'string' ? v : await alsBytes(v)])
     body = { formdata: eintraege }
   } else if (init?.body != null) {
     // Andere Formen (Streams) können nicht in die Warteschlange — dann nur mit Netz.
@@ -481,6 +522,11 @@ export function synchronisieren(): Promise<void> {
       const token = await tokenHolen().catch(() => null)
       if (!token) return
       for (const e of liste) {
+        // Datei auf dem Gerät leer geworden (iOS)? Klar sagen, statt den Server-Fehler zu zeigen.
+        if (await dateiLeer(e.body)) {
+          await warteAktualisieren({ ...e, fehler: `${e.titel}: Die Datei ist auf dem Gerät verloren gegangen. Bitte „Verwerfen“ und neu erfassen.` })
+          break
+        }
         const headers: Record<string, string> = { ...e.headers, authorization: `Bearer ${token}`, apikey: ANON_KEY }
         let res: Response
         try {
@@ -563,9 +609,11 @@ export async function wartendesBild(publicUrl: string): Promise<Blob | null> {
     const e = liste[i]
     if (!decodeURIComponent(new URL(e.url).pathname).endsWith('/storage/v1/object/' + pfad)) continue
     if (e.body instanceof Blob) return e.body
+    if (istDatei(e.body)) return alsBlob(e.body)
     if (istForm(e.body)) {
-      const datei = e.body.formdata.find(([, v]) => v instanceof Blob)
-      if (datei) return datei[1] as Blob
+      const datei = e.body.formdata.find(([, v]) => v instanceof Blob || istDatei(v))?.[1]
+      if (datei instanceof Blob) return datei
+      if (istDatei(datei)) return alsBlob(datei)
     }
   }
   return null
