@@ -218,6 +218,8 @@ Deno.serve(async (req: Request) => {
           text: plan.text,
           pdf_template: VORLAGE_RECHNUNG,
           due_in_days: ZAHLUNGSZIEL_TAGE,
+          // E-Rechnung: Standard-PDF (mit/ohne Briefpapier) plus ZUGFeRD 2.5 EN16931.
+          file_format_config: [{ type: 'default' }, { type: 'default_without_stationery' }, { type: 'zugferd2_5_en16931' }],
           service_date: plan.leistung_von === plan.leistung_bis
             ? { type: 'SERVICE', date: plan.leistung_von }
             : { type: 'SERVICE', date_from: plan.leistung_von, date_to: plan.leistung_bis },
