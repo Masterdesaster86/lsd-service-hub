@@ -101,6 +101,10 @@ function kopfblock(order: OrderWithRelations, einsatz: string, maschinen: string
   const zeilen = [`Einsatz ${einsatz}${maschinen.length ? ' – ' + maschinen.join(', ') : ''}`, `Auftragsnummer: ${order.id}`]
   if (order.kundenreferenznr) zeilen.push(`Kundenreferenznummer: ${order.kundenreferenznr}`)
   if (order.bestellnummer) zeilen.push(`Ihre Bestellnummer: ${order.bestellnummer}`)
+  if (order.auftragsnr_kunde) zeilen.push(`Ihre Auftragsnummer: ${order.auftragsnr_kunde}`)
+  // Endkunde nennen, wenn der Einsatz nicht beim Auftraggeber selbst war (z.B. DMG MORI).
+  const ek = order.einsatzkunde
+  if (ek && ek.id !== order.auftraggeber?.id) zeilen.push(`Endkunde: ${[ek.name, ek.ort].filter(Boolean).join(', ')}`)
   return `<strong><span style="font-size: 18px;">${zeilen.join('<br>')}</span></strong>`
 }
 
