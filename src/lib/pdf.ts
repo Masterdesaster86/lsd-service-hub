@@ -1222,7 +1222,7 @@ export async function urlToDataUrl(url: string): Promise<string> {
     const res = await fetch(url).catch(() => null)
     blob = res && res.ok ? await res.blob() : null
   }
-  if (!blob || !blob.size || !/^image/(png|jpe?g)$/i.test(blob.type)) return ''
+  if (!blob || !blob.size || !['image/png', 'image/jpeg', 'image/jpg'].includes(blob.type.toLowerCase())) return ''
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onloadend = () => resolve(reader.result as string)
