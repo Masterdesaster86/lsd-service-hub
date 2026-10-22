@@ -209,6 +209,19 @@ Deno.serve(async (req: Request) => {
       // 1. Umwandeln: ergibt einen neuen Rechnungsentwurf mit ref_id = Auftrag
       const entwurf = await eb(`/documents/${auftrag.id}/INVOICE?pdf_template=${VORLAGE_RECHNUNG}`, { method: 'POST' })
 
+      // 1b. Kundendaten im Entwurf auffrischen: easybill uebernimmt beim Umwandeln den Stand des
+      // Auftrags (z. B. ohne die spaeter eingetragene Rechnungs-E-Mail). Gleiche customer_id
+      // frischt nichts auf, deshalb kurz auf einen anderen Kunden und zurueck.
+      const alt = JSON.stringify(entwurf.customer_snapshot?.emails || [])
+      if (alt !== JSON.stringify(kunde.emails || [])) {
+        const andere = await eb('/customers?limit=2')
+        const zwischen = (andere.items || []).find((c: { id: number }) => c.id !== kunde.id)
+        if (zwischen) {
+          await eb(`/documents/${entwurf.id}`, { method: 'PUT', body: JSON.stringify({ customer_id: zwischen.id }) })
+          await eb(`/documents/${entwurf.id}`, { method: 'PUT', body: JSON.stringify({ customer_id: kunde.id }) })
+        }
+      }
+
       // 2. Kopf, Texte, Leistungszeitraum, Positionen setzen
       await eb(`/documents/${entwurf.id}`, {
         method: 'PUT',
