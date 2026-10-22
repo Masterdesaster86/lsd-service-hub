@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../lib/AuthContext'
 import { fetchOrders } from '../../lib/queries'
+import { easybillAufruf } from '../../lib/easybillRechnung'
 import type { OrderWithRelations } from '../../lib/types'
 import { OrderStatusTag } from '../../components/ui/StatusTag'
 import { customerAddress, mapsLink } from '../../lib/format'
@@ -69,6 +70,15 @@ export function OrdersList() {
   }
 
   useEffect(() => { load() }, [])
+
+  // Büro: Beim Öffnen der Auftragsliste nachsehen, ob Rechnungsentwürfe in easybill inzwischen
+  // abgeschlossen wurden. Dann setzt die Serverfunktion die Berichte auf abgerechnet.
+  useEffect(() => {
+    if (!employee || employee.role === 'Techniker') return
+    easybillAufruf<{ abgeschlossen: { nummer: string | null }[] }>({ aktion: 'abgleichen' })
+      .then((r) => { if ((r.abgeschlossen || []).some((x) => x.nummer)) load() })
+      .catch(() => { /* easybill nicht erreichbar: still bleiben */ })
+  }, [employee?.id])
 
   const canCreate = employee?.role === 'Administrator' || employee?.role === 'Disposition' || employee?.role === 'CEO'
 
