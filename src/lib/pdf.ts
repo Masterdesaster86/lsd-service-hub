@@ -1210,10 +1210,19 @@ export async function sharePdf(doc: jsPDF, filename: string, title: string, text
   }
 }
 
-/** Lädt eine öffentliche Storage-URL (z.B. Unterschrift) und wandelt sie in eine data:-URL um. */
+/**
+ * Lädt eine öffentliche Storage-URL (z.B. Unterschrift) und wandelt sie in eine data:-URL um.
+ * Fehlt das Bild (z.B. auf dem Gerät verlorene Unterschrift) oder ist es kein Bild, kommt ''
+ * zurück — das PDF wird dann ohne dieses Bild gebaut statt abzubrechen.
+ */
 export async function urlToDataUrl(url: string): Promise<string> {
   // Offline unterschrieben und noch nicht hochgeladen: Bild direkt vom Gerät nehmen.
-  const blob = (await wartendesBild(url)) ?? await (await fetch(url)).blob()
+  let blob = await wartendesBild(url).catch(() => null)
+  if (!blob || !blob.size) {
+    const res = await fetch(url).catch(() => null)
+    blob = res && res.ok ? await res.blob() : null
+  }
+  if (!blob || !blob.size || !/^image/(png|jpe?g)$/i.test(blob.type)) return ''
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onloadend = () => resolve(reader.result as string)
