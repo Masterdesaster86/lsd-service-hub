@@ -275,9 +275,11 @@ export function grenzeFuer(p: Messpunkt, werte: Record<string, string>): number 
   return grenzwertMm(p.toleranz) ?? gewaehlteStufe(p, werte)?.grenze ?? null
 }
 
-/** Eingegebenen Messwert als Zahl lesen ("0,015", "0.015 mm"); sonst null. */
+/** Eingegebenen Messwert als Zahl lesen ("0,015", "-0,015", "0.015 mm"); sonst null.
+ * Negative Werte sind erlaubt — geprüft wird gegen die Toleranz über den Betrag. */
 export function messwertZahl(wert: string | undefined): number | null {
-  const s = (wert || '').replace(/mm/i, '').replace(',', '.').trim()
+  // Minus auch als typografisches Zeichen (−, –) zulassen, Leerzeichen nach dem Vorzeichen ignorieren.
+  const s = (wert || '').replace(/mm/i, '').replace(/[\u2212\u2013]/g, '-').replace(',', '.').replace(/\s+/g, '')
   if (!s) return null
   const n = Number(s)
   return Number.isFinite(n) ? n : null

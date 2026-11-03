@@ -272,12 +272,27 @@ export function MessprotokollDetail() {
         )}
 
         <label>Gemessen</label>
-        <div className={`flex items-center bg-white border-2 ${b === 'nio' ? 'border-red' : 'border-ink'}`}>
+        <div className={`flex items-stretch bg-white border-2 ${b === 'nio' ? 'border-red' : 'border-ink'}`}>
+          {/* Die iPhone-Zahlentastatur hat kein Minus — darum ein eigener Vorzeichen-Knopf. */}
+          <button
+            type="button"
+            disabled={!editable}
+            onClick={() => setWerte((w) => {
+              const alt = (w[p.key] || '').trim()
+              const neu = alt.startsWith('-') ? alt.slice(1) : `-${alt.replace(/^\+/, '')}`
+              return { ...w, [p.key]: neu }
+            })}
+            aria-label="Vorzeichen wechseln (plus/minus)"
+            aria-pressed={wert.trim().startsWith('-')}
+            className={`shrink-0 w-[64px] border-0 border-r-2 font-mono text-[28px] font-semibold leading-none cursor-pointer disabled:cursor-default ${b === 'nio' ? 'border-red' : 'border-ink'} ${wert.trim().startsWith('-') ? 'bg-ink text-white' : 'bg-white text-ink'}`}
+          >
+            ±
+          </button>
           <input
             inputMode="decimal"
             disabled={!editable}
             value={wert}
-            onChange={(e) => setWerte((w) => ({ ...w, [p.key]: e.target.value }))}
+            onChange={(e) => setWerte((w) => ({ ...w, [p.key]: e.target.value.replace(/[−–]/g, '-') }))}
             placeholder="0,000"
             className="!border-0 !min-h-[64px] !text-[30px] font-mono font-semibold !outline-none flex-1"
             aria-label={`Messwert ${p.nr}`}
@@ -289,7 +304,7 @@ export function MessprotokollDetail() {
           <div className="mt-3">
             <div className={`flex items-center justify-between px-3 py-2.5 border ${b === 'nio' ? 'border-red bg-red/5' : b === 'io' ? 'border-green bg-green/5' : 'border-line bg-white'}`}>
               <BewertungTag b={b} />
-              <span className="font-mono text-[13px]">{zahl !== null ? mm(Math.abs(zahl)) : '–'} / {mm(grenze)} mm</span>
+              <span className="font-mono text-[13px]">{zahl !== null ? mm(zahl) : '–'} / ±{mm(grenze)} mm</span>
             </div>
             <div className="relative h-2 bg-line mt-3">
               {zahl !== null && (
@@ -367,7 +382,7 @@ export function MessprotokollDetail() {
               >
                 <span className="font-mono font-semibold text-red w-10 shrink-0">{p.nr}</span>
                 <span className="flex-1 font-medium leading-snug">{p.bezeichnung}</span>
-                <span className="font-mono text-[13px] text-red shrink-0">{mm(Math.abs(messwertZahl(werte[p.key])!))} / {mm(grenzeFuer(p, werte)!)}</span>
+                <span className="font-mono text-[13px] text-red shrink-0">{mm(messwertZahl(werte[p.key])!)} / ±{mm(grenzeFuer(p, werte)!)}</span>
               </button>
             ))}
           </div>
