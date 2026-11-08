@@ -202,8 +202,15 @@ export function baueRechnungsplan(order: OrderWithRelations, alleBerichte: Beric
       }
     }
 
-    const hotel = r2(b.tage.reduce((s, x) => s + (Number(x.hotelkosten) || 0), 0))
-    if (hotel > 0) positionen.push({ typ: 'POSITION', position_id: ARTIKEL.hotel, menge: 1, einheit: 'Stück', preis: hotel, label: 'Kosten Hotel' })
+    // Hotel je Nacht ausweisen (z. B. 2 × 110,00 €); unterschiedliche Preise je Nacht als eigene Zeilen
+    const naechte = new Map<number, number>()
+    for (const x of b.tage) {
+      const preis = r2(Number(x.hotelkosten) || 0)
+      if (preis > 0) naechte.set(preis, (naechte.get(preis) || 0) + 1)
+    }
+    for (const [preis, anzahl] of naechte) {
+      positionen.push({ typ: 'POSITION', position_id: ARTIKEL.hotel, menge: anzahl, einheit: 'Nacht', preis, label: 'Kosten Hotel' })
+    }
 
     for (const teil of b.ersatzteile) {
       const pid = teil.easybill_position_id
