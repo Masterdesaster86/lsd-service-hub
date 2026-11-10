@@ -195,16 +195,45 @@ function sectionTitle(doc: jsPDF, text: string, y: number): number {
   return y + 4.5
 }
 
-/** Bordered box with a wrapped text paragraph; returns the new Y. */
-function textBox(doc: jsPDF, y: number, text: string, minHeight = 12): number {
+/** Unterste Kante für Inhalt; darunter steht die Fußzeile (Y 292). */
+const INHALT_UNTEN = 282
+// Echte Zeilenhöhe von jsPDF (9,5 pt × Faktor 1,15), damit der Kasten den Text genau umschließt.
+const TEXTBOX_ZEILE = 9.5 * 1.15 * 25.4 / 72
+
+/** Bordered box with a wrapped text paragraph; returns the new Y.
+ * Langer Text läuft über Seiten: Der Kasten endet über der Fußzeile und wird
+ * auf der nächsten Seite (mit „Fortsetzung“-Überschrift) weitergeführt. */
+function textBox(doc: jsPDF, y: number, text: string, minHeight = 12, titel?: string): number {
   doc.setFontSize(9.5)
-  const lines = doc.splitTextToSize(text || '–', CONTENT_W - 6)
-  const h = Math.max(minHeight, lines.length * 4 + 4)
-  doc.setDrawColor(LINE)
-  doc.rect(MARGIN, y, CONTENT_W, h)
-  doc.setTextColor(INK)
-  doc.text(lines, MARGIN + 3, y + 4.8)
-  return y + h + 4
+  let rest: string[] = doc.splitTextToSize(text || '–', CONTENT_W - 6)
+  let erste = true
+  for (;;) {
+    const passen = Math.floor((INHALT_UNTEN - y - 4) / TEXTBOX_ZEILE)
+    // Mindestens zwei Zeilen (bzw. den ganzen kurzen Rest) auf die Seite, sonst gleich umbrechen.
+    if (passen < Math.min(2, rest.length)) {
+      doc.addPage()
+      y = 14
+      if (titel) y = sectionTitle(doc, `${titel} (Fortsetzung)`, y + 4)
+      doc.setFontSize(9.5)
+      continue
+    }
+    const teil = rest.slice(0, passen)
+    rest = rest.slice(passen)
+    // Leerzeilen am Seitenwechsel weglassen, damit die Fortsetzung oben bündig beginnt.
+    while (rest.length && !rest[0].trim()) rest.shift()
+    let h = teil.length * TEXTBOX_ZEILE + 4
+    if (!rest.length && erste) h = Math.min(Math.max(minHeight, h), INHALT_UNTEN - y)
+    doc.setDrawColor(LINE)
+    doc.rect(MARGIN, y, CONTENT_W, h)
+    doc.setTextColor(INK)
+    doc.setFontSize(9.5)
+    doc.text(teil, MARGIN + 3, y + 4.8)
+    if (!rest.length) return y + h + 4
+    doc.addPage()
+    y = 14
+    if (titel) y = sectionTitle(doc, `${titel} (Fortsetzung)`, y + 4)
+    erste = false
+  }
 }
 
 /** Dreispaltiges Label/Wert-Raster für Stammdaten. Leere [label,value]-Paare
@@ -315,16 +344,16 @@ export async function buildBerichtPdf(input: BerichtPdfInput): Promise<jsPDF> {
     ['', ''],
   ])
   y = sectionTitle(doc, 'Fehlerbeschreibung', y)
-  y = textBox(doc, y, bericht.fehlerbeschreibung || '–', 9)
+  y = textBox(doc, y, bericht.fehlerbeschreibung || '–', 9, 'Fehlerbeschreibung')
 
   y = ensureSpace(doc, y, 26)
   y = sectionTitle(doc, 'Durchgeführte Arbeiten', y)
-  y = textBox(doc, y, bericht.durchgefuehrte_arbeiten || '–', 13)
+  y = textBox(doc, y, bericht.durchgefuehrte_arbeiten || '–', 13, 'Durchgeführte Arbeiten')
 
   if (bericht.empfehlung) {
     y = ensureSpace(doc, y, 18)
     y = sectionTitle(doc, 'Empfehlung', y)
-    y = textBox(doc, y, bericht.empfehlung, 9)
+    y = textBox(doc, y, bericht.empfehlung, 9, 'Empfehlung')
   }
 
   if (tage.length) {
