@@ -4,8 +4,8 @@ create or replace function public.ist_mitarbeiter() returns boolean
 language sql stable security definer set search_path = public as $$
   select exists (select 1 from employees where auth_user_id = auth.uid() and aktiv);
 $$;
-revoke all on function public.ist_mitarbeiter() from public, anon;
-grant execute on function public.ist_mitarbeiter() to authenticated, service_role;
+-- anon darf die Funktion aufrufen (liefert false), sonst endet jede Abfrage ohne Anmeldung mit einem Fehler.
+grant execute on function public.ist_mitarbeiter() to anon, authenticated, service_role;
 
 alter policy "Lesen: alle eingeloggten Mitarbeiter" on public.abwesenheiten using (public.ist_mitarbeiter());
 alter policy "Anlegen: alle eingeloggten Mitarbeiter" on public.ansprechpartner with check (public.ist_mitarbeiter());
@@ -33,6 +33,12 @@ revoke execute on function public.wissen_verarbeite_naechsten_batch(integer) fro
 revoke execute on function public.wissen_suche(vector, integer) from public, anon;
 grant execute on function public.wissen_suche(vector, integer) to authenticated, service_role;
 
--- 3) Unterschriften-Ordner geschuetzt (nach Auslieferung der App-Aenderung in pdf.ts):
---    update storage.buckets set public = false where id = 'signatures';
---    drop policy "Public read signatures" on storage.objects;
+-- 3) Unterschriften-Ordner geschuetzt (die App laedt sie angemeldet, siehe urlToDataUrl in pdf.ts).
+update storage.buckets set public = false where id = 'signatures';
+alter policy "Public read signatures" on storage.objects using (bucket_id = 'signatures' and public.ist_mitarbeiter());
+
+-- 4) Noch offen (braucht Bestaetigung im Supabase-SQL-Editor): http-Erweiterung aus public herausnehmen.
+--    drop extension http;
+--    create extension http with schema extensions;
+--    alter function public.easybill_anfrage(text, text, jsonb) set search_path = public, vault, extensions;
+--    alter function public.wissen_verarbeite_naechsten_batch(integer) set search_path = public, extensions;
