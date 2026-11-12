@@ -138,6 +138,14 @@ Entwickler): auf Deutsch antworten, verständlich erklären, Ergebnisse knapp zu
   Rechnung-Anlegen für alles, was noch fehlt (Offline-Fall). Ohne Preis bleibt die Zuordnung in der
   Rechnungsvorschau.
 
+## Sicherheit (seit 12.11.2026)
+
+- Lese-/Anlege-Regeln prüfen `ist_mitarbeiter()` (aktiver Mitarbeiter), nicht nur „angemeldet“.
+- Ordner `signatures` ist geschützt: Unterschriften nur angemeldet abrufbar. In der DB steht weiter die
+  frühere öffentliche Adresse; `urlToDataUrl` (pdf.ts) liest daraus den Pfad und lädt per
+  `supabase.storage.download`. Unterschriften nie per `<img src>` oder `fetch(url)` laden.
+- `machine-photos` bleibt öffentlich (Branding-Bilder, Maschinenfotos).
+
 ## Regeln
 
 - Nie Passwörter oder Schlüssel eintippen oder im Chat ausgeben — das macht Manuel selbst.

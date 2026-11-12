@@ -8,6 +8,7 @@ import type { Ansprechpartner, Customer, Employee, Machine, Messprotokoll, Order
 import { calcBerichtTotalsMitKontext, calcTagMitKontext, type DayTotals, type Tageskontext } from './zeit'
 import { formatDateDE, hhmm } from './format'
 import { wartendesBild } from './offline'
+import { supabase } from './supabase'
 import { BIG_SHOULDERS_800_TTF } from '../assets/bigShouldersFont'
 import {
   WARTUNG_BEMERKUNG_KEY, WARTUNG_ERGEBNIS_TEXT, WARTUNG_GRUPPEN, WARTUNG_HINWEIS, alleWartungspunkte,
@@ -1248,8 +1249,16 @@ export async function urlToDataUrl(url: string): Promise<string> {
   // Offline unterschrieben und noch nicht hochgeladen: Bild direkt vom Gerät nehmen.
   let blob = await wartendesBild(url).catch(() => null)
   if (!blob || !blob.size) {
-    const res = await fetch(url).catch(() => null)
-    blob = res && res.ok ? await res.blob() : null
+    // Unterschriften liegen in einem geschützten Ordner: nur mit Anmeldung abrufbar.
+    // Gespeichert ist weiterhin die frühere öffentliche Adresse, daraus wird der Pfad gelesen.
+    const sig = url.match(/\/storage\/v1\/object\/public\/signatures\/(.+)$/)
+    if (sig) {
+      const { data } = await supabase.storage.from('signatures').download(decodeURIComponent(sig[1].split('?')[0])).catch(() => ({ data: null }))
+      blob = data
+    } else {
+      const res = await fetch(url).catch(() => null)
+      blob = res && res.ok ? await res.blob() : null
+    }
   }
   if (!blob || !blob.size || !['image/png', 'image/jpeg', 'image/jpg'].includes(blob.type.toLowerCase())) return ''
   return new Promise((resolve, reject) => {
