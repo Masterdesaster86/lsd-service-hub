@@ -146,6 +146,20 @@ Entwickler): auf Deutsch antworten, verständlich erklären, Ergebnisse knapp zu
   `supabase.storage.download`. Unterschriften nie per `<img src>` oder `fetch(url)` laden.
 - `machine-photos` bleibt öffentlich (Branding-Bilder, Maschinenfotos).
 
+## Push-Nachricht bei neuem Auftrag (seit 18.11.2026)
+
+- Web-Push. Trigger `trg_push_bei_zuweisung` auf `order_techniker` (nach Insert) legt je Auftrag+Techniker
+  einmal eine Zeile in `push_meldungen` an (nicht bei erledigt/abgerechnet/storniert, nicht an sich selbst)
+  und ruft per `pg_net` die Edge Function `push-senden` auf (JWT-Prüfung aus; sie verschickt nur, was in
+  der Warteschlange wartet). Ergebnis je Meldung steht in `push_meldungen.ergebnis`.
+- Geräte in `push_abos` (nur eigene sichtbar), anlegen/löschen nur über `push_abo_speichern` /
+  `push_abo_loeschen`. Ungültige Geräte (404/410) löscht die Funktion selbst.
+- Privater VAPID-Schlüssel nur im Vault (`push_vapid_private`, gelesen über `push_vapid_privat()`, nur
+  service_role). Öffentlicher Schlüssel steht in `src/lib/push.ts` und in der Funktion.
+- App: `components/PushNachrichten.tsx` (Hinweis oben + Schalter unter „Mehr“/Seitenleiste mit
+  „Probe senden“), `public/sw.js` zeigt die Nachricht und öffnet beim Tippen den Auftrag.
+- iPhone: nur in der vom Home-Bildschirm gestarteten App (iOS 16.4+).
+
 ## Regeln
 
 - Nie Passwörter oder Schlüssel eintippen oder im Chat ausgeben — das macht Manuel selbst.

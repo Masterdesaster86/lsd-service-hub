@@ -103,3 +103,34 @@ self.addEventListener('fetch', (event) => {
     })())
   }
 })
+
+// Push-Nachricht "Neuer Auftrag" (verschickt von der Edge Function push-senden).
+self.addEventListener('push', (event) => {
+  let d = {}
+  try { d = event.data ? event.data.json() : {} } catch { d = { body: event.data && event.data.text() } }
+  const titel = d.title || 'LSD Service Hub'
+  event.waitUntil(self.registration.showNotification(titel, {
+    body: d.body || '',
+    tag: d.tag || undefined,
+    icon: BASIS + 'icons/icon-192.png',
+    badge: BASIS + 'icons/icon-192.png',
+    data: { url: d.url || '/auftraege' },
+  }))
+})
+
+// Tippen auf die Nachricht: App öffnen (oder vorhandenes Fenster nutzen) und zum Auftrag springen.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const ziel = new URL(String(event.notification.data?.url || '/auftraege').replace(/^\//, ''), self.registration.scope).href
+  event.waitUntil((async () => {
+    const fenster = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    for (const f of fenster) {
+      if (new URL(f.url).origin === self.location.origin) {
+        await f.focus()
+        try { await f.navigate(ziel) } catch { await self.clients.openWindow(ziel) }
+        return
+      }
+    }
+    await self.clients.openWindow(ziel)
+  })())
+})

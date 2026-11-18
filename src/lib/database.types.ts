@@ -1022,6 +1022,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      push_abo_loeschen: { Args: { p_endpoint: string }; Returns: undefined }
+      push_abo_speichern: {
+        Args: { p_auth: string; p_endpoint: string; p_geraet: string; p_p256dh: string }
+        Returns: undefined
+      }
       bericht_ist_vollstaendig: {
         Args: { p_bericht_id: string }
         Returns: boolean

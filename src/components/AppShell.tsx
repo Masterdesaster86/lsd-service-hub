@@ -7,6 +7,7 @@ import { PdfViewer } from './PdfViewer'
 import { Icon, type IconName } from './ui/Icon'
 import { useConfirm } from './ui/ConfirmProvider'
 import { OfflineDialog, OfflineStatus } from './OfflineStatus'
+import { PushHinweis, PushSchalter } from './PushNachrichten'
 import { offlineZustand } from '../lib/offline'
 import { autoVorbereitenStarten } from '../lib/vorbereiten'
 
@@ -161,10 +162,12 @@ export function AppShell() {
                   {verfuegbareAnleitungen.length > 1 ? `Anleitung ${key === 'techniker' ? 'Techniker' : 'CEO'} (PDF)` : 'Anleitung (PDF)'}
                 </button>
               ))}
+              <PushSchalter dunkel />
             </div>
           )}
         </div>
         <div className="app-inhalt flex-1 min-w-0 overflow-y-auto p-6 max-md:p-4 max-md:pb-6 relative">
+          <PushHinweis />
           <Outlet />
         </div>
       </div>
@@ -246,6 +249,7 @@ export function AppShell() {
                   {verfuegbareAnleitungen.length > 1 ? `Anleitung ${key === 'techniker' ? 'Techniker' : 'CEO'} (PDF)` : 'Anleitung (PDF)'}
                 </button>
               ))}
+              <PushSchalter />
               <div className="p-4 flex flex-col gap-4">
                 <button onClick={abmelden} className="btn btn-outline w-full">Abmelden</button>
               </div>
