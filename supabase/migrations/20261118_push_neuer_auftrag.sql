@@ -104,3 +104,6 @@ end $$;
 
 create trigger trg_push_bei_zuweisung after insert on public.order_techniker
   for each row execute function public.push_bei_zuweisung();
+
+-- Trigger-Funktion nicht per API aufrufbar machen.
+revoke all on function public.push_bei_zuweisung() from public, anon, authenticated;
